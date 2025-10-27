@@ -18,14 +18,43 @@ export default function RegisterForm() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (form.password !== form.confirmPassword) {
       alert("Mật khẩu không khớp!");
       return;
     }
-    console.log("Register:", form);
-    // TODO: gọi API đăng ký tại đây
+
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          full_name: form.name,
+          email: form.email,
+          password: form.password,
+          // role_id có thể bỏ trống, backend sẽ tự gán 'customer'
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.message || "Đăng ký thất bại");
+        return;
+      }
+
+      // Nếu đăng ký thành công, có thể lưu token và chuyển hướng
+      localStorage.setItem("token", data.token);
+      alert("Đăng ký thành công!");
+      window.location.href = "/login"; 
+    } catch (error) {
+      console.error(error);
+      alert("Có lỗi xảy ra, thử lại sau.");
+    }
   };
 
   return (

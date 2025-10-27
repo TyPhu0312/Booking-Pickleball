@@ -4,15 +4,50 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
+import Cookies from "js-cookie";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Login:", { email, password });
-    // TODO: gọi API đăng nhập tại đây
+    setLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      console.log(data);
+      if (!res.ok) {
+        setError(data.message || "Đăng nhập thất bại");
+        setLoading(false);
+        return;
+      }
+
+      localStorage.setItem("user", email);
+      const storedUser = localStorage.getItem("user");
+      console.log("Stored user in localStorage:", storedUser);
+      Cookies.set("token", data.token, { expires: 7 }); // cookie hết hạn 7 ngày
+   
+      alert("Đăng nhập thành công!");
+      window.location.href = "/"; // chuyển hướng sau đăng nhập
+    } catch (err) {
+      console.error(err);
+      setError("Có lỗi xảy ra, thử lại sau.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -43,8 +78,14 @@ export default function LoginForm() {
           />
         </div>
 
-        <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">
-          Đăng nhập
+        {error && <p className="text-red-500 text-sm">{error}</p>}
+
+        <Button
+          type="submit"
+          className="w-full bg-green-600 hover:bg-green-700"
+          disabled={loading}
+        >
+          {loading ? "Đang đăng nhập..." : "Đăng nhập"}
         </Button>
       </form>
 
