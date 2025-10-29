@@ -15,12 +15,12 @@ export default function HeroSection() {
           <p className="text-lg mb-6">
             Trải nghiệm hệ thống đặt sân thể thao hiện đại – tiện lợi – mọi lúc mọi nơi.
           </p>
-          {/* <a
-            href="/courts"
+          <a
+            href="/bookings"
             className="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg font-semibold text-white shadow-lg"
           >
             Đặt sân ngay
-          </a> */}
+          </a>
         </div>
       </section>
     );
