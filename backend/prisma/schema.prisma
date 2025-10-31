@@ -121,8 +121,6 @@ model Slots {
   slot_name     String
   start_time    DateTime
   end_time      DateTime
-  is_recurring  Boolean
-  recurring_day RecurringDay?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -152,6 +150,9 @@ model BookingSlot {
   booking_id    String
   slot_id       String
   date          DateTime
+  is_recurring  Boolean
+  recurring_day RecurringDay? //cho phép chọn nhiều ngày trong tuần
+  num_weeks     Int?
 
   booking Bookings @relation(fields: [booking_id], references: [bookingID])
   slot    Slots    @relation(fields: [slot_id], references: [slotID])
@@ -228,7 +229,7 @@ model TournamentMatches {
   tournament_id     String
   team1_id          String
   team2_id          String
-  court_id          String
+  court_id          String?
   score_team1       Int?
   score_team2       Int?
   status            String
@@ -243,7 +244,7 @@ model TournamentMatches {
   team1      TournamentTeams  @relation("Team1", fields: [team1_id], references: [tournamentTeamID])
   team2      TournamentTeams  @relation("Team2", fields: [team2_id], references: [tournamentTeamID])
   winnerTeam TournamentTeams? @relation("WinnerTeam", fields: [winner_team_id], references: [tournamentTeamID])
-  court      Courts           @relation(fields: [court_id], references: [courtID])
+  court      Courts?          @relation(fields: [court_id], references: [courtID])
 }
 
 model LeaderBoards {
