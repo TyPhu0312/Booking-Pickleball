@@ -14,8 +14,31 @@ export default function RegisterForm() {
     confirmPassword: "",
   });
 
+  const [errors, setErrors] = useState({
+    password: "",
+    confirmPassword: "",
+  });
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const validate = () => {
+    const newErrors = { password: "", confirmPassword: "" };
+    const passwordRegex =
+      /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+    if (!passwordRegex.test(form.password)) {
+      newErrors.password =
+        "Mật khẩu phải có ít nhất 8 ký tự, gồm chữ hoa, số và ký tự đặc biệt.";
+    }
+
+    if (form.password !== form.confirmPassword) {
+      newErrors.confirmPassword = "Mật khẩu xác nhận không khớp.";
+    }
+
+    setErrors(newErrors);
+    return Object.values(newErrors).every((err) => err === "");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,35 +48,39 @@ export default function RegisterForm() {
       alert("Mật khẩu không khớp!");
       return;
     }
+    if (validate()) {
+      try {
+        const res = await fetch("http://localhost:5000/api/auth/register", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            full_name: form.name,
+            email: form.email,
+            password: form.password,
+            // role_id có thể bỏ trống, backend sẽ tự gán 'customer'
+          }),
+        });
 
-    try {
-      const res = await fetch("http://localhost:5000/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          full_name: form.name,
-          email: form.email,
-          password: form.password,
-          // role_id có thể bỏ trống, backend sẽ tự gán 'customer'
-        }),
-      });
+        const data = await res.json();
 
-      const data = await res.json();
+        if (!res.ok) {
+          alert(data.message || "Đăng ký thất bại");
+          return;
+        }
 
-      if (!res.ok) {
-        alert(data.message || "Đăng ký thất bại");
-        return;
+        // Nếu đăng ký thành công, có thể lưu token và chuyển hướng
+        localStorage.setItem("token", data.token);
+        alert("Đăng ký thành công!");
+        window.location.href = "/login";
+      } catch (error) {
+        console.error(error);
+        alert("Có lỗi xảy ra, thử lại sau.");
       }
-
-      // Nếu đăng ký thành công, có thể lưu token và chuyển hướng
-      localStorage.setItem("token", data.token);
-      alert("Đăng ký thành công!");
-      window.location.href = "/login"; 
-    } catch (error) {
-      console.error(error);
-      alert("Có lỗi xảy ra, thử lại sau.");
+    }
+    else {
+      console.log("❌ Có lỗi, vui lòng kiểm tra lại.");
     }
   };
 
@@ -109,10 +136,15 @@ export default function RegisterForm() {
             onChange={handleChange}
             required
           />
+          {errors.password && (
+            <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+          )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Xác nhận mật khẩu</label>
+          <label className="block text-sm font-medium mb-1">
+            Xác nhận mật khẩu
+          </label>
           <Input
             name="confirmPassword"
             type="password"
@@ -121,6 +153,9 @@ export default function RegisterForm() {
             onChange={handleChange}
             required
           />
+          {errors.confirmPassword && (
+            <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
+          )}
         </div>
 
 
