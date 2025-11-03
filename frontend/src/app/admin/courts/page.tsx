@@ -108,10 +108,10 @@ export default function CourtsPage() {
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên Sân</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Loại</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng Thái</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hành Động</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Tên Sân</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Loại</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Trạng Thái</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Hành Động</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">

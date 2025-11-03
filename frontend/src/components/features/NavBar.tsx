@@ -136,7 +136,7 @@ export default function Navbar() {
                                         Thông tin
                                     </Link>
 
-                                    {user.role.name === "Admin" && (
+                                    {user.role.name === "admin" && (
                                         <Link
                                             href="/admin"
                                             className="block px-4 py-2 hover:bg-blue-100 text-blue-700 font-medium transition-colors"

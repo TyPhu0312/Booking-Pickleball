@@ -51,7 +51,8 @@ export const createSlot = async (req: Request, res: Response) => {
 export const updateSlot = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const data = req.body;
+        const { slot_name, start_time, end_time, price } = req.body;
+
 
         const existingSlot = await prisma.slots.findUnique({
             where: { slotID: id },
@@ -63,10 +64,10 @@ export const updateSlot = async (req: Request, res: Response) => {
 
         const updatedSlot = await prisma.slots.update({
             where: { slotID: id },
-            data,
+            data: { slot_name, start_time, end_time, price },
         });
 
-        res.json(updatedSlot);
+        res.status(201).json(updatedSlot);
     } catch (error) {
         res.status(500).json({ error: "Lỗi khi cập nhật khung giờ" });
     }
@@ -107,7 +108,7 @@ export const getSlotStatusByDate = async (req: Request, res: Response) => {
         const slots = await prisma.slots.findMany();
 
         // Lấy danh sách bookingSlots theo ngày
-        const bookingSlots = await prisma.bookingSlot.findMany({
+        const bookingSlots = await prisma.bookingSlots.findMany({
             where: {
                 date: new Date(formattedDate + "T00:00:00.000Z"),
                 booking: {
@@ -118,6 +119,7 @@ export const getSlotStatusByDate = async (req: Request, res: Response) => {
                 booking: true,
             },
         });
+        console.log("Booking Slots:", bookingSlots);
 
         // Gom nhóm slot
         const result = slots.map((slot) => {
