@@ -8,6 +8,7 @@ import courts from "./routes/courts.routes";
 import roles from "./routes/roles.routes";
 import users from "./routes/users.routes";
 import auth from "./routes/auth.rourtes";
+import slots from "./routes/slots.routes";
 
 
 dotenv.config();
@@ -29,6 +30,7 @@ app.use("/api/courts", courts);
 app.use("/api/roles", roles);
 app.use("/api/users", users);
 app.use("/api/auth", auth);
+app.use("/api/slots", slots);
 
 
 // ✅ Khởi động server

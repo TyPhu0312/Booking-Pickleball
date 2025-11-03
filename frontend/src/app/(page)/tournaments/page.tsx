@@ -68,10 +68,14 @@ export default function TournamentsPage() {
             className="group bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
           >
             <div className="relative">
-              <div className="bg-gradient-to-br from-purple-500 to-pink-600 h-48 flex items-center justify-center">
+              <div className="bg-gradient-to-br from-blue-600 to-pink-600 h-48 flex items-center justify-center">
                 <Trophy className="w-16 h-16 text-white opacity-30" />
               </div>
-              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition"></div>
+              <img
+                src="./images/logo.png"
+                alt={tournament.name}
+                className="absolute top-0 left-0 w-full h-48 object-cover object-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                />
             </div>
             <div className="p-6">
               <h3 className="text-xl font-semibold mb-2 text-gray-800 group-hover:text-blue-600 transition">

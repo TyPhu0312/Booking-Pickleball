@@ -4,6 +4,8 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation"; // LẤY PARAM TỪ URL
 import { format, differenceInWeeks, addDays } from "date-fns";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 interface SlotAvailability {
   slot_id: number;
@@ -139,10 +141,10 @@ export default function BookingPage() {
     message += `Loại: ${bookingType === "once" ? "1 lần" : bookingType === "weekly" ? "Hàng tuần" : "Giải đấu"}\n`;
 
     if (bookingType === "once" || bookingType === "tournament") {
-      message += `Ngày: ${format(new Date(selectedDate), "dd/MM/yyyy")}\n`;
+      message += `Ngày: ${format(new Date(selectedDate),"dd 'tháng' MM 'năm' yyyy")}\n`;
     } else {
-      message += `Từ: ${format(new Date(weeklyStartDate), "dd/MM/yyyy")}\n`;
-      message += `Đến: ${format(new Date(weeklyEndDate), "dd/MM/yyyy")}\n`;
+      message += `Từ: ${format(new Date(weeklyStartDate), "dd 'tháng' MM 'năm' yyyy")}\n`;
+      message += `Đến: ${format(new Date(weeklyEndDate), "dd 'tháng' MM 'năm' yyyy")}\n`;
       message += `Số tuần: ${totalWeeks}\n`;
       const days = selectedWeekdays.map((d) => ["CN", "T2", "T3", "T4", "T5", "T6", "T7"][d]).join(", ");
       message += `Lặp lại: ${days}\n`;
@@ -168,7 +170,7 @@ export default function BookingPage() {
         {/* THÔNG BÁO TỰ ĐỘNG CHỌN */}
         {urlDate && urlSlot && selectedSlots.length > 0 && (
           <div className="bg-green-50 border border-green-300 text-green-800 p-4 rounded-xl mb-6 text-sm">
-            Đã tự động chọn: <strong>{format(new Date(urlDate), "dd/MM/yyyy")}</strong> - Slot <strong>
+            Đã tự động chọn: <strong>{format(new Date(urlDate), "dd 'tháng' MM 'năm' yyyy")}</strong> - Slot <strong>
               {SLOTS.find(s => s.slot_id === Number(urlSlot))?.start_time}
             </strong>
           </div>
@@ -216,15 +218,18 @@ export default function BookingPage() {
         {(bookingType === "once" || bookingType === "tournament") && (
           <div className="mb-8">
             <label className="block text-lg font-medium mb-3">Chọn Ngày</label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => {
-                setSelectedDate(e.target.value);
-                setSelectedSlots([]);
-              }}
-              min={new Date().toISOString().split("T")[0]}
-              className="w-full max-w-xs px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            <DatePicker
+            selected={selectedDate ? new Date(selectedDate) : null}
+            onChange={(date) => {
+              if (date instanceof Date && !isNaN(date.getTime())) {
+                const formatted = date.toISOString().split("T")[0]; // => "2025-11-03"
+                setSelectedDate(formatted);
+              } else {
+                setSelectedDate("");
+              }
+            }}
+            dateFormat="dd/MM/yyyy" 
+            className="w-full max-w-xs px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
         )}
@@ -235,25 +240,38 @@ export default function BookingPage() {
             <div className="mb-6 grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-lg font-medium mb-3">Ngày Bắt Đầu</label>
-                <input
-                  type="date"
-                  value={weeklyStartDate}
-                  onChange={(e) => {
-                    setWeeklyStartDate(e.target.value);
-                    setSelectedSlots([]);
+                <DatePicker 
+                  selected={weeklyStartDate ? new Date(weeklyStartDate) : null}
+                  onChange={(date) => {
+                    if (date instanceof Date && !isNaN(date.getTime())) {
+                      const formatted = date.toISOString().split("T")[0];
+                      setWeeklyStartDate(formatted);
+                      setSelectedSlots([]);
+                    } else {
+                      setWeeklyStartDate("");
+                    }
                   }}
-                  min={new Date().toISOString().split("T")[0]}
+                  dateFormat="dd/MM/yyyy" 
+                  minDate={new Date()}
                   className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
                 <label className="block text-lg font-medium mb-3">Ngày Kết Thúc</label>
-                <input
-                  type="date"
-                  value={weeklyEndDate}
-                  onChange={(e) => setWeeklyEndDate(e.target.value)}
-                  min={weeklyStartDate || new Date().toISOString().split("T")[0]}
-                  max={format(addDays(new Date(weeklyStartDate || new Date()), MAX_WEEKS * 7), "yyyy-MM-dd")}
+                <DatePicker
+                  selected={weeklyEndDate ? new Date(weeklyEndDate) : null}
+                  onChange={(date) => {
+                    if (date instanceof Date && !isNaN(date.getTime())) {
+                      const formatted = date.toISOString().split("T")[0];
+                      setWeeklyEndDate(formatted);
+                      setSelectedSlots([]);
+                    } else {
+                      setWeeklyEndDate("");
+                    }
+                  }}
+                  dateFormat="dd/MM/yyyy" 
+                  minDate={weeklyStartDate ? new Date(weeklyStartDate) : new Date()}
+                  maxDate={weeklyStartDate ? addDays(new Date(weeklyStartDate), MAX_WEEKS * 7) : undefined}
                   className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
                 />
               </div>

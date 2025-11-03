@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { Search, Clock, MapPin, Users, Trophy, Calendar, ChevronRight } from "lucide-react";
+import SearchSlots from "@/components/features/searchSlots";
 
 export default function HomePage() {
   const [searchDate, setSearchDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -23,6 +24,8 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
+
+      <SearchSlots />
       {/* SLOT PHỔ BIẾN */}
       <section className="py-20 bg-white">
         <div className="container mx-auto px-4">
@@ -52,12 +55,15 @@ export default function HomePage() {
                     Đặt Ngay
                     <ChevronRight className="w-5 h-5" />
                   </a>
+
                 </div>
               </div>
             ))}
           </div>
         </div>
       </section>
+
+
 
       {/* TÍNH NĂNG NỔI BẬT */}
       <section className="py-20 bg-gradient-to-r from-blue-50 to-indigo-50">

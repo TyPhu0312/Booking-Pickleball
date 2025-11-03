@@ -1,49 +1,90 @@
-// components/admin/Sidebar.tsx
+"use client";
 import Link from "next/link";
-import { LayoutDashboard, Calendar, Users, Trophy, BarChart3, Settings, Clock } from "lucide-react";
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  Calendar,
+  Users,
+  Trophy,
+  BarChart3,
+  Settings,
+  Clock,
+  LogOut,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import { useState } from "react";
 
 export default function Sidebar() {
-    return (
-        <div className="fixed left-0 top-0 h-full w-64 bg-white shadow-lg border-r">
-            <div className="p-6 border-b">
-                <h1 className="text-2xl font-bold text-blue-600">Admin Panel</h1>
-                <p className="text-sm text-gray-600">Sao Mai Pickleball</p>
-            </div>
+  const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
 
-            <nav className="mt-6">
-                <Link href="/admin" className="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100">
-                    <LayoutDashboard className="w-5 h-5 mr-3" />
-                    Dashboard
-                </Link>
-                <Link href="/admin/courts" className="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100">
-                    <Calendar className="w-5 h-5 mr-3" />
-                    Quản Lý Sân
-                </Link>
-                <Link href="/admin/bookings" className="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100">
-                    <Calendar className="w-5 h-5 mr-3" />
-                    Quản Lý Đặt Sân
-                </Link>
-                <Link href="/admin/slots" className="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100">
-                    <Clock className="w-5 h-5 mr-3" />
-                    Quản Lý Slots
-                </Link>
-                <Link href="/admin/tournaments" className="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100">
-                    <Trophy className="w-5 h-5 mr-3" />
-                    Quản Lý Giải Đấu
-                </Link>
-                <Link href="/admin/users" className="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100">
-                    <Users className="w-5 h-5 mr-3" />
-                    Quản Lý Người Dùng
-                </Link>
-                <Link href="/admin/stats" className="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100">
-                    <BarChart3 className="w-5 h-5 mr-3" />
-                    Thống Kê
-                </Link>
-                <Link href="/admin/settings" className="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100">
-                    <Settings className="w-5 h-5 mr-3" />
-                    Cài Đặt
-                </Link>
-            </nav>
-        </div>
-    );
+  const menuItems = [
+    { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/admin/courts", label: "Quản Lý Sân", icon: Calendar },
+    { href: "/admin/bookings", label: "Quản Lý Đặt Sân", icon: Calendar },
+    { href: "/admin/slots", label: "Quản Lý Slots", icon: Clock },
+    { href: "/admin/tournaments", label: "Giải Đấu", icon: Trophy },
+    { href: "/admin/users", label: "Người Dùng", icon: Users },
+    { href: "/admin/stats", label: "Báo Cáo", icon: BarChart3 },
+    { href: "/admin/settings", label: "Cài Đặt", icon: Settings },
+  ];
+
+  return (
+    <div
+      className={`fixed top-0 left-0 h-screen transition-all duration-300 shadow-xl border-r border-slate-800 bg-gradient-to-b from-slate-900 to-slate-800 ${
+        collapsed ? "w-20" : "w-64"
+      }`}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-5 border-b border-slate-700">
+        {!collapsed && (
+          <div>
+            <h1 className="text-xl font-bold text-cyan-400">Admin Panel</h1>
+            <p className="text-xs text-slate-400">Sao Mai Pickleball</p>
+          </div>
+        )}
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="text-slate-300 hover:text-cyan-400 transition"
+        >
+          {collapsed ? <ChevronRight /> : <ChevronLeft />}
+        </button>
+      </div>
+
+      {/* Menu */}
+      <nav className="mt-4 space-y-1">
+        {menuItems.map((item) => {
+          const Icon = item.icon;
+          const active = pathname === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex items-center mx-3 rounded-lg px-4 py-3 transition-all duration-200 ${
+                active
+                  ? "bg-cyan-600/20 text-cyan-400 border border-cyan-500/40 shadow-sm"
+                  : "text-slate-300 hover:text-cyan-300 hover:bg-slate-700/50"
+              }`}
+            >
+              <Icon className="w-5 h-5 mr-3 shrink-0" />
+              {!collapsed && (
+                <span className="text-sm font-medium tracking-wide">
+                  {item.label}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Footer */}
+      <div className="absolute bottom-0 w-full border-t border-slate-700">
+        <button className="flex items-center w-full px-5 py-3 text-slate-400 hover:bg-slate-700 hover:text-cyan-300 transition">
+          <LogOut className="w-5 h-5 mr-3" />
+          {!collapsed && <span>Đăng Xuất</span>}
+        </button>
+      </div>
+    </div>
+  );
 }
