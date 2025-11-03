@@ -28,7 +28,6 @@ interface Slot {
 
 export default function SlotsPage() {
   const [slotsStatus, setSlotsStatus] = useState<SlotStatus[]>([]);
-  const [slots, setSlots] = useState<Slot[]>([]);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
