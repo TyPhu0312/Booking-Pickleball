@@ -7,8 +7,9 @@ import { PrismaClient } from "@prisma/client";
 import courts from "./routes/courts.routes";
 import roles from "./routes/roles.routes";
 import users from "./routes/users.routes";
-import auth from "./routes/auth.rourtes";
+import auth from "./routes/auth.routes";
 import slots from "./routes/slots.routes";
+import bookings from "./routes/bookings.routes";
 
 
 dotenv.config();
@@ -31,6 +32,7 @@ app.use("/api/roles", roles);
 app.use("/api/users", users);
 app.use("/api/auth", auth);
 app.use("/api/slots", slots);
+app.use("/api/bookings", bookings);
 
 
 // ✅ Khởi động server

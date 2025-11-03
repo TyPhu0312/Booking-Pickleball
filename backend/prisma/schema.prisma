@@ -42,15 +42,6 @@ enum MatchStatus {
   CANCELED
 }
 
-enum RecurringDay {
-  MON
-  TUE
-  WED
-  THU
-  FRI
-  SAT
-  SUN
-}
 
 enum PaymentStatus {
   PENDING // Chờ thanh toán
@@ -97,7 +88,7 @@ model Users {
   role                Roles    @relation(fields: [role_id], references: [roleID])
 
   bookings   Bookings[]
-  feedback   Feedback[]
+  feedbacks   Feedbacks[]
   teamMember TeamMembers[]
 }
 
@@ -111,7 +102,7 @@ model Courts {
   updatedAt      DateTime    @updatedAt
 
   bookings          Bookings[]
-  feedback          Feedback[]
+  feedbacks          Feedbacks[]
   tournamentMatches TournamentMatches[]
 }
 
@@ -124,7 +115,7 @@ model Slots {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  bookingSlot BookingSlot[]
+  bookingSlots BookingSlots[]
 }
 
 model Bookings {
@@ -136,22 +127,23 @@ model Bookings {
   booking_type   BookingType   @default(CASUAL)
   court_id       String?
   user_id        String
+  discount      Decimal?  @db.Decimal(4, 2)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
   court       Courts?       @relation(fields: [court_id], references: [courtID])
   user        Users         @relation(fields: [user_id], references: [userID])
   payments    Payments[]
-  bookingSlot BookingSlot[]
+  bookingSlots BookingSlots[]
 }
 
-model BookingSlot {
+model BookingSlots {
   bookingSlotID String   @id @default(uuid())
   booking_id    String
   slot_id       String
   date          DateTime
   is_recurring  Boolean
-  recurring_day RecurringDay? //cho phép chọn nhiều ngày trong tuần
+  recurring_day Int? //cho phép chọn nhiều ngày trong tuần
   num_weeks     Int?
 
   booking Bookings @relation(fields: [booking_id], references: [bookingID])
@@ -171,7 +163,7 @@ model Payments {
   booking Bookings @relation(fields: [booking_id], references: [bookingID])
 }
 
-model Feedback {
+model Feedbacks {
   feedbackID String   @id @default(uuid())
   user_id    String
   court_id   String
