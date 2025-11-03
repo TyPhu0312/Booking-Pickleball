@@ -14,7 +14,7 @@ enum BookingStatus {
   CONFIRMED
   CHECKED_IN
   COMPLETED
-  CANCELED
+  CANCELLED
 }
 
 enum BookingType {
@@ -31,8 +31,8 @@ enum CourtStatus {
 }
 
 enum CourtType {
-  OUTSIDE
-  INSIDE
+  OUTDOOR
+  INDOOR
 }
 
 enum MatchStatus {
@@ -104,8 +104,7 @@ model Users {
 model Courts {
   courtID        String      @id @default(uuid())
   name           String
-  type           CourtType   @default(INSIDE)
-  price_per_hour Float
+  type           CourtType   @default(INDOOR)
   status         CourtStatus @default(AVAILABLE)
   image          String?
   createdAt      DateTime    @default(now())
@@ -119,8 +118,9 @@ model Courts {
 model Slots {
   slotID        String        @id @default(uuid())
   slot_name     String
-  start_time    DateTime
-  end_time      DateTime
+  start_time    String
+  end_time      String
+  price         Float
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

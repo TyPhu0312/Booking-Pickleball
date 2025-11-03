@@ -115,14 +115,6 @@ export default function Navbar() {
                             Lịch sử
                             <span className="absolute left-0 -bottom-1 w-0 h-0.5 bg-blue-500 transition-all group-hover:w-full"></span>
                         </Link>
-
-                        <Link
-                            href="/find"
-                            className="relative group px-1 py-1 transition-all duration-300 hover:text-blue-600"
-                        >
-                            Tìm kiếm
-                            <span className="absolute left-0 -bottom-1 w-0 h-0.5 bg-blue-500 transition-all group-hover:w-full"></span>
-                        </Link>
                     </div>
 
 
@@ -205,10 +197,6 @@ export default function Navbar() {
                     <Link href="/history" className="block px-4 py-2 border-b">
                         Lịch sử
                     </Link>
-                    <Link href="/find" className="block px-4 py-2 border-b">
-                        Tìm kiếm
-                    </Link>
-
                     {user ? (
                         <>
                             <Link href="/profile" className="block px-4 py-2 border-b">

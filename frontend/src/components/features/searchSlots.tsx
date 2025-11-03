@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { format, addDays } from "date-fns";
-
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 interface Slot {
   slot_id: number;
   start_time: string;
@@ -69,14 +70,23 @@ export default function SearchSlotPage() {
           <div className="grid md:grid-cols-2 gap-6">
             <div>
               <label className="block text-lg font-semibold mb-3 text-gray-700">Chọn Ngày</label>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                min={format(new Date(), "yyyy-MM-dd")}
-                max={format(addDays(new Date(), 30), "yyyy-MM-dd")}
+              <DatePicker
+                selected={selectedDate ? new Date(selectedDate) : null}
+                onChange={(date) => {
+                  if (date instanceof Date && !isNaN(date.getTime())) {
+                    const formatted = date.toISOString().split("T")[0]; // => "2025-11-03"
+                    setSelectedDate(formatted);
+                  } else {
+                    setSelectedDate("");
+                  }
+                }}
+                minDate={new Date()}
+                maxDate={addDays(new Date(), 30)}
+                dateFormat="dd/MM/yyyy" 
                 className="w-full px-5 py-3 border-2 border-gray-300 rounded-xl text-lg focus:border-blue-500 focus:outline-none"
+                placeholderText="Chọn ngày"
               />
+              
             </div>
             <div>
               <label className="block text-lg font-semibold mb-3 text-gray-700">Loại Sân</label>

@@ -1,5 +1,4 @@
 import { PrismaClient } from "@prisma/client";
-import { log } from "console";
 import { Request, Response } from "express";
 
 const prisma = new PrismaClient();
@@ -26,11 +25,11 @@ export const getCourtById = async (req: Request, res: Response) => {
 
 export const createCourt = async (req: Request, res: Response) => {
     try {
-        const { name, type, price_per_hour, status, image } = req.body;
+        const { name, type,  status, image } = req.body;
         console.log("Received court data:", req.body);
 
         const newCourt = await prisma.courts.create({
-            data: { name, type, price_per_hour, status, image },
+            data: { name, type,  status, image },
         });
 
         console.log("Created new court:", newCourt);
