@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, Check, Plus, FileDown, Calendar } from "lucide-react";
+import { Eye, Check, Calendar } from "lucide-react";
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 import { format } from "date-fns";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { vi } from "date-fns/locale";
 
 interface Booking {
   bookingID: string;
@@ -48,8 +51,8 @@ export default function BookingsPage() {
     courtID: "",
   });
   const [courts, setCourts] = useState<Courts[]>([]);
-  const [selectedDate, setSelectedDate] = useState(format(new Date(), "dd/MM/yyyy"));
-
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+  const [statusFilter, setStatusFilter] = useState("");
 
   const fetchBookings = async () => {
     try {
@@ -88,7 +91,7 @@ export default function BookingsPage() {
   };
 
   const handleSave = async () => {
-    
+
     try {
       if (!selectedBooking?.bookingID) return;
       console.log("Dữ liệu chỉnh sửa:", editData);
@@ -97,7 +100,7 @@ export default function BookingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editData),
       });
-  
+
       const data = await res.json();
       if (res.ok) {
         alert("Cập nhật thành công!");
@@ -110,7 +113,19 @@ export default function BookingsPage() {
       console.error("Lỗi khi gọi API:", error);
     }
   };
+
+  // lọc dữ liệu theo ngày và trạng thái
+  const filteredBookings = bookings.filter((booking) => {
+    const matchesDate =
+      !selectedDate ||
+      new Date(booking.booking_date).toDateString() === selectedDate.toDateString();
   
+    const matchesStatus = !statusFilter || booking.status === statusFilter;
+  
+    return matchesDate && matchesStatus;
+  });
+  
+
 
   if (loading) return <p className="text-center mt-10 text-gray-500">Đang tải dữ liệu...</p>;
 
@@ -118,19 +133,30 @@ export default function BookingsPage() {
     <div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <h1 className="text-3xl font-bold">Quản Lý Đặt Sân</h1>
-        <div className="flex flex-wrap gap-3">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-gray-600" />
-            
-            <input
-              type="date"
-              form="dd/MM/yyyy"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="px-3 py-2 border rounded-lg text-sm"
-            />
-          </div>
+        <div className="flex items-center gap-4">
+          {/* Lọc theo ngày */}
+          <DatePicker
+            selected={selectedDate}
+            onChange={(date) => setSelectedDate(date)}
+            dateFormat="dd/MM/yyyy"
+            placeholderText="Chọn ngày"
+            className="border rounded px-2 py-1"
+          />
+
+          {/* Lọc theo trạng thái */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="border rounded px-2 py-1"
+          >
+            <option value="">Tất cả trạng thái</option>
+            <option value="PENDING">Chờ xác nhận</option>
+            <option value="CONFIRMED">Đã xác nhận</option>
+            <option value="CANCELLED">Đã hủy</option>
+            <option value="COMPLETED">Hoàn thành</option>
+          </select>
         </div>
+
       </div>
 
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -153,7 +179,7 @@ export default function BookingsPage() {
                 <td colSpan={7} className="text-center py-6 text-gray-500">Không có dữ liệu đặt sân</td>
               </tr>
             ) : (
-              bookings.map((booking) => (
+              filteredBookings.map((booking) => (
                 <tr key={booking.bookingID} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">{booking.user.full_name}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -169,27 +195,27 @@ export default function BookingsPage() {
                     })() : "Chưa có slot"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap"><p
-                          className={`mt-1 inline-block px-2 py-1 rounded-full text-xs font-medium ${booking.status === "CONFIRMED"
-                            ? "bg-green-100 text-green-800"
-                            : booking.status === "PENDING"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : booking.status === "CANCELLED"
-                                ? "bg-red-100 text-red-800"
-                                : booking.status === "COMPLETED"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : "bg-purple-100 text-purple-800"
-                            }`}
-                        >
-                          {booking.status === "CONFIRMED"
-                            ? "Đã xác nhận"
-                            : booking.status === "PENDING"
-                              ? "Chờ xác nhận"
-                              : booking.status === "CHECKED_IN"
-                                ? "Đã check-in"
-                                : booking.status === "COMPLETED"
-                                  ? "Hoàn thành"
-                                  : "Đã hủy"}
-                        </p></td>
+                    className={`mt-1 inline-block px-2 py-1 rounded-full text-xs font-medium ${booking.status === "CONFIRMED"
+                      ? "bg-green-100 text-green-800"
+                      : booking.status === "PENDING"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : booking.status === "CANCELLED"
+                          ? "bg-red-100 text-red-800"
+                          : booking.status === "COMPLETED"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-purple-100 text-purple-800"
+                      }`}
+                  >
+                    {booking.status === "CONFIRMED"
+                      ? "Đã xác nhận"
+                      : booking.status === "PENDING"
+                        ? "Chờ xác nhận"
+                        : booking.status === "CHECKED_IN"
+                          ? "Đã check-in"
+                          : booking.status === "COMPLETED"
+                            ? "Hoàn thành"
+                            : "Đã hủy"}
+                  </p></td>
                   <td className="px-6 py-4 whitespace-nowrap">{booking.total_price.toLocaleString()}đ</td>
                   <td className="px-6 py-4 whitespace-nowrap">{booking.court?.name || "Chưa chọn"}</td>
                   <td className="px-6 py-4 whitespace-nowrap space-x-2">
@@ -203,7 +229,7 @@ export default function BookingsPage() {
                       <Eye className="w-4 h-4" />
                     </button>
                     <button className="text-green-600 hover:text-green-900"
-                       onClick={() => handleOpenEdit(booking)}
+                      onClick={() => handleOpenEdit(booking)}
                     >
                       <Check className="w-4 h-4" />
                     </button>
@@ -317,21 +343,21 @@ export default function BookingsPage() {
                       </div>
                       {/* Hiển thị lặp lại hàng tuần nếu có */}
                       {selectedBooking.booking_type === "WEEKLY" &&
-                      selectedBooking.bookingSlots.some(bs => bs.is_recurring) && (
-                        <div className="col-span-2">
-                          <span className="font-semibold text-gray-600">Đặt lặp lại hàng tuần:</span>
-                          <p className="mt-1">
-                            {selectedBooking.bookingSlots
-                              .filter(bs => bs.is_recurring)
-                              .map(bs => {
-                                // Chuyển số thứ sang tên thứ
-                                const days = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
-                                return `${days[bs.recurring_day || 0]} - ${bs.num_weeks} tuần`;
-                              })
-                              .join(", ")}
-                          </p>
-                        </div>
-                      )}
+                        selectedBooking.bookingSlots.some(bs => bs.is_recurring) && (
+                          <div className="col-span-2">
+                            <span className="font-semibold text-gray-600">Đặt lặp lại hàng tuần:</span>
+                            <p className="mt-1">
+                              {selectedBooking.bookingSlots
+                                .filter(bs => bs.is_recurring)
+                                .map(bs => {
+                                  // Chuyển số thứ sang tên thứ
+                                  const days = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+                                  return `${days[bs.recurring_day || 0]} - ${bs.num_weeks} tuần`;
+                                })
+                                .join(", ")}
+                            </p>
+                          </div>
+                        )}
                     </div>
 
                   )}
@@ -380,7 +406,7 @@ export default function BookingsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Chọn sân</label>
                   <select
                     value={editData.courtID}
-                    onChange={(e) => setEditData({ ...editData, courtID: e.target.value})}
+                    onChange={(e) => setEditData({ ...editData, courtID: e.target.value })}
                     className="w-full border rounded-md px-3 py-2"
                   >
                     <option value={0}>-- Chưa chọn --</option>
