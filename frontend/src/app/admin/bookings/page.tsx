@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, Check } from "lucide-react";
+import { Eye, Check, Plus, FileDown, Calendar } from "lucide-react";
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment } from "react";
+import { format } from "date-fns";
 
 interface Booking {
-  id: number;
+  bookingID: string;
   user: { full_name: string };
   booking_date: string;
   slot: string;
@@ -15,7 +16,7 @@ interface Booking {
   deposit_amount: number;
   booking_type: string;
   discount: number;
-  court?: { name: string } | null;
+  court?: { name: string, courtID: string } | null;
   bookingSlots: {
     slot: {
       start_time: string;
@@ -27,33 +28,110 @@ interface Booking {
   }[];
 }
 
+interface Courts {
+  courtID: string;
+  name: string;
+  type: string;
+  status: string;
+  iamge?: string;
+}
+
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editData, setEditData] = useState({
+    status: "",
+    discount: 0,
+    courtID: "",
+  });
+  const [courts, setCourts] = useState<Courts[]>([]);
+  const [selectedDate, setSelectedDate] = useState(format(new Date(), "dd/MM/yyyy"));
 
+
+  const fetchBookings = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/bookings");
+      const data = await res.json();
+      setBookings(data);
+    } catch (error) {
+      console.error("Lỗi khi tải dữ liệu:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
   useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        const res = await fetch("http://localhost:5000/api/bookings");
-        const data = await res.json();
-        setBookings(data);
-      } catch (error) {
-        console.error("Lỗi khi tải dữ liệu:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchBookings();
   }, []);
+
+  const fetchCourts = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/courts/getCourtsAvailability");
+      const data = await res.json();
+      setCourts(data);
+    } catch (error) {
+      console.error("Lỗi khi tải danh sách sân:", error);
+    }
+  };
+
+  const handleOpenEdit = (booking: Booking) => {
+    setSelectedBooking(booking);
+    fetchCourts();
+    setEditData({
+      status: booking.status,
+      discount: booking.discount,
+      courtID: booking.court?.courtID || "",
+    });
+    setIsEditOpen(true);
+  };
+
+  const handleSave = async () => {
+    
+    try {
+      if (!selectedBooking?.bookingID) return;
+      console.log("Dữ liệu chỉnh sửa:", editData);
+      const res = await fetch(`http://localhost:5000/api/bookings/updateBookingStatus/${selectedBooking.bookingID}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editData),
+      });
+  
+      const data = await res.json();
+      if (res.ok) {
+        alert("Cập nhật thành công!");
+        setIsEditOpen(false);
+        fetchBookings();
+      } else {
+        alert(data.message || "Lỗi khi cập nhật");
+      }
+    } catch (error) {
+      console.error("Lỗi khi gọi API:", error);
+    }
+  };
+  
 
   if (loading) return <p className="text-center mt-10 text-gray-500">Đang tải dữ liệu...</p>;
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-8">Quản Lý Đặt Sân</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+        <h1 className="text-3xl font-bold">Quản Lý Đặt Sân</h1>
+        <div className="flex flex-wrap gap-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-gray-600" />
+            
+            <input
+              type="date"
+              form="dd/MM/yyyy"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="px-3 py-2 border rounded-lg text-sm"
+            />
+          </div>
+        </div>
+      </div>
 
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
         <table className="w-full">
@@ -76,7 +154,7 @@ export default function BookingsPage() {
               </tr>
             ) : (
               bookings.map((booking) => (
-                <tr key={booking.id} className="hover:bg-gray-50">
+                <tr key={booking.bookingID} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">{booking.user.full_name}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {new Date(booking.booking_date).toLocaleDateString("vi-VN")}
@@ -90,7 +168,28 @@ export default function BookingsPage() {
                       return `${earliest} - ${latest}`;
                     })() : "Chưa có slot"}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">{booking.status}</td>
+                  <td className="px-6 py-4 whitespace-nowrap"><p
+                          className={`mt-1 inline-block px-2 py-1 rounded-full text-xs font-medium ${booking.status === "CONFIRMED"
+                            ? "bg-green-100 text-green-800"
+                            : booking.status === "PENDING"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : booking.status === "CANCELLED"
+                                ? "bg-red-100 text-red-800"
+                                : booking.status === "COMPLETED"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : "bg-purple-100 text-purple-800"
+                            }`}
+                        >
+                          {booking.status === "CONFIRMED"
+                            ? "Đã xác nhận"
+                            : booking.status === "PENDING"
+                              ? "Chờ xác nhận"
+                              : booking.status === "CHECKED_IN"
+                                ? "Đã check-in"
+                                : booking.status === "COMPLETED"
+                                  ? "Hoàn thành"
+                                  : "Đã hủy"}
+                        </p></td>
                   <td className="px-6 py-4 whitespace-nowrap">{booking.total_price.toLocaleString()}đ</td>
                   <td className="px-6 py-4 whitespace-nowrap">{booking.court?.name || "Chưa chọn"}</td>
                   <td className="px-6 py-4 whitespace-nowrap space-x-2">
@@ -103,7 +202,9 @@ export default function BookingsPage() {
                     >
                       <Eye className="w-4 h-4" />
                     </button>
-                    <button className="text-green-600 hover:text-green-900">
+                    <button className="text-green-600 hover:text-green-900"
+                       onClick={() => handleOpenEdit(booking)}
+                    >
                       <Check className="w-4 h-4" />
                     </button>
                   </td>
@@ -250,6 +351,77 @@ export default function BookingsPage() {
           </div>
         </Dialog>
       </Transition>
+
+      {/* Dialog chỉnh sửa */}
+      <Transition appear show={isEditOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-10" onClose={() => setIsEditOpen(false)}>
+          <div className="fixed inset-0 bg-black/50" />
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <Dialog.Panel className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+              <Dialog.Title className="text-lg font-bold mb-4">Chỉnh sửa đặt sân</Dialog.Title>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
+                  <select
+                    value={editData.status}
+                    onChange={(e) => setEditData({ ...editData, status: e.target.value })}
+                    className="w-full border rounded-md px-3 py-2"
+                  >
+                    <option value="PENDING">Chờ xác nhận</option>
+                    <option value="CONFIRMED">Đã xác nhận</option>
+                    <option value="CHECKED_IN">Đã check-in</option>
+                    <option value="COMPLETED">Hoàn thành</option>
+                    <option value="CANCELLED">Đã hủy</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Chọn sân</label>
+                  <select
+                    value={editData.courtID}
+                    onChange={(e) => setEditData({ ...editData, courtID: e.target.value})}
+                    className="w-full border rounded-md px-3 py-2"
+                  >
+                    <option value={0}>-- Chưa chọn --</option>
+                    {courts.map((court) => (
+                      <option key={court.courtID} value={court.courtID}>
+                        {court.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Giảm giá (%)</label>
+                  <input
+                    type="number"
+                    value={editData.discount}
+                    onChange={(e) => setEditData({ ...editData, discount: parseFloat(e.target.value) })}
+                    className="w-full border rounded-md px-3 py-2"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300"
+                  onClick={() => setIsEditOpen(false)}
+                >
+                  Hủy
+                </button>
+                <button
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  onClick={handleSave}
+                >
+                  Lưu
+                </button>
+              </div>
+            </Dialog.Panel>
+          </div>
+        </Dialog>
+      </Transition>
+
     </div>
   );
 }

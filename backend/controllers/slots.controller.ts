@@ -105,9 +105,14 @@ interface Slots {
 export const getSlotStatusByDate = async (req: Request, res: Response) => {
     try {
         // Lấy ngày từ query hoặc mặc định là hôm nay
-        const { date } = req.query;
-        const targetDate = date ? new Date(date as string) : new Date();
-        const formattedDate = targetDate.toISOString().split("T")[0];
+        const { date } = req.params;
+        // const targetDate = date ? new Date(date as string) : new Date();
+
+        if (!date) {
+            return res.status(400).json({ message: "Thiếu tham số date" });
+        }
+
+        const formattedDate = date as string;
 
         // Tổng số sân
         const totalCourts = await prisma.courts.count();
@@ -116,8 +121,11 @@ export const getSlotStatusByDate = async (req: Request, res: Response) => {
         const slots = await prisma.slots.findMany();
 
         // Lấy danh sách bookingSlots theo ngày
-        const startOfDay = new Date(`${formattedDate}T00:00:00.000Z`);
-        const endOfDay = new Date(`${formattedDate}T23:59:59.999Z`);
+        const startOfDay = new Date(`${formattedDate}T00:00:00+07:00`);
+        const endOfDay = new Date(`${formattedDate}T23:59:59.999+07:00`);
+
+        console.log("startOfDay:", startOfDay.toISOString());
+        console.log("endOfDay:", endOfDay.toISOString());
         // 2 cái biến trên dùng để giới hạn thời gian trong ngày vì date trong bookingSlots là kiểu DateTime nên nếu không đúng giờ thì sẽ không tìm thấy
         const bookingSlots = await prisma.bookingSlots.findMany({
             where: {
@@ -133,6 +141,7 @@ export const getSlotStatusByDate = async (req: Request, res: Response) => {
                 booking: true,
             },
         });
+        console.log("BookingSlots trong ngày:", bookingSlots);
 
         // Gom nhóm slot
         const result = slots.map((slot: Slots) => {
