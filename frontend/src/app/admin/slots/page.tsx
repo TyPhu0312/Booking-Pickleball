@@ -44,7 +44,6 @@ export default function SlotsPage() {
       const res = await fetch(`http://localhost:5000/api/slots/getSlotStatusByDate/${selectedDate}`);
       if (!res.ok) throw new Error("Lỗi khi tải dữ liệu slot");
       const data = await res.json();
-      console.log("Fetched data:", data);
       setSlotsStatus(data.slots || []);
     } catch (err: any) {
       setError(err.message);
@@ -194,7 +193,8 @@ export default function SlotsPage() {
                   </td>
                 </tr>
               ) : (
-                slotsStatus.map((slot) => (
+                slotsStatus.sort((a, b) => parseInt(a.slot_name.replace("Slot ", "")) - parseInt(b.slot_name.replace("Slot ", "")))
+                .map((slot) => (
                   <tr key={slot.slot_id} className="hover:bg-gray-50 transition">
                     {/* TÊN SLOT */}
                     <td className="px-6 py-4 font-medium text-gray-800">

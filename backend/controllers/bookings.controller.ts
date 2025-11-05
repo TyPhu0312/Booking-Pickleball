@@ -1,30 +1,30 @@
-import { PrismaClient   } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { Request, Response } from "express";
 
 const prisma = new PrismaClient();
 
 export const getBookings = async (req: Request, res: Response) => {
     try {
-      const bookings = await prisma.bookings.findMany({
-        include: {
-          user: true,
-          court: true,
-          bookingSlots: {
+        const bookings = await prisma.bookings.findMany({
             include: {
-              slot: true,
+                user: true,
+                court: true,
+                bookingSlots: {
+                    include: {
+                        slot: true,
+                    },
+                },
+                payments: true,
             },
-          },
-          payments:true,
-        },
-      });
-      
-      res.json(bookings);
+        });
+
+        res.json(bookings);
     } catch (error) {
-      console.error("Lỗi khi lấy danh sách đặt sân:", error); // 👈 thêm dòng này
-      res.status(500).json({ error: "Lỗi khi lấy danh sách đặt sân" });
+        console.error("Lỗi khi lấy danh sách đặt sân:", error); // 👈 thêm dòng này
+        res.status(500).json({ error: "Lỗi khi lấy danh sách đặt sân" });
     }
-  };
-  
+};
+
 
 export const getBookingById = async (req: Request, res: Response) => {
     try {
@@ -35,12 +35,13 @@ export const getBookingById = async (req: Request, res: Response) => {
                 court: true,
                 bookingSlots: {
                     include: {
-                      slot: true,
+                        slot: true,
                     },
-                  },
-                payments:true,
-              },
-            where: { bookingID: id } });
+                },
+                payments: true,
+            },
+            where: { bookingID: id }
+        });
 
         if (!booking) return res.status(404).json({ error: "Không tìm thấy đặt sân" });
         res.json(booking);
@@ -56,7 +57,7 @@ const dayMap: Record<number, string> = {
     5: "FRIDAY",
     6: "SATURDAY",
     7: "SUNDAY",
-  };
+};
 
 interface SlotInput {
     booking_id: string
@@ -116,7 +117,7 @@ export const updateBooking = async (req: Request, res: Response) => {
                 is_recurring: slot.is_recurring,
                 recurring_day: slot.recurring_day ?? null,
                 num_weeks: slot.num_weeks,
-    
+
             }));
             await prisma.bookingSlots.createMany({
                 data: newBookingSlots,
@@ -131,15 +132,65 @@ export const updateBooking = async (req: Request, res: Response) => {
 export const updateBookingStatus = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { status } = req.body;
+        const { status, courtID, discount } = req.body;
+        console.log("Cập nhật booking với dữ liệu:", { status, courtID, discount });
+        const booking = await prisma.bookings.findUnique({
+            where: { bookingID: id },
+        });
+
+        if (!booking) {
+            return res.status(404).json({ message: "Không tìm thấy booking" });
+        }
+        if (status === "CANCELLED" && booking.court_id) {
+            await prisma.courts.update({
+                where: { courtID: booking.court_id },
+                data: { status: "AVAILABLE" },
+            });
+        }
+        else if (status === "COMPLETED" && booking.court_id) {
+            await prisma.courts.update({
+                where: { courtID: booking.court_id },
+                data: { status: "AVAILABLE" },
+            });
+        }
+        else if (courtID) {
+            const court = await prisma.courts.findUnique({
+                where: { courtID: courtID },
+            });
+
+            if (!court) {
+                return res.status(404).json({ message: "Không tìm thấy sân" });
+            }
+
+            await prisma.courts.update({
+                where: { courtID: courtID },
+                data: { status: "OCCUPIED" },
+            });
+        }
 
         const updatedBooking = await prisma.bookings.update({
             where: { bookingID: id },
-            data: { status },
+            data: {
+                ...(status && { status }),
+                ...(discount !== undefined && { discount: Number(discount) }),
+                ...(courtID !== undefined && { court_id: courtID }),
+            },
+            include: {
+                user: true,
+                court: true,
+                bookingSlots: {
+                    include: {
+                        slot: true,
+                    },
+                },
+                payments: true,
+            },
         });
-
-        res.json(updatedBooking);
-    } catch (error) {
+        
+        res.json(updatedBooking,);
+    }
+    catch (error) {
+        console.error("Lỗi update booking:", error);
         res.status(500).json({ error: "Lỗi khi cập nhật trạng thái đặt sân" });
     }
 }

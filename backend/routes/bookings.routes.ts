@@ -4,6 +4,7 @@ import {
     getBookingById,
     createBooking,
     updateBooking,
+    updateBookingStatus,
 } from "../controllers/bookings.controller";
 import { verifyToken } from "../middlewares/auth.middleware";
 
@@ -15,5 +16,6 @@ router.get("/", getBookings);
 router.get("/getBookingById/:id", getBookingById);
 router.post("/create", createBooking);
 router.put("/update/:id", updateBooking);
+router.put("/updateBookingStatus/:id", updateBookingStatus);
 
 export default router;
