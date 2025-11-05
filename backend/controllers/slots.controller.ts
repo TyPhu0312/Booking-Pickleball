@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { Request, Response } from "express";
 
 export const prisma = new PrismaClient();
@@ -94,6 +94,14 @@ export const deleteSlot = async (req: Request, res: Response) => {
     }
 }
 
+interface Slots {
+    slotID: string;
+    slot_name: string;
+    start_time: string;
+    end_time: string;
+    price: number;
+}
+
 export const getSlotStatusByDate = async (req: Request, res: Response) => {
     try {
         // Lấy ngày từ query hoặc mặc định là hôm nay
@@ -108,9 +116,15 @@ export const getSlotStatusByDate = async (req: Request, res: Response) => {
         const slots = await prisma.slots.findMany();
 
         // Lấy danh sách bookingSlots theo ngày
+        const startOfDay = new Date(`${formattedDate}T00:00:00.000Z`);
+        const endOfDay = new Date(`${formattedDate}T23:59:59.999Z`);
+        // 2 cái biến trên dùng để giới hạn thời gian trong ngày vì date trong bookingSlots là kiểu DateTime nên nếu không đúng giờ thì sẽ không tìm thấy
         const bookingSlots = await prisma.bookingSlots.findMany({
             where: {
-                date: new Date(formattedDate + "T00:00:00.000Z"),
+                date: {
+                    gte: startOfDay,
+                    lte: endOfDay,
+                },
                 booking: {
                     status: { notIn: ["CANCELLED"] } // chỉ tính booking hợp lệ
                 }
@@ -119,10 +133,9 @@ export const getSlotStatusByDate = async (req: Request, res: Response) => {
                 booking: true,
             },
         });
-        console.log("Booking Slots:", bookingSlots);
 
         // Gom nhóm slot
-        const result = slots.map((slot) => {
+        const result = slots.map((slot: Slots) => {
             const slotBookings = bookingSlots.filter((b) => b.slot_id === slot.slotID);
 
             const bookedCourts = slotBookings.length;
@@ -137,7 +150,7 @@ export const getSlotStatusByDate = async (req: Request, res: Response) => {
                 totalCourts,
                 bookedCourts,
                 availableCourts,
-             
+
             };
         });
 
