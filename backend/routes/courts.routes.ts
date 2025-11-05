@@ -5,6 +5,7 @@ import {
   createCourt,
   updateCourt,
   deleteCourt,
+  getCourtsAvailability,
 } from "../controllers/courts.controller";
 import { verifyToken } from "../middlewares/auth.middleware";
 
@@ -16,5 +17,6 @@ router.get("/getCourtById/:id", getCourtById);
 router.post("/create", createCourt);
 router.put("/update/:id", updateCourt);
 router.delete("/delete/:id", deleteCourt);
+router.get("/getCourtsAvailability", getCourtsAvailability);
 
 export default router;

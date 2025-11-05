@@ -70,6 +70,17 @@ export const updateCourt = async (req: Request, res: Response) => {
       }      
 };
 
+export const getCourtsAvailability = async (req: Request, res: Response) => {  
+    try {
+        const courts = await prisma.courts.findMany({
+            where : { status: "AVAILABLE" }
+        });
+        res.json(courts);
+    } catch (error) {
+        res.status(500).json({ error: "Lỗi khi lấy tình trạng sân" });
+    }
+}
+
 export const deleteCourt = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
