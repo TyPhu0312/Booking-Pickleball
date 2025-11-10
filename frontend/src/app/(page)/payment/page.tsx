@@ -12,7 +12,7 @@ export default function PaymentPage() {
   const slots = params.get("slots");
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-50 to-white p-4">
+    <main className="min-h-screen flex items-center justify-center bg-linear-to-b from-green-50 to-white p-4">
       <Card className="max-w-md w-full shadow-lg">
         <CardHeader>
           <CardTitle className="text-xl font-bold text-green-700 text-center">

@@ -26,13 +26,11 @@ export const getRoleById = async (req: Request, res: Response) => {
 export const createRole = async (req: Request, res: Response) => {
     try {
         const { name, description } = req.body;
-        console.log("Received role data:", req.body);
 
         const newRole = await prisma.roles.create({
             data: { name, description },
         });
 
-        console.log("Created new role:", newRole);
         res.status(201).json(newRole);
     } catch (error: any) {
         console.error("Error creating role:", error);

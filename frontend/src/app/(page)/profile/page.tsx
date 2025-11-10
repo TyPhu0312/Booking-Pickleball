@@ -1,4 +1,3 @@
-// app/profile/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -86,7 +85,6 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Dialog chỉnh sửa */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

@@ -1,4 +1,3 @@
-// app/dang-ky-giai-dau/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -36,7 +35,6 @@ export default function RegisterPage() {
 
   const tournament = TOURNAMENTS.find(t => t.id === Number(selectedId));
 
-  // Tự động chọn nếu có URL
   useEffect(() => {
     if (tournamentId && !selectedId) {
       setSelectedId(tournamentId);
@@ -58,7 +56,7 @@ export default function RegisterPage() {
         `Giải: ${tournament.name}\n` +
         `Phí: ${tournament.fee.toLocaleString()} VNĐ`
       );
-      // Reset form
+
       setTeamName("");
       setPlayer1({ name: "", phone: "", email: "" });
       setPlayer2({ name: "", phone: "", email: "" });
@@ -67,7 +65,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 py-12 px-4">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 to-green-50 py-12 px-4">
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-10">
           <h1 className="text-4xl font-bold text-gray-800 mb-2">Đăng Ký Giải Đấu</h1>
@@ -76,7 +74,6 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-xl p-8 space-y-6">
 
-          {/* Chọn giải đấu - Ẩn nếu có URL */}
           {!tournamentId && (
             <div>
               <label className="block text-lg font-semibold mb-3 text-gray-700">Chọn Giải Đấu</label>
@@ -96,9 +93,8 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {/* Thông tin giải */}
           {tournament && (
-            <div className="bg-gradient-to-r from-blue-100 to-cyan-100 p-5 rounded-2xl border">
+            <div className="bg-linear-to-r from-blue-100 to-cyan-100 p-5 rounded-2xl border">
               <h3 className="font-bold text-xl text-blue-900">{tournament.name}</h3>
               <div className="grid grid-cols-2 gap-2 text-sm mt-2">
                 <p><strong>Ngày:</strong> {tournament.date}</p>
@@ -109,7 +105,6 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {/* Tên đội */}
           <div>
             <label className="block text-lg font-semibold mb-3 text-gray-700">Tên Đội</label>
             <input
@@ -123,7 +118,6 @@ export default function RegisterPage() {
             />
           </div>
 
-          {/* Thành viên 1 */}
           <div className="space-y-3">
             <h4 className="font-semibold text-gray-700">Thành viên 1</h4>
             <input
@@ -152,7 +146,6 @@ export default function RegisterPage() {
             />
           </div>
 
-          {/* Thành viên 2 */}
           <div className="space-y-3">
             <h4 className="font-semibold text-gray-700">Thành viên 2</h4>
             <input
@@ -181,7 +174,6 @@ export default function RegisterPage() {
             />
           </div>
 
-          {/* Nút gửi */}
           <div className="text-center pt-4">
             <button
               type="submit"

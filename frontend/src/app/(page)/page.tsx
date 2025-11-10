@@ -1,4 +1,3 @@
-// app/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -23,10 +22,9 @@ export default function HomePage() {
   ];
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
+    <main className="min-h-screen bg-linear-to-br from-green-50 via-white to-blue-50">
 
-      <SearchSlots />
-      {/* SLOT PHỔ BIẾN */}
+      {/* <SearchSlots /> */}
       <section className="py-20 bg-white">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
@@ -40,7 +38,7 @@ export default function HomePage() {
                 key={slot.time}
                 className="group relative overflow-hidden rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
               >
-                <div className={`absolute inset-0 bg-gradient-to-br ${slot.bg} opacity-90`}></div>
+                <div className={`absolute inset-0 bg-linear-to-br ${slot.bg} opacity-90`}></div>
                 <div className="relative p-8 text-white text-center">
                   <div className="text-6xl mb-4 opacity-20">{slot.icon}</div>
                   <h3 className="text-2xl font-bold mb-2">{slot.time}</h3>
@@ -65,8 +63,7 @@ export default function HomePage() {
 
 
 
-      {/* TÍNH NĂNG NỔI BẬT */}
-      <section className="py-20 bg-gradient-to-r from-blue-50 to-indigo-50">
+      <section className="py-20 bg-linear-to-r from-blue-50 to-indigo-50">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-gray-800 mb-3">Tại Sao Chọn Chúng Tôi?</h2>
@@ -78,7 +75,7 @@ export default function HomePage() {
                 key={i}
                 className="bg-white p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
               >
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white mb-4">
+                <div className="w-12 h-12 bg-linear-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white mb-4">
                   {feature.icon}
                 </div>
                 <h3 className="text-xl font-bold text-gray-800 mb-2">{feature.title}</h3>
@@ -89,7 +86,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* GIẢI ĐẤU SẮP TỚI */}
       <section className="py-20 bg-white">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
@@ -98,7 +94,7 @@ export default function HomePage() {
           </div>
 
           <div className="max-w-4xl mx-auto">
-            <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-3xl p-8 text-white shadow-2xl">
+            <div className="bg-linear-to-r from-purple-600 to-pink-600 rounded-3xl p-8 text-white shadow-2xl">
               <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                 <div>
                   <h3 className="text-3xl font-bold mb-2">Giải Pickleball Mùa Thu 2025</h3>
@@ -120,8 +116,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-16 bg-gradient-to-r from-green-600 to-emerald-700 text-white">
+      <section className="py-16 bg-linear-to-r from-green-600 to-emerald-700 text-white">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-4xl font-bold mb-4">Sẵn Sàng Chơi Pickleball?</h2>
           <p className="text-xl mb-8">Đặt sân ngay hôm nay – Miễn phí hủy trước 2h!</p>

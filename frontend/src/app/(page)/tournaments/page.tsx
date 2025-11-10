@@ -1,4 +1,3 @@
-// app/tournaments/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -68,7 +67,7 @@ export default function TournamentsPage() {
             className="group bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
           >
             <div className="relative">
-              <div className="bg-gradient-to-br from-blue-600 to-pink-600 h-48 flex items-center justify-center">
+              <div className="bg-linear-to-br from-blue-600 to-pink-600 h-48 flex items-center justify-center">
                 <Trophy className="w-16 h-16 text-white opacity-30" />
               </div>
               <img
@@ -97,7 +96,6 @@ export default function TournamentsPage() {
         ))}
       </div>
 
-      {/* MODAL TẠO GIẢI ĐẤU */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
