@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import Cookies from "js-cookie";
+import { Phone } from "lucide-react";
 
 export default function LoginForm() {
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -23,7 +24,7 @@ export default function LoginForm() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ phone, password }),
       });
 
       const data = await res.json();
@@ -35,13 +36,11 @@ export default function LoginForm() {
         return;
       }
 
-      localStorage.setItem("user", email);
-      const storedUser = localStorage.getItem("user");
-      console.log("Stored user in localStorage:", storedUser);
-      Cookies.set("token", data.token, { expires: 7 }); // cookie hết hạn 7 ngày
+      localStorage.setItem("phone_user", phone);
+      Cookies.set("token", data.token, { expires: 7 }); 
    
       alert("Đăng nhập thành công!");
-      window.location.href = "/"; // chuyển hướng sau đăng nhập
+      window.location.href = "/"; 
     } catch (err) {
       console.error(err);
       setError("Có lỗi xảy ra, thử lại sau.");
@@ -57,12 +56,13 @@ export default function LoginForm() {
       </h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Email</label>
+          <label className="block text-sm font-medium mb-1">Số điện thoại</label>
           <Input
-            type="email"
-            placeholder="example@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            name="phone"
+            type="number"
+            placeholder="033789xxx"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
             required
           />
         </div>

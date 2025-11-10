@@ -1,4 +1,3 @@
-// app/admin/layout.tsx
 import Sidebar from "@/components/admin/Sidebar";
 
 export default function AdminLayout({

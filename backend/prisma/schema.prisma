@@ -75,9 +75,8 @@ model Roles {
 model Users {
   userID              String   @id @default(uuid())
   full_name           String
-  email               String   @unique
   password            String
-  phone               String?
+  phone               String   @unique @db.VarChar(10)
   address             String?
   role_id             String
   bank_account_number String?
@@ -98,6 +97,7 @@ model Courts {
   type           CourtType   @default(INDOOR)
   status         CourtStatus @default(AVAILABLE)
   image          String?
+  multiplier     Float       
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
@@ -126,13 +126,14 @@ model Bookings {
   deposit_amount Float
   booking_type   BookingType   @default(CASUAL)
   court_id       String?
-  user_id        String
+  user_id        String?
+  phone_user     String?
   discount      Decimal?  @db.Decimal(4, 2)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
   court       Courts?       @relation(fields: [court_id], references: [courtID])
-  user        Users         @relation(fields: [user_id], references: [userID])
+  user        Users?         @relation(fields: [user_id], references: [userID])
   payments    Payments[]
   bookingSlots BookingSlots[]
 }

@@ -1,9 +1,7 @@
-// app/giai-dau/[id]/page.tsx
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { format } from "date-fns";
 
-// Dữ liệu giả theo DB
 const TOURNAMENTS = [
   {
     tournament_id: 1,
@@ -14,7 +12,7 @@ const TOURNAMENTS = [
     description: "Giải đấu thường niên dành cho mọi trình độ. Thể thức đấu đôi nam/nữ.",
     max_teams: 16,
     prize: "10.000.000 VNĐ",
-    status: "upcoming", // upcoming, ongoing, finished
+    status: "upcoming", 
     image: "/tournament1.jpg",
   },
 ];
@@ -71,7 +69,6 @@ export default function TournamentDetail({ params }: { params: { id: string } })
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-6xl mx-auto">
 
-        {/* Header */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-8">
           <div className="md:flex">
             <div className="md:w-1/3">
@@ -134,7 +131,6 @@ export default function TournamentDetail({ params }: { params: { id: string } })
           </div>
         </div>
 
-        {/* Danh sách đội */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
             Danh Sách Đội Tham Gia ({teams.length})
@@ -149,7 +145,6 @@ export default function TournamentDetail({ params }: { params: { id: string } })
           </div>
         </div>
 
-        {/* Lịch thi đấu */}
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <h2 className="text-2xl font-bold mb-6">Lịch Thi Đấu</h2>
           <div className="overflow-x-auto">

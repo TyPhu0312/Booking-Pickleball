@@ -6,6 +6,7 @@ import {
   updateCourt,
   deleteCourt,
   getCourtsAvailability,
+  getAllTheMultiplierOfTheCourtType
 } from "../controllers/courts.controller";
 import { verifyToken } from "../middlewares/auth.middleware";
 
@@ -18,5 +19,6 @@ router.post("/create", createCourt);
 router.put("/update/:id", updateCourt);
 router.delete("/delete/:id", deleteCourt);
 router.get("/getCourtsAvailability", getCourtsAvailability);
+router.get("/getAllTheMultiplierOfTheCourtType", getAllTheMultiplierOfTheCourtType);
 
 export default router;

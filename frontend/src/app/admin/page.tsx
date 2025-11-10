@@ -1,4 +1,3 @@
-// app/admin/page.tsx
 "use client";
 
 import {
@@ -38,13 +37,11 @@ const stats = [
 
 export default function AdminDashboard() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-8">
-      {/* Tiêu đề */}
+    <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 p-8">
       <h1 className="text-3xl font-bold text-slate-800 mb-8">
-        👋 Xin chào, Admin
+        Xin chào, Admin
       </h1>
 
-      {/* Thống kê chính */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
         {stats.map((stat, i) => {
           const Icon = stat.icon;
@@ -71,9 +68,7 @@ export default function AdminDashboard() {
         })}
       </div>
 
-      {/* Biểu đồ */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Biểu đồ doanh thu */}
         <div className="lg:col-span-2 bg-white/80 backdrop-blur-md p-6 rounded-xl shadow-md border border-slate-200">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-slate-800">
@@ -91,7 +86,6 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Biểu đồ sân trống */}
         <div className="bg-white/80 backdrop-blur-md p-6 rounded-xl shadow-md border border-slate-200">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-slate-800">

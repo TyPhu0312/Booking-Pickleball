@@ -49,16 +49,6 @@ export const getBookingById = async (req: Request, res: Response) => {
         res.status(500).json({ error: "Lỗi khi lấy thông tin đặt sân" });
     }
 }
-const dayMap: Record<number, string> = {
-    1: "MONDAY",
-    2: "TUESDAY",
-    3: "WEDNESDAY",
-    4: "THURSDAY",
-    5: "FRIDAY",
-    6: "SATURDAY",
-    7: "SUNDAY",
-};
-
 interface SlotInput {
     booking_id: string
     slot_id: string;
@@ -69,17 +59,19 @@ interface SlotInput {
 }
 export const createBooking = async (req: Request, res: Response) => {
     try {
-        const { user_id, booking_date, status, total_price, deposit_amount, booking_type, discount, slots } = req.body;
+        const { user_id, phone_user, booking_date, status, total_price, deposit_amount, booking_type, discount, slots } = req.body;
 
+
+        // booking cho 1 lần và giải đấu
         const newBooking = await prisma.bookings.create({
-            data: { user_id, booking_date, status, total_price, deposit_amount, booking_type, discount },
+            data: { user_id, phone_user, booking_date, status, total_price, deposit_amount, booking_type, discount },
         });
         const newBookingSlots = slots.map((slot: SlotInput) => ({
             booking_id: newBooking.bookingID,
             slot_id: slot.slot_id,
             date: new Date(slot.date),
             is_recurring: slot.is_recurring,
-            recurring_day: slot.recurring_day ? dayMap[slot.recurring_day] : null,
+            recurring_day: slot.recurring_day,
             num_weeks: slot.num_weeks,
 
         }));
@@ -133,7 +125,6 @@ export const updateBookingStatus = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { status, courtID, discount } = req.body;
-        console.log("Cập nhật booking với dữ liệu:", { status, courtID, discount });
         const booking = await prisma.bookings.findUnique({
             where: { bookingID: id },
         });

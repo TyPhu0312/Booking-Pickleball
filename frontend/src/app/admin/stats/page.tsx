@@ -1,4 +1,3 @@
-// app/admin/stats/page.tsx
 import { BarChart3, PieChart, LineChart } from "lucide-react";
 
 export default function StatsPage() {
@@ -41,7 +40,6 @@ export default function StatsPage() {
         </div>
       </div>
 
-      {/* Biểu đồ chi tiết */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-lg">
           <h3 className="font-semibold mb-4">Doanh Thu Theo Ngày</h3>

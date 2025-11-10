@@ -5,7 +5,12 @@ export const prisma = new PrismaClient();
 
 export const getSlots = async (req: Request, res: Response) => {
     try {
-        const slots = await prisma.slots.findMany();
+        const slots = await prisma.slots.findMany({
+            orderBy: { start_time: 'asc' },
+            include: {
+                bookingSlots: true,
+            },
+        });
         res.json(slots);
     } catch (error) {
         res.status(500).json({ error: "Lỗi khi lấy danh sách khung giờ" });
@@ -104,9 +109,7 @@ interface Slots {
 
 export const getSlotStatusByDate = async (req: Request, res: Response) => {
     try {
-        // Lấy ngày từ query hoặc mặc định là hôm nay
         const { date } = req.params;
-        // const targetDate = date ? new Date(date as string) : new Date();
 
         if (!date) {
             return res.status(400).json({ message: "Thiếu tham số date" });
@@ -114,19 +117,13 @@ export const getSlotStatusByDate = async (req: Request, res: Response) => {
 
         const formattedDate = date as string;
 
-        // Tổng số sân
         const totalCourts = await prisma.courts.count();
 
-        // Lấy toàn bộ slot
         const slots = await prisma.slots.findMany();
 
-        // Lấy danh sách bookingSlots theo ngày
         const startOfDay = new Date(`${formattedDate}T00:00:00+07:00`);
         const endOfDay = new Date(`${formattedDate}T23:59:59.999+07:00`);
 
-        console.log("startOfDay:", startOfDay.toISOString());
-        console.log("endOfDay:", endOfDay.toISOString());
-        // 2 cái biến trên dùng để giới hạn thời gian trong ngày vì date trong bookingSlots là kiểu DateTime nên nếu không đúng giờ thì sẽ không tìm thấy
         const bookingSlots = await prisma.bookingSlots.findMany({
             where: {
                 date: {
@@ -134,16 +131,14 @@ export const getSlotStatusByDate = async (req: Request, res: Response) => {
                     lte: endOfDay,
                 },
                 booking: {
-                    status: { notIn: ["CANCELLED"] } // chỉ tính booking hợp lệ
+                    status: { notIn: ["CANCELLED"] }
                 }
             },
             include: {
                 booking: true,
             },
         });
-        console.log("BookingSlots trong ngày:", bookingSlots);
 
-        // Gom nhóm slot
         const result = slots.map((slot: Slots) => {
             const slotBookings = bookingSlots.filter((b) => b.slot_id === slot.slotID);
 

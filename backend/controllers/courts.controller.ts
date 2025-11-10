@@ -25,14 +25,12 @@ export const getCourtById = async (req: Request, res: Response) => {
 
 export const createCourt = async (req: Request, res: Response) => {
     try {
-        const { name, type,  status, image } = req.body;
-        console.log("Received court data:", req.body);
+        const { name, type,  status, multiplier, image } = req.body;
 
         const newCourt = await prisma.courts.create({
-            data: { name, type,  status, image },
+            data: { name, type,  status, multiplier, image },
         });
 
-        console.log("Created new court:", newCourt);
         res.status(201).json(newCourt);
     } catch (error: any) {
         console.error("Error creating court:", error);
@@ -84,9 +82,34 @@ export const getCourtsAvailability = async (req: Request, res: Response) => {
 export const deleteCourt = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        await prisma.courts.delete({ where: { courtID: id } });
+        await prisma.courts.update({
+            where: { courtID: id },
+            data: { status: "CLOSED" },
+        });
         res.json({ message: "Đã xóa sân thành công" });
     } catch (error) {
         res.status(500).json({ error: "Lỗi khi xóa sân" });
     }
 };
+
+export const getAllTheMultiplierOfTheCourtType = async (req: Request, res: Response) => {  
+    try {
+        const courts = await prisma.courts.groupBy({
+            by: ['type'],
+            _avg: {
+                multiplier: true,
+                },
+          });
+          if (!courts || courts.length === 0) {
+            return res.status(404).json({ error: "Không tìm thấy sân nào" });
+          }
+          const result = courts.map(c => ({
+            type: c.type,
+            multiplier: c._avg.multiplier
+          }));
+      
+          res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: "Lỗi khi lấy hệ số nhân" });
+    }
+}

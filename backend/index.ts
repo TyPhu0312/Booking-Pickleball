@@ -3,6 +3,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import morgan from "morgan";
 import { PrismaClient } from "@prisma/client";
+
+
 // import routes
 import courts from "./routes/courts.routes";
 import roles from "./routes/roles.routes";

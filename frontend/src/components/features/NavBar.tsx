@@ -35,13 +35,13 @@ export default function Navbar() {
     useEffect(() => {
         const fetchUser = async () => {
             const token = Cookies.get("token");
-            const emailUser = localStorage.getItem("user");
+            const phoneUser = localStorage.getItem("phone_user");
             if (!token) return;
-            if (!emailUser) return;
-
+            if (!phoneUser) return;
+            console.log("Fetching user info for phone:", phoneUser);
             try {
                 const res = await fetch(
-                    `http://localhost:5000/api/users/getUserByEmail/${emailUser}`,
+                    `http://localhost:5000/api/users/getUserByPhone/${phoneUser}`,
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
                 if (!res.ok) {
@@ -49,7 +49,8 @@ export default function Navbar() {
                     return;
                 }
                 const data = await res.json();
-                setUser(data.user); // ✅
+                setUser(data.user);
+                localStorage.setItem("user", JSON.stringify(data.user));
             } catch (err) {
                 console.error(err);
             }
@@ -60,7 +61,8 @@ export default function Navbar() {
 
     const handleLogout = () => {
         Cookies.remove("token");
-        Cookies.remove("user");
+        localStorage.removeItem("email_user");
+        localStorage.removeItem("user");
         setUser(null);
         window.location.href = "/";
     };
@@ -81,7 +83,6 @@ export default function Navbar() {
                     Pickleball Sao Mai
                 </Link>
 
-                {/* Menu desktop */}
                 <div className="hidden md:flex space-x-6 text-gray-700 font-medium">
                     <div className="hidden md:flex space-x-6 text-gray-700 font-medium">
                         <Link
@@ -173,7 +174,6 @@ export default function Navbar() {
                     )}
                 </div>
 
-                {/* Mobile menu button */}
                 <button
                     className="md:hidden text-green-600"
                     onClick={() => setOpen(!open)}
@@ -182,7 +182,6 @@ export default function Navbar() {
                 </button>
             </div>
 
-            {/* Mobile menu */}
             {open && (
                 <div className="md:hidden bg-white shadow-inner">
                     <Link href="/" className="block px-4 py-2 border-b">
