@@ -8,7 +8,6 @@ import Link from "next/link";
 export default function RegisterForm() {
   const [form, setForm] = useState({
     name: "",
-    email: "",
     phone: "",
     password: "",
     confirmPassword: "",
@@ -57,9 +56,8 @@ export default function RegisterForm() {
           },
           body: JSON.stringify({
             full_name: form.name,
-            email: form.email,
+            phone: form.phone,
             password: form.password,
-            // role_id có thể bỏ trống, backend sẽ tự gán 'customer'
           }),
         });
 
@@ -70,7 +68,6 @@ export default function RegisterForm() {
           return;
         }
 
-        // Nếu đăng ký thành công, có thể lưu token và chuyển hướng
         localStorage.setItem("token", data.token);
         alert("Đăng ký thành công!");
         window.location.href = "/login";
@@ -109,18 +106,6 @@ export default function RegisterForm() {
             type="number"
             placeholder="033789xxx"
             value={form.phone}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Email</label>
-          <Input
-            name="email"
-            type="email"
-            placeholder="example@email.com"
-            value={form.email}
             onChange={handleChange}
             required
           />

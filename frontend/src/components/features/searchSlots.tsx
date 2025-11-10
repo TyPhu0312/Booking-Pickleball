@@ -30,15 +30,13 @@ export default function SearchSlotPage() {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Giả lập fetch dữ liệu theo ngày
   const fetchSlots = () => {
     setLoading(true);
     setTimeout(() => {
-      // Giả lập: Indoor có 2 sân, Outdoor có 2 sân
       const baseSlots = [...SLOTS];
       const filtered = baseSlots.map(slot => ({
         ...slot,
-        available_courts: Math.floor(Math.random() * 5), // Giả lập
+        available_courts: Math.floor(Math.random() * 5), 
       }));
       setSlots(filtered);
       setLoading(false);
@@ -47,7 +45,7 @@ export default function SearchSlotPage() {
 
   useEffect(() => {
     fetchSlots();
-    const interval = setInterval(fetchSlots, 10000); // Cập nhật 10s
+    const interval = setInterval(fetchSlots, 10000); 
     return () => clearInterval(interval);
   }, [selectedDate, courtType]);
 
@@ -65,7 +63,6 @@ export default function SearchSlotPage() {
           <p className="text-gray-600">Chọn ngày để xem sân còn trống</p>
         </div>
 
-        {/* Bộ lọc */}
         <div className="bg-white rounded-3xl shadow-xl p-6 mb-8">
           <div className="grid md:grid-cols-2 gap-6">
             <div>
@@ -74,7 +71,7 @@ export default function SearchSlotPage() {
                 selected={selectedDate ? new Date(selectedDate) : null}
                 onChange={(date) => {
                   if (date instanceof Date && !isNaN(date.getTime())) {
-                    const formatted = date.toISOString().split("T")[0]; // => "2025-11-03"
+                    const formatted = date.toISOString().split("T")[0]; 
                     setSelectedDate(formatted);
                   } else {
                     setSelectedDate("");
@@ -103,7 +100,6 @@ export default function SearchSlotPage() {
           </div>
         </div>
 
-        {/* Danh sách slot */}
         <div className="bg-white rounded-3xl shadow-xl p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-800">
@@ -153,7 +149,6 @@ export default function SearchSlotPage() {
           )}
         </div>
 
-        {/* Ghi chú */}
         <div className="mt-8 text-center text-sm text-gray-600">
           <p>
             <strong>Lưu ý:</strong> Sân sẽ được giao khi bạn đến. 

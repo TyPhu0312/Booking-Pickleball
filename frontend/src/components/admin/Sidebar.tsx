@@ -27,7 +27,6 @@ export default function Sidebar() {
     { href: "/admin/tournaments", label: "Giải Đấu", icon: Trophy },
     { href: "/admin/users", label: "Người Dùng", icon: Users },
     { href: "/admin/stats", label: "Báo Cáo", icon: BarChart3 },
-    { href: "/admin/settings", label: "Cài Đặt", icon: Settings },
   ];
 
   return (
@@ -36,7 +35,6 @@ export default function Sidebar() {
         collapsed ? "w-20" : "w-64"
       }`}
     >
-      {/* Header */}
       <div className="flex items-center justify-between px-5 py-5 border-b border-slate-700">
         {!collapsed && (
           <div>
@@ -52,7 +50,6 @@ export default function Sidebar() {
         </button>
       </div>
 
-      {/* Menu */}
       <nav className="mt-4 space-y-1">
         {menuItems.map((item) => {
           const Icon = item.icon;
@@ -78,7 +75,6 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Footer */}
       <div className="absolute bottom-0 w-full border-t border-slate-700">
         <button className="flex items-center w-full px-5 py-3 text-slate-400 hover:bg-slate-700 hover:text-cyan-300 transition">
           <LogOut className="w-5 h-5 mr-3" />

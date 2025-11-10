@@ -35,7 +35,6 @@ export default function SlotsPage() {
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<SlotStatus>>({});
 
-  // 🟢 Gọi API khi thay đổi ngày
   const fetchSlotsByDate = async () => {
     setLoading(true);
     setError(null);
@@ -55,11 +54,10 @@ export default function SlotsPage() {
 
   useEffect(() => {
     fetchSlotsByDate();
-    const interval = setInterval(fetchSlotsByDate, 10000); // Cập nhật 10s
+    const interval = setInterval(fetchSlotsByDate, 10000); 
     return () => clearInterval(interval);
   }, [selectedDate]);
 
-  // 📤 Xuất Excel
   const handleExportExcel = () => {
     const data = slotsStatus.map((slotST) => ({
       "Khung giờ": `${slotST.start_time} - ${slotST.end_time}`,
@@ -89,7 +87,6 @@ export default function SlotsPage() {
     setShowAddModal(true);
   };
 
-  // thêm và sửa
   const handleSave = async () => {
     const method = editing ? "PUT" : "POST";
     const url = editing
@@ -110,7 +107,6 @@ export default function SlotsPage() {
     }
   };
 
-  // xoá
   const handleDelete = async (id: number) => {
     if (!confirm("Bạn có chắc muốn xoá slot này?")) return;
     try {
@@ -124,7 +120,6 @@ export default function SlotsPage() {
 
   return (
     <div>
-      {/* HEADER */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <h1 className="text-3xl font-bold">Quản Lý Khung Giờ</h1>
         <div className="flex flex-wrap gap-3">
@@ -154,7 +149,6 @@ export default function SlotsPage() {
         </div>
       </div>
 
-      {/* HIỂN THỊ DỮ LIỆU */}
       {loading ? (
         <div className="text-center py-10 text-gray-500">Đang tải dữ liệu...</div>
       ) : error ? (
@@ -162,7 +156,7 @@ export default function SlotsPage() {
       ) : (
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+            <thead className="bg-linear-to-r from-gray-50 to-gray-100">
               <tr>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">
                   Tên Slot
@@ -196,12 +190,10 @@ export default function SlotsPage() {
                 slotsStatus.sort((a, b) => parseInt(a.slot_name.replace("Slot ", "")) - parseInt(b.slot_name.replace("Slot ", "")))
                 .map((slot) => (
                   <tr key={slot.slot_id} className="hover:bg-gray-50 transition">
-                    {/* TÊN SLOT */}
                     <td className="px-6 py-4 font-medium text-gray-800">
                       {slot.slot_name}
                     </td>
 
-                    {/* KHUNG GIỜ */}
                     <td className="px-6 py-4 flex items-center gap-2">
                       <Clock className="w-4 h-4 text-blue-600" />
                       <span className="font-medium">
@@ -209,7 +201,6 @@ export default function SlotsPage() {
                       </span>
                     </td>
 
-                    {/* GIÁ/GIỜ */}
                     <td className="px-6 py-4 gap-1">
                     <span className="font-semibold flex items-center">
                     <DollarSign className="w-4 h-4 text-green-600" />
@@ -217,17 +208,14 @@ export default function SlotsPage() {
                       </span>
                     </td>
           
-                    {/* TỔNG SÂN */}
                     <td className="px-6 py-4 text-center font-medium text-gray-800">
                       {slot.totalCourts}
                     </td>
 
-                    {/* ĐÃ ĐẶT */}
                     <td className="px-6 py-4 text-center font-semibold text-orange-600">
                       {slot.bookedCourts}
                     </td>
 
-                    {/* CÒN TRỐNG */}
                     <td
                       className={`px-6 py-4 text-center font-bold text-lg ${slot.availableCourts > 0 ? "text-green-600" : "text-red-600"
                         }`}
@@ -235,7 +223,6 @@ export default function SlotsPage() {
                       {slot.availableCourts}
                     </td>
 
-                    {/* HÀNH ĐỘNG */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                       <button
                         className="text-blue-600 hover:text-blue-900"
@@ -257,7 +244,7 @@ export default function SlotsPage() {
           </table>
         </div>
       )}
-      {/* MODAL */}
+
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-xl w-full max-w-md relative shadow-lg">

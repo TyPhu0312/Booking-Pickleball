@@ -1,4 +1,3 @@
-// app/admin/tournaments/page.tsx
 import { Plus, Edit, Trash2, Eye } from "lucide-react";
 
 const tournaments = [
