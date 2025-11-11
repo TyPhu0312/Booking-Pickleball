@@ -79,7 +79,9 @@ export default function UsersPage() {
                 </td>
               </tr>
             ) : (
-              users.map((user) => (
+              users
+              .filter((user) => user.role.name !== "superadmin")
+              .map((user) => (
                 <tr key={user.userID} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap font-medium flex items-center gap-2">
                     <User className="w-4 h-4" />

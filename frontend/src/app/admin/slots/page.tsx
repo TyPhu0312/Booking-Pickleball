@@ -39,7 +39,6 @@ export default function SlotsPage() {
     setLoading(true);
     setError(null);
     try {
-      console.log("fetching data for date:", selectedDate);
       const res = await fetch(`http://localhost:5000/api/slots/getSlotStatusByDate/${selectedDate}`);
       if (!res.ok) throw new Error("Lỗi khi tải dữ liệu slot");
       const data = await res.json();
