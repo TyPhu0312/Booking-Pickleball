@@ -62,7 +62,6 @@ export const createBooking = async (req: Request, res: Response) => {
         const { user_id, phone_user, booking_date, status, total_price, deposit_amount, booking_type, discount, slots } = req.body;
 
 
-        // booking cho 1 lần và giải đấu
         const newBooking = await prisma.bookings.create({
             data: { user_id, phone_user, booking_date, status, total_price, deposit_amount, booking_type, discount },
         });
@@ -97,7 +96,6 @@ export const updateBooking = async (req: Request, res: Response) => {
             data: { user_id, booking_date, status, total_price, deposit_amount, booking_type, discount },
         });
 
-        // không thể update 1 mảng nên cần xoá hết những bookingSlots cũ đi rồi tạo mới
         await prisma.bookingSlots.deleteMany({
             where: { booking_id: id },
         });
@@ -186,14 +184,56 @@ export const updateBookingStatus = async (req: Request, res: Response) => {
     }
 }
 
-// không thể xoá booking được do chỉ có thể để trạng thái đã huỷ, không cho xoá trực tiếp
+export const getBookingByUserIdOrPhone = async (req: Request, res: Response) => {
+    try {
+      const { user_id } = req.params;
+  
+      if (!user_id ) {
+        return res.status(400).json({ error: "Vui lòng cung cấp user ID hoặc số điện thoại" });
+      }
+
+      const includeConfig = {
+        user: true,
+        court: true,
+        bookingSlots: {
+          include: {
+            slot: true,
+          },
+        },
+        payments: true,
+      };
+  
+      let bookings;
+  
+        bookings = await prisma.bookings.findMany({
+            where: {
+            user_id: user_id,
+            },
+            include: includeConfig,
+        });
+  
+      if (!bookings || bookings.length === 0) {
+        return res.status(404).json({ error: "Không tìm thấy đặt sân" });
+      }
+  
+      return res.status(200).json(bookings);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Lỗi khi lấy thông tin đặt sân" });
+    }
+  };
+  
+
 export const deleteBooking = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        await prisma.bookings.delete({ where: { bookingID: id } });
-        res.json({ message: "Đặt sân đã được xóa" });
+        await prisma.bookings.update({
+             where: { bookingID: id } ,
+            data: { status: "CANCELLED" }
+            });
+        res.json({ message: "Đặt sân đã được huỷ" });
     } catch (error) {
-        res.status(500).json({ error: "Lỗi khi xóa đặt sân" });
+        res.status(500).json({ error: "Lỗi khi huỷ đặt sân" });
     }
 }
 

@@ -304,8 +304,6 @@ useEffect(() => {
       return;
     }
    
-
-
     const bookingData = {
       user_id: user.userID,
       booking_date: bookingDate,
@@ -316,7 +314,6 @@ useEffect(() => {
       discount: discount,
       slots,
     };
-    console.log("Dữ liệu booking gửi đi:", bookingData);
 
     try {
       const res = await fetch("http://localhost:5000/api/bookings/create", {
@@ -329,9 +326,8 @@ useEffect(() => {
 
       const data = await res.json();
       alert("Đặt sân thành công!");
-      console.log("Booking đã lưu:", data);
       localStorage.removeItem("pendingBooking");
-      // router.push(`/history`);
+      router.push(`/history`);
     } catch (error) {
       console.error(error);
       alert("Không thể lưu booking. Vui lòng thử lại!");
@@ -412,6 +408,7 @@ useEffect(() => {
               }
             } }
             dateFormat="dd/MM/yyyy"
+            minDate={new Date()}
             className="w-full max-w-xs px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500" />
         </div><div className="mb-6">
             <label className="block text-lg font-medium mb-3">Chọn loại sân</label>
@@ -505,7 +502,7 @@ useEffect(() => {
                     className="w-5 h-5 text-blue-600 rounded"
                   />
                   <span className="font-medium">
-                    {["CN", "T2", "T3", "T4", "T5", "T6", "T7"][day]}
+                    {["CN","T2", "T3", "T4", "T5", "T6", "T7"][day]}
                   </span>
                 </label>
               ))}

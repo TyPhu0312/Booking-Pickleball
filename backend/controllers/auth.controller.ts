@@ -29,6 +29,14 @@ export const registerUser = async (req: Request, res: Response) => {
       const totalUsers = await prisma.users.count();
 
       if (totalUsers === 0) {
+        let superadminRole = await prisma.roles.findFirst({
+          where: { name: "superadmin" },
+        });
+        if (!superadminRole) {
+          superadminRole = await prisma.roles.create({ data: { name: "superadmin" } });
+        }
+        finalRoleId = superadminRole.roleID;
+      } else if (totalUsers === 1) {
         let adminRole = await prisma.roles.findFirst({
           where: { name: "admin" },
         });

@@ -32,7 +32,7 @@ export const getUserById = async (req: Request, res: Response) => {
 };
 export const getUserByPhone = async (req: Request, res: Response) => {
     try {
-      const { phone } = req.params; // lấy email từ params
+      const { phone } = req.params; 
   
       if (!phone) {
         return res.status(400).json({ error: "Email không được để trống" });
@@ -40,7 +40,7 @@ export const getUserByPhone = async (req: Request, res: Response) => {
   
       const user = await prisma.users.findUnique({
         where: { phone },
-        include: { role: true }, // include role relation
+        include: { role: true }, 
       });
   
       if (!user) {
@@ -58,7 +58,7 @@ export const getUserByPhone = async (req: Request, res: Response) => {
 
 export const createUser = async (req: Request, res: Response) => {
     try {
-        const { full_name, password, email, phone, role_id } = req.body;
+        const { full_name, password, phone, role_id } = req.body;
 
         const newUser = await prisma.users.create({
             data: {
@@ -82,7 +82,7 @@ export const createUser = async (req: Request, res: Response) => {
 export const updateUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const data = req.body;
+        const {full_name, phone, role_id, address, bank_account_number, bank_account_owner, bank_name} = req.body;
 
         const existingUser = await prisma.users.findUnique({ where: { userID: id } });
         if (!existingUser) {
@@ -91,7 +91,16 @@ export const updateUser = async (req: Request, res: Response) => {
 
         const updatedUser = await prisma.users.update({
             where: { userID: id },
-            data,
+            data : {
+                full_name,
+                phone,
+                role_id,
+                address,
+                bank_account_number,
+                bank_account_owner,
+                bank_name
+            }
+            ,
         });
 
         res.json(updatedUser);

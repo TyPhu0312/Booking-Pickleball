@@ -10,7 +10,6 @@ import Cookies from "js-cookie";
 interface User {
     userID: string;
     full_name: string;
-    email: string;
     role:{
         roleID: string;
         name: string;
@@ -38,7 +37,6 @@ export default function Navbar() {
             const phoneUser = localStorage.getItem("phone_user");
             if (!token) return;
             if (!phoneUser) return;
-            console.log("Fetching user info for phone:", phoneUser);
             try {
                 const res = await fetch(
                     `http://localhost:5000/api/users/getUserByPhone/${phoneUser}`,
@@ -137,7 +135,15 @@ export default function Navbar() {
                                         Thông tin
                                     </Link>
 
-                                    {user.role.name === "admin" && (
+                                    {user.role.name === "admin"  && (
+                                        <Link
+                                            href="/admin"
+                                            className="block px-4 py-2 hover:bg-blue-100 text-blue-700 font-medium transition-colors"
+                                        >
+                                            Admin
+                                        </Link>
+                                    )}
+                                     {user.role.name === "superadmin"  && (
                                         <Link
                                             href="/admin"
                                             className="block px-4 py-2 hover:bg-blue-100 text-blue-700 font-medium transition-colors"
