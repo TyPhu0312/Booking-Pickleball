@@ -192,11 +192,12 @@ export default function BookingCalendarDemo() {
     setselectedSlotsID(slotData.map(s => s.slot_id));
   }, [slotData]);
 
+  const multiplier = courts.find(c=> c.type === selectedCourt)?.multiplier || 1;
 
   const getPricePerWeek = () => {
     return selectedSlotsID.reduce((sum, id) => {
       const slot = slotData.find((s) => s.slot_id === id);
-      return sum + (slot ? slot.price : 0) * (selectedCourt ? parseFloat(selectedCourt) : 1);
+      return sum + (slot ? slot.price : 0) * multiplier;
     }, 0);
   };
 
@@ -526,7 +527,7 @@ export default function BookingCalendarDemo() {
                 <option value="">-- Chọn loại sân --</option>
                 {courts.length > 0 ? (
                   courts.map((court) => (
-                    <option key={court.type} value={court.multiplier}>
+                    <option key={court.type} value={court.type}>
                       {court.type}
                     </option>
                   ))
