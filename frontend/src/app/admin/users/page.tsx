@@ -45,6 +45,7 @@ export default function UsersPage() {
     try {
       const res = await fetch(`http://localhost:5000/api/users/delete/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Xóa thất bại");
+      alert("Xóa người dùng thành công");
       fetchUsers();
     } catch (err: any) {
       alert(err.message);

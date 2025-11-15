@@ -258,7 +258,7 @@ export default function CourtsPage() {
               <option value="OUTDOOR">Ngoài trời</option>
             </select>
             <input
-              type="text"
+              type="number"
               placeholder="Tên sân"
               value={editingCourt.multiplier}
               onChange={(e) =>

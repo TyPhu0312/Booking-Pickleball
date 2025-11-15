@@ -138,9 +138,9 @@ export default function BookingPage() {
     const interval = setInterval(fetchSlotsByDate, 10000);
     return () => clearInterval(interval);
   }, [selectedDate]);
-useEffect(() => {
-  fetchCourtMultiplier();
-},[]);
+  useEffect(() => {
+    fetchCourtMultiplier();
+  }, []);
   const isConsecutive = (slots: string[], slotData: SlotData[]) => {
     if (slots.length <= 1) return true;
 
@@ -191,10 +191,12 @@ useEffect(() => {
     setselectedSlotsID(sortedSlots);
   };
 
+  const multiplier = courts.find(c=> c.type === selectedCourt)?.multiplier || 1;
+
   const getPricePerWeek = () => {
     return selectedSlotsID.reduce((sum, id) => {
       const slot = slotData.find((s) => s.slot_id === id);
-      return sum + (slot ? slot.price : 0) * (selectedCourt ? parseFloat(selectedCourt) : 1);
+      return sum + (slot ? slot.price : 0) * multiplier;
     }, 0);
   };
 
@@ -230,7 +232,8 @@ useEffect(() => {
       console.error(err.message);
     }
   }
-
+  const total = getTotalPrice();
+  const deposit = total * (bookingType === "tournament" ? 1 : bookingType === "weekly" ? 1 : 0.5);
   const handleSubmit = async () => {
     if (selectedSlotsID.length === 0) return alert("Vui lòng chọn slot!");
 
@@ -239,8 +242,7 @@ useEffect(() => {
       if (!isValidWeekly) return alert(`Chọn ngày kết thúc (tối đa ${MAX_WEEKS} tuần)!`);
     }
 
-    const total = getTotalPrice();
-    const deposit = total * (bookingType === "tournament" ? 1 : bookingType === "weekly" ? 1 : 0.3);
+    
     const bookingDate = new Date(selectedDate ? selectedDate : weeklyStartDate).toISOString();
 
     const slots = selectedSlotsID.flatMap((id) => {
@@ -303,7 +305,7 @@ useEffect(() => {
       router.push("/login?redirect=/booking");
       return;
     }
-   
+
     const bookingData = {
       user_id: user.userID,
       booking_date: bookingDate,
@@ -406,11 +408,12 @@ useEffect(() => {
               } else {
                 setSelectedDate("");
               }
-            } }
+            }}
             dateFormat="dd/MM/yyyy"
             minDate={new Date()}
             className="w-full max-w-xs px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500" />
-        </div><div className="mb-6">
+        </div>
+          <div className="mb-6">
             <label className="block text-lg font-medium mb-3">Chọn loại sân</label>
             <select
               value={selectedCourt}
@@ -420,7 +423,7 @@ useEffect(() => {
               <option value="">-- Chọn loại sân --</option>
               {courts.length > 0 ? (
                 courts.map((court) => (
-                  <option key={court.type} value={court.multiplier}>
+                  <option key={court.type} value={court.type}>
                     {court.type}
                   </option>
                 ))
@@ -502,7 +505,7 @@ useEffect(() => {
                     className="w-5 h-5 text-blue-600 rounded"
                   />
                   <span className="font-medium">
-                    {["CN","T2", "T3", "T4", "T5", "T6", "T7"][day]}
+                    {["CN", "T2", "T3", "T4", "T5", "T6", "T7"][day]}
                   </span>
                 </label>
               ))}
@@ -519,7 +522,7 @@ useEffect(() => {
               <option value="">-- Chọn loại sân --</option>
               {courts.length > 0 ? (
                 courts.map((court) => (
-                  <option key={court.type} value={court.multiplier}>
+                  <option key={court.type} value={court.type}>
                     {court.type}
                   </option>
                 ))
@@ -594,6 +597,18 @@ useEffect(() => {
               <div className="flex justify-between">
                 <span className="font-medium">Giá mỗi tuần:</span>
                 <span className="font-bold">{getPricePerWeek().toLocaleString()} VNĐ</span>
+              </div>
+              <div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Giảm giá:</span>
+                  <span className="font-bold text-red-600">-{discount}%</span>
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between">
+                <span className="font-medium">Tiền cọc:</span>
+                  <span className="font-bold ">{deposit} VNĐ</span>
+                </div>
               </div>
               {bookingType === "weekly" && (
                 <div className="flex justify-between text-lg">
