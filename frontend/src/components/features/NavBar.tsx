@@ -81,14 +81,14 @@ export default function Navbar() {
                     Pickleball Sao Mai
                 </Link>
 
-                <div className="hidden md:flex space-x-6 text-gray-700 font-medium">
-                    <div className="hidden md:flex space-x-6 text-gray-700 font-medium">
+                <div className="hidden md:flex space-x-6 text-gray-700 font-medium text-xl">
+                    <div className="hidden md:flex space-x-6 text-gray-700 font-medium ">
                         <Link
                             href="/"
                             className="relative group px-1 py-1 transition-all duration-300 hover:text-blue-600"
                         >
                             Trang chủ
-                            <span className="absolute left-0 -bottom-1 w-0 h-0.5 bg-blue-500 transition-all group-hover:w-full"></span>
+                            <span className="absolute left-0 -bottom-1 w-0 h-0.5 bg-blue-500 transition-all group-hover:w-full "></span>
                         </Link>
 
                         <Link
