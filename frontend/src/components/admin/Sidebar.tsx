@@ -12,6 +12,8 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  CircleDollarSign ,
+  PenLine,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -26,12 +28,14 @@ export default function Sidebar() {
     { href: "/admin/slots", label: "Quản Lý Slots", icon: Clock },
     { href: "/admin/tournaments", label: "Giải Đấu", icon: Trophy },
     { href: "/admin/users", label: "Người Dùng", icon: Users },
-    { href: "/admin/stats", label: "Báo Cáo", icon: BarChart3 },
+    { href: "/admin/blogs", label: "Bài viết", icon: PenLine },
+    { href: "/admin/deposits", label: "Đặt cọc", icon: CircleDollarSign },
+    { href: "/admin/stats", label: "Báo cáo", icon: BarChart3 },
   ];
 
   return (
     <div
-      className={`fixed top-0 left-0 h-screen transition-all duration-300 shadow-xl border-r border-slate-800 bg-gradient-to-b from-slate-900 to-slate-800 ${
+      className={`fixed top-0 left-0 h-screen transition-all duration-300 shadow-xl border-r border-slate-800 bg-linear-to-b from-slate-900 to-slate-800 ${
         collapsed ? "w-20" : "w-64"
       }`}
     >

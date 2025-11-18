@@ -1,598 +1,347 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { format, addDays, addWeeks } from "date-fns";
+import { Calendar, Plus, Search } from "lucide-react";
+import { format, addDays, startOfWeek, isSameDay, parseISO } from "date-fns";
 import { vi } from "date-fns/locale";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import moment from "moment-timezone";
+import BookingCard from "@/components/admin/BookingCard";
+import CreateBookingModal from "@/components/admin/CreateBookingModal";
+import EditBookingModal from "@/components/admin/EditBookingModal";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-interface Slot {
-  slot_id: string;
-  slot_name: string;
-  start_time: string;
-  end_time: string;
-  price: number;
-  totalCourts: number;
-  bookedCourts: number;
-  availableCourts: number;
-}
-
-interface CalendarDay {
-  date: string;
-  slots: Slot[];
-}
+type BookingStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "COMPLETED" | "CANCELLED";
+type CourtType = "INDOOR" | "OUTDOOR";
 
 interface Booking {
   bookingID: string;
-  user?: { full_name: string } | null;
-  phone_user?: string | null;
   booking_date: string;
-  slot: string;
-  status: "PENDING" | "CONFIRMED" | "CHECKED_IN" | "COMPLETED" | "CANCELLED";
+  status: BookingStatus;
   total_price: number;
   deposit_amount: number;
-  booking_type: string;
-  discount: number;
-  court?: { name: string, courtID: string } | null;
+  court: {
+    courtID: string;
+    name: string;
+    type: CourtType;
+  };
+  user?: {
+    userID: string;
+    full_name: string;
+    phone: string;
+  };
+  phone_user?: string;
   bookingSlots: {
     slot: {
+      slotID: string;
+      slot_name: string;
       start_time: string;
-      end_time: string
+      end_time: string;
     };
+    date: string;
     is_recurring: boolean;
     recurring_day: number | null;
     num_weeks: number | null;
   }[];
+  note?: string;
 }
 
-interface SlotInput {
-  booking_id: string
-  slot_id: string;
-  date: string;
-  is_recurring: boolean;
-  recurring_day: number | null;
-  num_weeks: number | null;
-}
-
-interface Courts {
+interface Court {
+  courtID: string;
+  name: string;
   type: CourtType;
-  multiplier: number;
 }
 
-const MAX_CONSECUTIVE_SLOTS = 5;
-const MAX_WEEKS = 12
+interface Slot {
+  slotID: string;
+  slot_name: string;
+  start_time: string;
+  end_time: string;
+  price: number;
+}
 
-type BookingType = "casual" | "weekly" | "tournament";
-type CourtType = "indoor" | "outdoor";
-type ViewMode = "week" | "month" | "date";
-
-export default function BookingCalendarDemo() {
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [calendar, setCalendar] = useState<CalendarDay[]>([]);
-  const [numWeeks, setNumWeeks] = useState(1);
+export default function AdminBookingsPage() {
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<"day" | "week">("week");
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [searchPhone, setSearchPhone] = useState("");
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState("");
-  const [phone, setPhone] = useState("");
-  const [showBookingForm, setShowBookingForm] = useState(false);
-  const [courts, setCourts] = useState<Courts[]>([]);
-  const [selectedCourt, setSelectedCourt] = useState<string>("");
-  const [bookingType, setBookingType] = useState<BookingType>("casual");
-  const [error, setError] = useState<string | null>(null);
-  const [slotData, setselectedSlots] = useState<Slot[]>([]);
-  const [selectedSlotsID, setselectedSlotsID] = useState<string[]>([]);
-  const [weeklyStartDate, setWeeklyStartDate] = useState("");
-  const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([]);
-  const [viewMode, setViewMode] = useState<ViewMode>("week");
 
-  const isValidWeekly = numWeeks > 0 && numWeeks <= MAX_WEEKS;
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [courts, setCourts] = useState<Court[]>([]);
+  const [slots, setSlots] = useState<Slot[]>([]);
 
   useEffect(() => {
-    if (!selectedDate) return;
-    setLoading(true);
-
-    const fetchCalendar = async () => {
+    const fetchAllData = async () => {
+      setLoading(true);
       try {
-        const startDate = new Date(selectedDate);
-        const dates: Date[] = [];
-
-        if (viewMode === "week") {
-          for (let i = 0; i < 7; i++) {
-            dates.push(addDays(startDate, i));
-          }
-        } else if (viewMode === "date") {
-          for (let i = 0; i < numWeeks; i++) {
-            dates.push(addDays(startDate, i * 7));
-          }
-        }
-        else if (viewMode === "month") {
-          const year = startDate.getFullYear();
-          const month = startDate.getMonth();
-          const daysInMonth = new Date(year, month + 1, 0).getDate();
-          for (let d = 1; d <= daysInMonth; d++) {
-            dates.push(new Date(year, month, d));
-          }
-        }
-
-        const promises = dates.map((date) => {
-          const dateStr = format(date, "yyyy-MM-dd");
-          return fetch(`http://localhost:5000/api/slots/getSlotStatusByDate/${dateStr}`).then(res => res.json());
-        });
-
-        const results = await Promise.all(promises);
-
-        const calendarData: CalendarDay[] = results.map((data, index) => {
-          const date = dates[index];
-          const dateStr = format(date, "yyyy-MM-dd");
-          return {
-            date: dateStr,
-            slots: data.slots.map((slot: any) => ({
-              slot_id: slot.slot_id,
-              slot_name: slot.slot_name,
-              start_time: slot.start_time,
-              end_time: slot.end_time,
-              price: slot.price,
-              totalCourts: slot.totalCourts,
-              bookedCourts: slot.bookedCourts,
-              availableCourts: slot.availableCourts,
-            })),
-          };
-        });
-
-        setCalendar(calendarData);
-        setselectedSlots([]);
+        await Promise.all([
+          fetchBookings(),
+          fetchCourts(),
+          fetchSlots()
+        ]);
       } catch (error) {
-        console.error("Lỗi khi fetch calendar:", error);
+        console.error("Error fetching data:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchSlots();
-    fetchCalendar();
-  }, [selectedDate, numWeeks, viewMode]);
-
-
-  useEffect(() => {
-    fetchCourtMultiplier();
-
+    fetchAllData();
   }, []);
 
-  const fetchCourtMultiplier = async () => {
+  const fetchBookings = async () => {
     try {
-      const res = await fetch(`http://localhost:5000/api/courts/getAllTheMultiplierOfTheCourtType`);
-      if (!res.ok) throw new Error("Lỗi khi tải dữ liệu court");
-      const data = await res.json();
-      setCourts(data || null);
-    } catch (err: any) {
-      console.error(err.message);
-    }
-  }
-
-  const toggleSlotSelection = (date: string, slot_id: string) => {
-    const slot = calendar
-      .find(day => day.date === date)
-      ?.slots.find(s => s.slot_id === slot_id);
-
-    if (!slot || slot.availableCourts === 0) return;
-
-    const isSelected = selectedSlotsID.includes(slot_id);
-
-    if (isSelected) {
-      setselectedSlots(prev => prev.filter(s => s.slot_id !== slot_id));
-      setselectedSlotsID(prev => prev.filter(id => id !== slot_id));
-    } else {
-      setselectedSlots(prev => [...prev, slot]);
-      setselectedSlotsID(prev => [...prev, slot_id]);
+      const response = await fetch(`${API_URL}/api/bookings`);
+      if (response.ok) {
+        const data = await response.json();
+        setBookings(data);
+      }
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
     }
   };
 
-  useEffect(() => {
-    setselectedSlotsID(slotData.map(s => s.slot_id));
-  }, [slotData]);
-
-  const multiplier = courts.find(c=> c.type === selectedCourt)?.multiplier || 1;
-
-  const getPricePerWeek = () => {
-    return selectedSlotsID.reduce((sum, id) => {
-      const slot = slotData.find((s) => s.slot_id === id);
-      return sum + (slot ? slot.price : 0) * multiplier;
-    }, 0);
-  };
-
-  const discount = (bookingType === "tournament" ? 10 : bookingType === "weekly" ? 5 : 0);
-
-  const getTotalPrice = () => {
-    const pricePerWeek = getPricePerWeek();
-    const totalprice = pricePerWeek * (bookingType === "weekly" ? numWeeks : 1) * (1.0 - discount / 100);
-    return totalprice;
+  const fetchCourts = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/courts`);
+      if (response.ok) {
+        const data = await response.json();
+        setCourts(data);
+      }
+    } catch (error) {
+      console.error("Error fetching courts:", error);
+    }
   };
 
   const fetchSlots = async () => {
-    setLoading(true);
-    setError(null);
     try {
-      const res = await fetch(`http://localhost:5000/api/slots/`);
-      if (!res.ok) throw new Error("Lỗi khi tải dữ liệu slot");
-      const data = await res.json();
-      setselectedSlots(data || []);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      const response = await fetch(`${API_URL}/api/slots`);
+      if (response.ok) {
+        const data = await response.json();
+        setSlots(data);
+      }
+    } catch (error) {
+      console.error("Error fetching slots:", error);
     }
   };
 
-  const total = getTotalPrice();
-  const deposit = total * (bookingType === "tournament" ? 1 : bookingType === "weekly" ? 1 : 0.5);
+  const getWeekDays = () => {
+    const start = startOfWeek(selectedDate, { weekStartsOn: 1 });
+    return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  };
 
-  console.log("tong tien:", total);
+  const weekDays = viewMode === "week" ? getWeekDays() : [selectedDate];
 
-  const handleCreateBooking = async () => {
-    if (selectedSlotsID.length === 0) return alert("Vui lòng chọn slot!");
+  const getBookingsForDate = (date: Date) => {
+    let filtered = bookings.filter(booking => {
+      return booking.bookingSlots.some(bs => {
+        const slotDate = parseISO(bs.date.toString());
+        return isSameDay(slotDate, date);
+      });
+    });
 
-    if (bookingType === "weekly") {
-      if (selectedWeekdays.length === 0) return alert("Chọn ít nhất 1 thứ!");
-      if (!isValidWeekly) return alert(`Chọn ngày kết thúc (tối đa ${MAX_WEEKS} tuần)!`);
+    if (searchPhone.trim()) {
+      filtered = filtered.filter(booking => 
+        booking.user?.phone?.includes(searchPhone) || 
+        booking.phone_user?.includes(searchPhone)
+      );
     }
-    if (selectedCourt === "") {
-      return alert("Vui lòng chọn loại sân!");
-    }
 
-    if (!phone) {
-      alert("Vui lòng nhập số điện thoại khách!");
-      return;
-    }
+    return filtered;
+  };
 
-
-    const bookingDate = new Date(selectedDate ? selectedDate : weeklyStartDate).toISOString();
-
-    const slots = selectedSlotsID.flatMap((id) => {
-      const slot = slotData.find((s) => s.slot_id === id);
-      if (!slot) return null;
-
-      if (bookingType === "weekly") {
-        const recurringSlots: any[] | null = [];
-        selectedWeekdays.forEach((weekday) => {
-          for (let i = 0; i < numWeeks; i++) {
-            const bookingDateVN = moment.tz(bookingDate, "Asia/Ho_Chi_Minh");
-            const currentDay = bookingDateVN.day();
-
-            let diff = weekday - currentDay;
-            if (diff < 0) diff += 7;
-
-            const nextDate = bookingDateVN
-              .clone()
-              .add(diff + i * 7, "days")
-              .startOf("day")
-              .tz("Asia/Ho_Chi_Minh")
-              .format("YYYY-MM-DDTHH:mm:ss.SSS[Z]");
-
-            console.log("Ngày thêm slot lặp:", nextDate);
-            recurringSlots.push({
-              slot_id: slot.slot_id,
-              date: nextDate,
-              is_recurring: true,
-              recurring_day: weekday,
-              num_weeks: numWeeks,
-            });
-          }
-        });
-        return recurringSlots;
-      }
-
-      return [
-        {
-          slot_id: slot.slot_id,
-          date: bookingDate,
-          is_recurring: false,
-          recurring_day: null,
-          num_weeks: null,
-        },
-      ];
-    }).filter((slot) => slot !== null);
-
-
-
-    const bookingData = {
-      phone_user: phone,
-      booking_date: bookingDate,
-      status: "PENDING",
-      total_price: total,
-      deposit_amount: deposit,
-      booking_type: bookingType.toUpperCase(),
-      discount: discount,
-      slots,
-    };
-
+  const updateBookingStatus = async (bookingID: string, newStatus: BookingStatus) => {
     try {
-      const res = await fetch("http://localhost:5000/api/bookings/create", {
-        method: "POST",
+      const response = await fetch(`${API_URL}/api/bookings/updateBookingStatus/${bookingID}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bookingData),
+        body: JSON.stringify({ status: newStatus })
       });
 
-      if (!res.ok) throw new Error("Lỗi khi lưu booking");
-
-      const data = await res.json();
-      alert("Đặt sân thành công!");
-      setShowBookingForm(false);
+      if (response.ok) {
+        const updatedBooking = await response.json();
+        setBookings(prev => 
+          prev.map(b => b.bookingID === bookingID ? updatedBooking : b)
+        );
+      } else {
+        const error = await response.json();
+        alert(`Không thể cập nhật trạng thái: ${error.message || 'Lỗi không xác định'}`);
+      }
     } catch (error) {
-      console.error(error);
-      alert("Không thể lưu booking. Vui lòng thử lại!");
+      console.error("Error updating booking status:", error);
+      alert("Lỗi khi cập nhật trạng thái");
     }
-
   };
 
-
-
-  // if (loading) return <p className="text-center mt-10 text-gray-500">Đang tải dữ liệu...</p>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 font-semibold">Đang tải dữ liệu...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6">
-      <div>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-          <h1 className="text-3xl font-bold">Quản Lý Đặt Sân</h1>
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-black text-gray-800 flex items-center gap-3">
+                <Calendar className="w-8 h-8 text-emerald-600" />
+                Quản Lý Đặt Sân
+              </h1>
+            </div>
+            
+            <div className="flex flex-wrap gap-3">
+              <div className="relative">
+                <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Tìm theo SĐT..."
+                  value={searchPhone}
+                  onChange={(e) => setSearchPhone(e.target.value)}
+                  className="pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500 transition-colors"
+                />
+              </div>
+
+              <div className="flex bg-gray-100 rounded-xl p-1">
+                <button
+                  onClick={() => setViewMode("day")}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                    viewMode === "day" 
+                      ? "bg-white text-emerald-600 shadow-md" 
+                      : "text-gray-600 hover:text-gray-800"
+                  }`}
+                >
+                  Ngày
+                </button>
+                <button
+                  onClick={() => setViewMode("week")}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                    viewMode === "week" 
+                      ? "bg-white text-emerald-600 shadow-md" 
+                      : "text-gray-600 hover:text-gray-800"
+                  }`}
+                >
+                  Tuần
+                </button>
+              </div>
+
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg hover:shadow-xl"
+              >
+                <Plus className="w-5 h-5" />
+                Tạo Booking
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between mt-6 pt-6 border-t">
             <button
-              onClick={() => {
-                if (slotData.length === 0) return alert("Chưa chọn slot nào!");
-                setShowBookingForm(true);
-              }}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              onClick={() => setSelectedDate(prev => addDays(prev, viewMode === "week" ? -7 : -1))}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-semibold transition-colors"
             >
-              Tạo đặt sân
+              ← {viewMode === "week" ? "Tuần trước" : "Hôm trước"}
+            </button>
+            
+            <div className="text-center">
+              <h2 className="text-2xl font-black text-gray-800">
+                {viewMode === "week" 
+                  ? `Tuần ${format(selectedDate, "w, yyyy", { locale: vi })}`
+                  : format(selectedDate, "EEEE, dd MMMM yyyy", { locale: vi })
+                }
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                {viewMode === "week" && 
+                  `${format(weekDays[0], "dd/MM")} - ${format(weekDays[6], "dd/MM/yyyy")}`
+                }
+              </p>
+            </div>
+
+            <button
+              onClick={() => setSelectedDate(prev => addDays(prev, viewMode === "week" ? 7 : 1))}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-semibold transition-colors"
+            >
+              {viewMode === "week" ? "Tuần sau" : "Hôm sau"} →
             </button>
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-4 mb-4">
-          <div>
-            <label className="block font-semibold mb-1">Ngày bắt đầu</label>
-            <DatePicker
-              selected={selectedDate ? new Date(selectedDate) : null}
-              onChange={(date) => {
-                if (date instanceof Date && !isNaN(date.getTime())) {
-                  const formatted = format(date, 'yyyy-MM-dd');
-                  setSelectedDate(formatted);
-                } else {
-                  setSelectedDate("");
-                }
-              }}
-              dateFormat="dd/MM/yyyy"
-              className="w-full border rounded px-3 py-2"
-            />
-          </div>
-
-          <div>
-            <label className="block font-semibold mb-1">Số tuần (nếu đặt hằng tuần)</label>
-            <input
-              type="number"
-              min={1}
-              max={12}
-              value={numWeeks}
-              onChange={(e) => setNumWeeks(parseInt(e.target.value))}
-              className="w-16 border rounded px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block font-semibold mb-1">Chế độ hiển thị</label>
-            <select
-              value={viewMode}
-              onChange={(e) => setViewMode(e.target.value as ViewMode)}
-              className="w-xs border rounded px-3 py-2"
-            >
-              <option value="date">Theo ngày</option>
-              <option value="week">Theo tuần</option>
-              <option value="month">Theo tháng</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          {calendar.map(day => (
-            <div key={day.date}>
-              <div className="font-semibold mb-2 text-lg">
-                {format(new Date(day.date), "dd/MM/yyyy")}
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {day.slots.map(slot => {
-                  const isSelected = selectedSlotsID.includes(slot.slot_id);
-                  const isBooked = slot.availableCourts === 0;
-
-                  return (
-                    <button
-                      key={slot.slot_id + day.date}
-                      onClick={() => toggleSlotSelection(day.date, slot.slot_id)}
-                      disabled={isBooked}
-                      className={`
-                            py-3 px-4 rounded-lg font-medium text-sm transition-all relative
-                            ${isBooked
-                          ? "bg-gray-300 text-gray-600 cursor-not-allowed"
-                          : isSelected
-                            ? "bg-yellow-400 text-blue-900 ring-2 ring-yellow-500 shadow-lg"
-                            : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md"
-                        }
-                          `}
-                    >
-                      <div>{slot.start_time} - {slot.end_time}</div>
-                      <div className="text-xs mt-1 font-medium">
-                        {isBooked ? "Hết" : `Còn ${slot.availableCourts} sân`}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-
-
-
-
-        {/* <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
-          {calendar.map((day, dayIndex) => (
-            <div key={day.date} className="border rounded p-2">
-              <div className="font-semibold mb-2">{format(new Date(day.date), "dd/MM/yyyy")}</div>
-              {day.slots.map((slot, slotIndex) => {
-                const isSelected = slotData.find(s => s.slot_id === slot.slot_id);
-                return (
-                  <div
-                    key={slot.slot_id}
-                    className={`p-2 rounded mb-1 text-center text-sm cursor-pointer ${slot.availableCourts === 0
-                      ? "bg-gray-300 text-gray-700 cursor-not-allowed"
-                      : slotData.find(s => s.slot_id === slot.slot_id)
-                        ? "bg-blue-500 text-white"
-                        : "bg-green-100 text-green-800 hover:bg-green-200"
-                      }`}
-                    onClick={() => slot.availableCourts > 0 && toggleSlotSelection(dayIndex, slotIndex)}
-                  >
-
-                    {slot.start_time} - {slot.end_time} ({slot.availableCourts}/{slot.totalCourts} trống)
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-7 divide-x divide-gray-200">
+            {weekDays.map((day, index) => (
+              <div key={index} className="min-h-[600px]">
+                <div className={`p-4 border-b ${isSameDay(day, new Date()) ? 'bg-emerald-50' : 'bg-gray-50'}`}>
+                  <div className="text-center">
+                    <div className="text-sm font-semibold text-gray-600">
+                      {format(day, "EEE", { locale: vi })}
+                    </div>
+                    <div className={`text-2xl font-black mt-1 ${
+                      isSameDay(day, new Date()) ? 'text-emerald-600' : 'text-gray-800'
+                    }`}>
+                      {format(day, "dd")}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {format(day, "MMM", { locale: vi })}
+                    </div>
                   </div>
-                );
-              })}
-            </div>
-          ))}
-        </div> */}
+                </div>
 
+                <div className="p-3 space-y-2 overflow-y-auto max-h-[530px]">
+                  {getBookingsForDate(day).map((booking) => (
+                    <BookingCard 
+                      key={booking.bookingID} 
+                      booking={booking}
+                      onStatusChange={updateBookingStatus}
+                      onEdit={setSelectedBooking}
+                    />
+                  ))}
+                  
+                  {getBookingsForDate(day).length === 0 && (
+                    <div className="text-center py-8 text-gray-400">
+                      <Calendar className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">Không có booking</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {showBookingForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-            <h2 className="text-lg font-semibold mb-4">Xác nhận đặt sân</h2>
-
-            <div className="mb-3">
-              <label className="font-medium block mb-1">Số điện thoại khách</label>
-              <input
-                type="text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="VD: 0901234567"
-                className="w-full border rounded px-3 py-2"
-              />
-            </div>
-
-            <div className="mb-4">
-              <label className="font-medium block mb-1">Loại đặt sân</label>
-              <select
-                value={bookingType}
-                onChange={(e) => setBookingType(e.target.value as BookingType)}
-                className="w-full border rounded px-3 py-2"
-              >
-                <option value="casual">Đặt 1 lần</option>
-                <option value="weekly">Đặt hằng tuần</option>
-                <option value="tournament">Giải đấu</option>
-              </select>
-            </div>
-            {bookingType === "weekly" && (
-              <>
-                <div className="mb-4">
-                  <label className="block text-lg font-medium mb-2">Chọn Thứ Trong Tuần</label>
-                  <div className="flex flex-wrap gap-3">
-                    {[1, 2, 3, 4, 5, 6, 7].map((day) => (
-                      <label key={day} className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedWeekdays.includes(day)}
-                          onChange={(e) =>
-                            setSelectedWeekdays((prev) =>
-                              e.target.checked
-                                ? [...prev, day]
-                                : prev.filter((d) => d !== day)
-                            )
-                          }
-                          className="w-5 h-5 text-blue-600 rounded"
-                        />
-                        <span className="font-medium">
-                          {["T2", "T3", "T4", "T5", "T6", "T7", "CN"][day - 1]}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            <div className="mb-6">
-              <label className="block text-lg font-medium mb-3">Chọn loại sân</label>
-              <select
-                value={selectedCourt}
-                onChange={(e) => setSelectedCourt(e.target.value)}
-                className="w-full max-w-xs px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">-- Chọn loại sân --</option>
-                {courts.length > 0 ? (
-                  courts.map((court) => (
-                    <option key={court.type} value={court.type}>
-                      {court.type}
-                    </option>
-                  ))
-                ) : (
-                  <option disabled>Không có loại sân nào</option>
-                )}
-              </select>
-            </div>
-
-            {
-              selectedSlotsID.length > 0 && (
-                <div className="bg-linear-to-r from-blue-50 to-green-50 p-6 rounded-xl mb-6 border">
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="font-medium">Giá mỗi tuần:</span>
-                      <span className="font-bold">{getPricePerWeek().toLocaleString()} VNĐ</span>
-                    </div>
-                    <div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Giảm giá:</span>
-                        <span className="font-bold text-red-600">-{discount}%</span>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Tiền cọc:</span>
-                        <span className="font-bold ">{deposit} VNĐ</span>
-                      </div>
-                    </div>
-                    {bookingType === "weekly" && (
-                      <div className="flex justify-between text-lg">
-                        <span className="font-semibold">Tổng cộng ({numWeeks} tuần):</span>
-                        <span className="font-bold text-green-600">{getTotalPrice().toLocaleString()} VNĐ</span>
-                      </div>
-                    )}
-                    {bookingType !== "weekly" && (
-                      <div className="flex justify-between text-lg">
-                        <span className="font-semibold">Tổng tiền:</span>
-                        <span className="font-bold text-green-600">{getTotalPrice().toLocaleString()} VNĐ</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )
-            }
-
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowBookingForm(false)}
-                className="px-4 py-2 bg-gray-300 rounded"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleCreateBooking}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                Xác nhận
-              </button>
-            </div>
-          </div>
-        </div>
+      {showCreateModal && (
+        <CreateBookingModal
+          courts={courts}
+          slots={slots}
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={async (newBooking) => {
+            setBookings(prev => [...prev, newBooking]);
+            setShowCreateModal(false);
+            await fetchBookings();
+          }}
+        />
       )}
 
-
+      {selectedBooking && (
+        <EditBookingModal
+          booking={selectedBooking}
+          onClose={() => setSelectedBooking(null)}
+          onUpdate={(updatedBooking) => {
+            setBookings(prev => 
+              prev.map(b => b.bookingID === updatedBooking.bookingID ? updatedBooking : b)
+            );
+            setSelectedBooking(null);
+          }}
+        />
+      )}
     </div>
   );
 }

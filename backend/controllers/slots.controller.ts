@@ -107,7 +107,7 @@ interface Slots {
     price: number;
 }
 
-export const getSlotStatusByDate = async (req: Request, res: Response) => {
+export const getSlotStatusByOneDate = async (req: Request, res: Response) => {
     try {
         const { date } = req.params;
 
@@ -117,7 +117,17 @@ export const getSlotStatusByDate = async (req: Request, res: Response) => {
 
         const formattedDate = date as string;
 
-        const totalCourts = await prisma.courts.count();
+        const courts = await prisma.courts.groupBy({
+            by: ["type"],
+            _count: {
+                courtID: true,
+            },
+        });
+
+        const courtCountMap: Record<string, number> = {};
+        courts.forEach((c) => {
+            courtCountMap[c.type] = c._count.courtID;
+        });
 
         const slots = await prisma.slots.findMany();
 
@@ -143,7 +153,11 @@ export const getSlotStatusByDate = async (req: Request, res: Response) => {
             const slotBookings = bookingSlots.filter((b) => b.slot_id === slot.slotID);
 
             const bookedCourts = slotBookings.length;
-            const availableCourts = Math.max(totalCourts - bookedCourts, 0);
+
+            const availableCourtsByType: Record<string, number> = {};
+            Object.keys(courtCountMap).forEach((type) => {
+                availableCourtsByType[type] = Math.max(courtCountMap[type] - bookedCourts, 0);
+            });
 
             return {
                 slot_id: slot.slotID,
@@ -151,18 +165,101 @@ export const getSlotStatusByDate = async (req: Request, res: Response) => {
                 start_time: slot.start_time,
                 end_time: slot.end_time,
                 price: slot.price,
-                totalCourts,
+                totalCourts: courtCountMap,
                 bookedCourts,
-                availableCourts,
+                availableCourts: availableCourtsByType,
 
             };
         });
 
         return res.json({
             date: formattedDate,
-            totalCourts,
             slots: result,
         });
+    } catch (error) {
+        console.error("Lỗi khi lấy slot:", error);
+        res.status(500).json({ message: "Lỗi server" });
+    }
+};
+
+export const getSlotStatusByDate = async (req: Request, res: Response) => {
+    try {
+        const { start_day, end_day } = req.params;
+
+        if (!start_day || !end_day) {
+            return res.status(400).json({ message: "Thiếu tham số date" });
+        }
+
+        const startDate = new Date(start_day);
+        const endDate = new Date(end_day);
+
+        if (startDate > endDate) {
+            return res.status(400).json({ message: "Ngày bắt đầu phải nhỏ hơn ngày kết thúc" });
+          }
+
+        const courts = await prisma.courts.groupBy({
+            by: ["type"],
+            _count: {
+                courtID: true,
+            },
+        });
+
+        const courtCountMap: Record<string, number> = {};
+        courts.forEach((c) => {
+            courtCountMap[c.type] = c._count.courtID;
+        });
+
+        const slots = await prisma.slots.findMany();
+
+        const result: Record<string, any[]> = {};
+
+        for (let d = startDate; d <= endDate; d.setDate(d.getDate() + 1)) {
+            const formattedDate = d.toISOString().split("T")[0];
+
+            const startOfDay = new Date(`${formattedDate}T00:00:00+07:00`);
+            const endOfDay = new Date(`${formattedDate}T23:59:59.999+07:00`);
+
+            const bookingSlots = await prisma.bookingSlots.findMany({
+                where: {
+                    date: {
+                        gte: startOfDay,
+                        lte: endOfDay,
+                    },
+                    booking: {
+                        status: { notIn: ["CANCELLED"] }
+                    }
+                },
+                include: {
+                    booking: true,
+                },
+            });
+
+            const dailySlots = slots.map((slot: Slots) => {
+                const slotBookings = bookingSlots.filter((b) => b.slot_id === slot.slotID);
+
+                const bookedCourts = slotBookings.length;
+
+                const availableCourtsByType: Record<string, number> = {};
+                Object.keys(courtCountMap).forEach((type) => {
+                    availableCourtsByType[type] = Math.max(courtCountMap[type] - bookedCourts, 0);
+                });
+
+                return {
+                    slot_id: slot.slotID,
+                    slot_name: slot.slot_name,
+                    start_time: slot.start_time,
+                    end_time: slot.end_time,
+                    price: slot.price,
+                    totalCourts: courtCountMap,
+                    bookedCourts,
+                    availableCourts: availableCourtsByType,
+
+                };
+            });
+
+            result[formattedDate] = dailySlots;
+        }
+        return res.json(result);
     } catch (error) {
         console.error("Lỗi khi lấy slot:", error);
         res.status(500).json({ message: "Lỗi server" });

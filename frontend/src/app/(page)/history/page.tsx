@@ -1,9 +1,7 @@
 "use client";
-import { mockBookings } from "@/lib/data";
 import { format, set } from "date-fns";
-import { el, se } from "date-fns/locale";
 import { Edit, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 interface Booking {
   bookingID: string;
@@ -16,7 +14,7 @@ interface Booking {
   deposit_amount: number;
   booking_type: string;
   discount: number;
-  court?: { name: string, courtID: string } | null;
+  court?: Courts| null;
   bookingSlots: {
     date: string;
     slot: {
@@ -48,6 +46,15 @@ interface User {
   updatedAt?: string;
 }
 
+interface Courts {
+  courtID: string;
+  name: string;
+  type: string;
+  status: string;
+  multiplier: number;
+  image?: string | null;
+}
+
 export default function HistoryPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [user, setUser] = useState<User | null>(null);
@@ -64,10 +71,16 @@ export default function HistoryPage() {
     }
   }, []);
 
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async () => {
+    if (!user?.userID) {
+      setLoading(false);
+      return;
+    }
+
     try {
+      setLoading(true);
       const response = await fetch(
-        `http://localhost:5000/api/bookings/getBookingByUserIdOrPhone/${user?.userID}`,
+        `http://localhost:5000/api/bookings/getBookingByUserIdOrPhone/${user.userID}`,
         {
           method: "GET",
           headers: {
@@ -78,19 +91,23 @@ export default function HistoryPage() {
 
       if (response.ok) {
         const data = await response.json();
+        console.log("Bookings data:", data);
         setBookings(data);
+      } else {
+        console.error("API response not OK:", response.status);
       }
     } catch (error) {
       console.error("Lỗi khi lấy lịch sử đặt slot:", error);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [user?.userID]);
 
   useEffect(() => {
     if (user?.userID) {
       fetchBookings();
-      setLoading(false);
     }
-  }, [user?.userID]);
+  }, [user?.userID, fetchBookings]);
 
 
   const handleViewDetails = (booking: Booking) => {
@@ -215,13 +232,59 @@ export default function HistoryPage() {
               ✕
             </button>
 
-            <h2 className="text-2xl font-semibold mb-4">Chi tiết đặt sân</h2>
+            <div className="max-w-md mx-auto bg-white shadow-lg rounded-xl p-6 space-y-4 border border-gray-200">
+              <h2 className="text-xl font-bold text-gray-800 mb-2">Thông tin đặt sân</h2>
 
-            <p><strong>Loại đặt:</strong> {selectedBooking.booking_type === "WEEKLY" ? "Đặt theo tuần" :
-              selectedBooking.booking_type === "CASUAL" ? "Đặt lẻ" : "Giải đấu"}</p>
+              <div className="flex justify-between">
+                <span className="font-semibold text-gray-600">Loại đặt:</span>
+                <span className="text-gray-800">
+                  {selectedBooking.booking_type === "WEEKLY"
+                    ? "Đặt theo tuần"
+                    : selectedBooking.booking_type === "CASUAL"
+                      ? "Đặt lẻ"
+                      : "Giải đấu"}
+                </span>
+              </div>
 
-            <p><strong>Trạng thái:</strong> {selectedBooking.status}</p>
-            <p><strong>Ngày đặt:</strong> {format(selectedBooking.booking_date, "dd-MM-yyyy")}</p>
+              <div className="flex justify-between">
+                <span className="font-semibold text-gray-600">Trạng thái:</span>
+                <span className="text-gray-800">{selectedBooking.status}</span>
+              </div>
+
+              <div className="flex justify-between">
+                <span className="font-semibold text-gray-600">Ngày đặt:</span>
+                <span className="text-gray-800">{format(selectedBooking.booking_date, "dd-MM-yyyy")}</span>
+              </div>
+
+              <div className="flex justify-between">
+                <span className="font-semibold text-gray-600">Loại sân:</span>
+                <span className="text-gray-800">
+                  {selectedBooking.court?.type === "INDOOR" ? "Trong Nhà" : "Ngoài Trời"}
+                </span>
+              </div>
+
+              <div className="flex justify-between">
+                <span className="font-semibold text-gray-600">Tên sân:</span>
+                <span className="text-yellow-600 font-medium">
+                  {selectedBooking.court?.name|| "không xác định"}
+                </span>
+              </div>
+
+              <div className="flex justify-between">
+                <span className="font-semibold text-gray-600">Tiền cọc:</span>
+                <span className="text-green-600 font-medium">
+                  {selectedBooking.deposit_amount.toLocaleString()} VNĐ
+                </span>
+              </div>
+
+              <div className="flex justify-between">
+                <span className="font-semibold text-gray-600">Tổng tiền:</span>
+                <span className="text-red-600 font-bold">
+                  {selectedBooking.total_price.toLocaleString()} VNĐ
+                </span>
+              </div>
+            </div>
+
 
 
 
@@ -267,11 +330,11 @@ export default function HistoryPage() {
                         const slotsForDay = selectedBooking.bookingSlots.filter(
                           (bs) => bs.is_recurring && bs.recurring_day === parseInt(day)
                         );
-                        
+
                         const startDate = slotsForDay.length
-                        ? new Date(Math.min(...slotsForDay.map(bs => new Date(bs.date).getTime())))
-                        : new Date(selectedBooking.booking_date);
-                        
+                          ? new Date(Math.min(...slotsForDay.map(bs => new Date(bs.date).getTime())))
+                          : new Date(selectedBooking.booking_date);
+
                         console.log("selectedBooking", startDate);
 
 
@@ -282,12 +345,22 @@ export default function HistoryPage() {
                         const dayLabel = jsTargetDay === 0 ? "Chủ nhật" : `Thứ ${jsTargetDay + 1}`;
 
                         return (
-                          <div key={i} className="border p-2 rounded mb-2 bg-gray-50">
-                            <p><strong>Đặt hằng tuần:</strong> {dayLabel}</p>
-                            <p><strong>Giờ:</strong> {earliest.slice(0, 5)} - {latest.slice(0, 5)}</p>
-                            <p><strong>Số tuần:</strong> {firstSlot.num_weeks}</p>
-                            <p className="text-sm text-gray-600 mt-1">Các ngày dự kiến:</p>
-                            <ul className="list-disc ml-5 text-sm">
+                          <div
+                            key={i}
+                            className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 mb-4 hover:shadow-md transition-shadow"
+                          >
+                            <div className="flex justify-between items-center mb-2">
+                              <h3 className="font-semibold text-gray-800 text-lg">Đặt hằng tuần: {dayLabel}</h3>
+                              <span className="text-sm text-gray-500">Số tuần: {firstSlot.num_weeks}</span>
+                            </div>
+
+                            <div className="flex justify-between mb-2">
+                              <span className="font-medium text-gray-600">Giờ:</span>
+                              <span className="text-gray-800">{earliest.slice(0, 5)} - {latest.slice(0, 5)}</span>
+                            </div>
+
+                            <p className="text-sm text-gray-500 mb-1">Các ngày dự kiến:</p>
+                            <ul className="list-disc ml-5 space-y-1 text-sm text-gray-700">
                               {Array.from({ length: firstSlot.num_weeks || 0 }, (_, idx) => {
                                 const date = new Date(startDate);
                                 date.setDate(date.getDate() + idx * 7);
@@ -295,15 +368,29 @@ export default function HistoryPage() {
                               })}
                             </ul>
                           </div>
+
                         );
                       })}
 
                       {singleSlots.map((bs, idx) => (
-                        <div key={idx} className="border p-2 rounded mb-2 bg-gray-50">
-                          <p><strong>Ngày:</strong> {format(selectedBooking.booking_date, "dd-MM-yyyy")}</p>
-                          <p><strong>Giờ:</strong> {`${bs.slot.start_time.slice(0, 5)} - ${bs.slot.end_time.slice(0, 5)}`}</p>
+                        <div
+                          key={idx}
+                          className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 mb-3 hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex justify-between mb-2">
+                            <span className="font-medium text-gray-600">Ngày:</span>
+                            <span className="text-gray-800">{format(selectedBooking.booking_date, "dd-MM-yyyy")}</span>
+                          </div>
+
+                          <div className="flex justify-between">
+                            <span className="font-medium text-gray-600">Giờ:</span>
+                            <span className="text-gray-800">
+                              {`${bs.slot.start_time.slice(0, 5)} - ${bs.slot.end_time.slice(0, 5)}`}
+                            </span>
+                          </div>
                         </div>
                       ))}
+
                     </>
                   );
                 }
@@ -319,11 +406,11 @@ export default function HistoryPage() {
                         const slotsForDay = selectedBooking.bookingSlots.filter(
                           (bs) => bs.is_recurring && bs.recurring_day === parseInt(day)
                         );
-                        
+
                         const startDate = slotsForDay.length
-                        ? new Date(Math.min(...slotsForDay.map(bs => new Date(bs.date).getTime())))
-                        : new Date(selectedBooking.booking_date);
-                        
+                          ? new Date(Math.min(...slotsForDay.map(bs => new Date(bs.date).getTime())))
+                          : new Date(selectedBooking.booking_date);
+
                         console.log("selectedBooking", startDate);
 
 
@@ -334,9 +421,13 @@ export default function HistoryPage() {
                         const dayLabel = jsTargetDay === 0 ? "Chủ nhật" : `Thứ ${jsTargetDay + 1}`;
 
                         return (
-                          <div key={i} className="border p-2 rounded mb-2 bg-gray-50">
-                            <p><strong>{dayLabel}</strong></p>
-                            <ul className="list-disc ml-5 text-sm">
+                          <div
+                            key={i}
+                            className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 mb-4 hover:shadow-md transition-shadow"
+                          >
+                            <h4 className="text-gray-800 font-semibold text-lg mb-2">{dayLabel}</h4>
+
+                            <ul className="list-disc ml-5 space-y-1 text-sm text-gray-700">
                               {Array.from({ length: firstSlot.num_weeks || 0 }, (_, idx) => {
                                 const date = new Date(startDate);
                                 date.setDate(date.getDate() + idx * 7);
@@ -348,6 +439,7 @@ export default function HistoryPage() {
                               })}
                             </ul>
                           </div>
+
                         );
                       })}
                     </>
@@ -357,17 +449,30 @@ export default function HistoryPage() {
                   return (
                     <>
                       {selectedBooking.bookingSlots && selectedBooking.bookingSlots.length > 0 && (
-                        <div className="border p-2 rounded mb-2 bg-gray-50">
-                          <p><strong>Ngày: </strong> {format(selectedBooking.booking_date, "dd-MM-yyyy")}</p>
-                          <p><strong>Giờ: </strong>
-                            {(() => {
-                              const startTimes = selectedBooking.bookingSlots.map(bs => bs.slot.start_time).sort();
-                              const endTimes = selectedBooking.bookingSlots.map(bs => bs.slot.end_time).sort().reverse();
-                              return `${startTimes[0].slice(0, 5)} - ${endTimes[0].slice(0, 5)}`;
-                            })()}
-                          </p>
+                        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 mb-3 hover:shadow-md transition-shadow">
+                          <div className="flex justify-between mb-2">
+                            <span className="font-medium text-gray-600">Ngày:</span>
+                            <span className="text-gray-800">{format(selectedBooking.booking_date, "dd-MM-yyyy")}</span>
+                          </div>
+
+                          <div className="flex justify-between">
+                            <span className="font-medium text-gray-600">Giờ:</span>
+                            <span className="text-gray-800">
+                              {(() => {
+                                const startTimes = selectedBooking.bookingSlots
+                                  .map(bs => bs.slot.start_time)
+                                  .sort();
+                                const endTimes = selectedBooking.bookingSlots
+                                  .map(bs => bs.slot.end_time)
+                                  .sort()
+                                  .reverse();
+                                return `${startTimes[0].slice(0, 5)} - ${endTimes[0].slice(0, 5)}`;
+                              })()}
+                            </span>
+                          </div>
                         </div>
                       )}
+
                     </>
                   );
                 }

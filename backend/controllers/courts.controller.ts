@@ -113,3 +113,32 @@ export const getAllTheMultiplierOfTheCourtType = async (req: Request, res: Respo
         res.status(500).json({ error: "Lỗi khi lấy hệ số nhân" });
     }
 }
+
+type CourtType = "INDOOR" | "OUTDOOR";
+
+export const getAvailableCourtsByType = async (req: Request, res: Response) => {
+    try {
+      const { type } = req.params;
+  
+      if (!type) {
+        return res.status(400).json({ error: "Chưa có loại sân" });
+      }
+  
+      const courts = await prisma.courts.findMany({
+        where: {
+          type: type as CourtType,
+          status: "AVAILABLE", 
+        },
+      });
+  
+      if (!courts || courts.length === 0) {
+        return res.status(404).json({ error: "Không có sân trống nào" });
+      }
+  
+      res.json(courts);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Lỗi khi lấy danh sách sân trống" });
+    }
+  };
+  

@@ -24,10 +24,10 @@ enum BookingType {
 }
 
 enum CourtStatus {
-  AVAILABLE // Sân trống
-  OCCUPIED //đang có người chơi
-  MAINTENANCE // bảo trì
-  CLOSED // ngưng hoạt động
+  AVAILABLE 
+  OCCUPIED 
+  MAINTENANCE 
+  CLOSED 
 }
 
 enum CourtType {
@@ -35,30 +35,23 @@ enum CourtType {
   INDOOR
 }
 
-enum MatchStatus {
-  SCHEDULED
-  ONGOING
-  FINISHED
-  CANCELED
-}
-
 
 enum PaymentStatus {
-  PENDING // Chờ thanh toán
-  PARTIALLY_PAID // Đã thanh toán một phần
-  PAID // Đã thanh toán đủ
-  FAILED // Thanh toán thất bại
-  REFUNDED // Đã hoàn tiền
-  CANCELLED // Đã hủy giao dịch
+  PENDING 
+  PARTIALLY_PAID 
+  PAID 
+  FAILED 
+  REFUNDED 
+  CANCELLED
 }
 
 enum PaymentMethod {
-  CASH // Tiền mặt tại quầy
-  BANK_TRANSFER // Chuyển khoản ngân hàng
-  CREDIT_CARD // Thẻ tín dụng / ghi nợ
-  MOMO // Ví MoMo
-  ZALOPAY // Ví ZaloPay
-  VNPAY // Thanh toán qua VNPAY
+  CASH 
+  BANK_TRANSFER
+  CREDIT_CARD 
+  MOMO
+  ZALOPAY 
+  VNPAY 
 }
 
 // ================= MODELS =================
@@ -88,7 +81,7 @@ model Users {
 
   bookings   Bookings[]
   feedbacks   Feedbacks[]
-  teamMember TeamMembers[]
+  tournaments Tournaments[]
 }
 
 model Courts {
@@ -103,7 +96,6 @@ model Courts {
 
   bookings          Bookings[]
   feedbacks          Feedbacks[]
-  tournamentMatches TournamentMatches[]
 }
 
 model Slots {
@@ -125,14 +117,15 @@ model Bookings {
   total_price    Float
   deposit_amount Float
   booking_type   BookingType   @default(CASUAL)
-  court_id       String?
+  court_id       String
   user_id        String?
   phone_user     String?
-  discount      Decimal?  @db.Decimal(4, 2)
+  discount       Decimal?      @db.Decimal(4, 2)
+  note           String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  court       Courts?       @relation(fields: [court_id], references: [courtID])
+  court       Courts       @relation(fields: [court_id], references: [courtID])
   user        Users?         @relation(fields: [user_id], references: [userID])
   payments    Payments[]
   bookingSlots BookingSlots[]
@@ -144,7 +137,7 @@ model BookingSlots {
   slot_id       String
   date          DateTime
   is_recurring  Boolean
-  recurring_day Int? //cho phép chọn nhiều ngày trong tuần
+  recurring_day Int?
   num_weeks     Int?
 
   booking Bookings @relation(fields: [booking_id], references: [bookingID])
@@ -181,77 +174,24 @@ model Tournaments {
   tournamentID String   @id @default(uuid())
   name         String
   start_day    DateTime
-  end_day      DateTime
   description  String?
   status       String
   max_teams    Int
-  prize        Float?
+  user_id      String
+  image        String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  leaderBoards      LeaderBoards[]
-  tournamentMatches TournamentMatches[]
+  user  Users  @relation(fields: [user_id], references: [userID])
 }
 
-model TournamentTeams {
-  tournamentTeamID String   @id @default(uuid())
-  team_name        String
-  member_count     Int
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+model Blogs {
+  blogID      String @id @default(uuid())
+  title       String 
+  content     String
+  image       String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
-  matchesAsTeam1  TournamentMatches[] @relation("Team1")
-  matchesAsTeam2  TournamentMatches[] @relation("Team2")
-  matchesAsWinner TournamentMatches[] @relation("WinnerTeam")
-  members         TeamMembers[]
 }
 
-model TeamMembers {
-  teamMemberID       String   @id @default(uuid())
-  tournament_team_id String
-  user_id            String
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-
-  tournamentTeam TournamentTeams @relation(fields: [tournament_team_id], references: [tournamentTeamID])
-  user           Users           @relation(fields: [user_id], references: [userID])
-}
-
-model TournamentMatches {
-  tournamentMatchID String   @id @default(uuid())
-  tournament_id     String
-  team1_id          String
-  team2_id          String
-  court_id          String?
-  score_team1       Int?
-  score_team2       Int?
-  status            String
-  round             Int
-  start_time        DateTime
-  end_time          DateTime
-  winner_team_id    String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  tournament Tournaments      @relation(fields: [tournament_id], references: [tournamentID])
-  team1      TournamentTeams  @relation("Team1", fields: [team1_id], references: [tournamentTeamID])
-  team2      TournamentTeams  @relation("Team2", fields: [team2_id], references: [tournamentTeamID])
-  winnerTeam TournamentTeams? @relation("WinnerTeam", fields: [winner_team_id], references: [tournamentTeamID])
-  court      Courts?          @relation(fields: [court_id], references: [courtID])
-}
-
-model LeaderBoards {
-  leaderBoardID  String   @id @default(uuid())
-  tournament_id  String
-  team_id        String
-  matches_played Int
-  wins           Int
-  losses         Int
-  draws          Int
-  points         Int
-  rank           Int
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  tournament Tournaments @relation(fields: [tournament_id], references: [tournamentID])
-}

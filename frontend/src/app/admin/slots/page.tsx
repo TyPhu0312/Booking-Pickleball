@@ -8,22 +8,14 @@ import TimePicker from "react-time-picker";
 import "react-time-picker/dist/TimePicker.css";
 
 interface SlotStatus {
-  slot_id: number;
+  slot_id: string;
   slot_name: string;
   start_time?: string | null;
   end_time?: string | null;
   price: number;
-  totalCourts: number;
+  totalCourts: Record<string, number>;
   bookedCourts: number;
-  availableCourts: number;
-
-}
-interface Slot {
-  slotID: number;
-  slot_name: string;
-  start_time: string;
-  end_time: string;
-  price: number;
+  availableCourts: Record<string, number>;
 }
 
 export default function SlotsPage() {
@@ -39,9 +31,10 @@ export default function SlotsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`http://localhost:5000/api/slots/getSlotStatusByDate/${selectedDate}`);
+      const res = await fetch(`http://localhost:5000/api/slots/getSlotStatusByOneDate/${selectedDate}`);
       if (!res.ok) throw new Error("Lỗi khi tải dữ liệu slot");
       const data = await res.json();
+      
       setSlotsStatus(data.slots || []);
     } catch (err: any) {
       setError(err.message);
@@ -50,7 +43,6 @@ export default function SlotsPage() {
     }
   };
 
-
   useEffect(() => {
     fetchSlotsByDate();
     const interval = setInterval(fetchSlotsByDate, 10000); 
@@ -58,12 +50,15 @@ export default function SlotsPage() {
   }, [selectedDate]);
 
   const handleExportExcel = () => {
-    const data = slotsStatus.map((slotST) => ({
-      "Khung giờ": `${slotST.start_time} - ${slotST.end_time}`,
-      "Giá": slotST.price.toLocaleString() + "đ",
-      "Tổng sân": slotST.totalCourts,
-      "Sân đã đặt": slotST.bookedCourts,
-      "Sân còn trống": slotST.availableCourts,
+    const data = slotsStatus.map(slot => ({
+      "Tên Slot": slot.slot_name,
+      "Khung giờ": `${slot.start_time} - ${slot.end_time}`,
+      "Giá": slot.price.toLocaleString() + "đ",
+      "Tổng sân INDOOR": slot.totalCourts.INDOOR,
+      "Tổng sân OUTDOOR": slot.totalCourts.OUTDOOR,
+      "Sân đã đặt": slot.bookedCourts,
+      "Sân còn trống INDOOR": slot.availableCourts.INDOOR,
+      "Sân còn trống OUTDOOR": slot.availableCourts.OUTDOOR,
       "Ngày": selectedDate,
     }));
 
@@ -72,7 +67,6 @@ export default function SlotsPage() {
     XLSX.utils.book_append_sheet(wb, ws, "Slots");
     XLSX.writeFile(wb, `Slot_Status_${selectedDate}.xlsx`);
   };
-
 
   const openAddModal = () => {
     setEditing(false);
@@ -106,7 +100,7 @@ export default function SlotsPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!confirm("Bạn có chắc muốn xoá slot này?")) return;
     try {
       const res = await fetch(`http://localhost:5000/api/slots/delete/${id}`, { method: "DELETE" });
@@ -157,87 +151,51 @@ export default function SlotsPage() {
           <table className="w-full">
             <thead className="bg-linear-to-r from-gray-50 to-gray-100">
               <tr>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">
-                  Tên Slot
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">
-                  Khung giờ
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">
-                  Giá/Giờ
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase">
-                  Tổng sân
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase">
-                  Đã đặt
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase">
-                  Còn trống
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Tên Slot</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Khung giờ</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Giá/Giờ</th>
+                <th className="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase">Tổng sân INDOOR</th>
+                <th className="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase">Tổng sân OUTDOOR</th>
+                <th className="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase">Đã đặt</th>
+                <th className="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase">Còn trống INDOOR</th>
+                <th className="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase">Còn trống OUTDOOR</th>
                 <th className="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase">Hành Động</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {slotsStatus.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-6 text-gray-500">
+                  <td colSpan={9} className="text-center py-6 text-gray-500">
                     Không có dữ liệu cho ngày này
                   </td>
                 </tr>
               ) : (
-                slotsStatus.sort((a, b) => parseInt(a.slot_name.replace("Slot ", "")) - parseInt(b.slot_name.replace("Slot ", "")))
-                .map((slot) => (
-                  <tr key={slot.slot_id} className="hover:bg-gray-50 transition">
-                    <td className="px-6 py-4 font-medium text-gray-800">
-                      {slot.slot_name}
-                    </td>
-
-                    <td className="px-6 py-4 flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-blue-600" />
-                      <span className="font-medium">
-                        {slot.start_time} - {slot.end_time}
-                      </span>
-                    </td>
-
-                    <td className="px-6 py-4 gap-1">
-                    <span className="font-semibold flex items-center">
-                    <DollarSign className="w-4 h-4 text-green-600" />
-                        {slot.price.toLocaleString()}đ 
-                      </span>
-                    </td>
-          
-                    <td className="px-6 py-4 text-center font-medium text-gray-800">
-                      {slot.totalCourts}
-                    </td>
-
-                    <td className="px-6 py-4 text-center font-semibold text-orange-600">
-                      {slot.bookedCourts}
-                    </td>
-
-                    <td
-                      className={`px-6 py-4 text-center font-bold text-lg ${slot.availableCourts > 0 ? "text-green-600" : "text-red-600"
-                        }`}
-                    >
-                      {slot.availableCourts}
-                    </td>
-
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <button
-                        className="text-blue-600 hover:text-blue-900"
-                        onClick={() => openEditModal(slot)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(slot.slot_id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                slotsStatus
+                  .sort((a, b) => parseInt(a.slot_name.replace("Slot ", "")) - parseInt(b.slot_name.replace("Slot ", "")))
+                  .map((slot) => (
+                    <tr key={slot.slot_id} className="hover:bg-gray-50 transition">
+                      <td className="px-6 py-4 font-medium text-gray-800">{slot.slot_name}</td>
+                      <td className="px-6 py-4 flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-blue-600" />
+                        <span className="font-medium">{slot.start_time} - {slot.end_time}</span>
+                      </td>
+                      <td className="px-6 py-4 gap-1">
+                        <span className="font-semibold flex items-center">
+                          <DollarSign className="w-4 h-4 text-green-600" />
+                          {slot.price.toLocaleString()}đ 
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-center font-medium text-gray-800">{slot.totalCourts.INDOOR}</td>
+                      <td className="px-6 py-4 text-center font-medium text-gray-800">{slot.totalCourts.OUTDOOR}</td>
+                      <td className="px-6 py-4 text-center font-semibold text-orange-600">{slot.bookedCourts}</td>
+                      <td className={`px-6 py-4 text-center font-bold ${slot.availableCourts.INDOOR > 0 ? "text-green-600" : "text-red-600"}`}>{slot.availableCourts.INDOOR}</td>
+                      <td className={`px-6 py-4 text-center font-bold ${slot.availableCourts.OUTDOOR > 0 ? "text-green-600" : "text-red-600"}`}>{slot.availableCourts.OUTDOOR}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                        <button className="text-blue-600 hover:text-blue-900" onClick={() => openEditModal(slot)}><Edit className="w-4 h-4" /></button>
+                        <button className="text-red-600 hover:text-red-900" onClick={() => handleDelete(slot.slot_id)}><Trash2 className="w-4 h-4" /></button>
+                      </td>
+                    </tr>
+                  ))
               )}
             </tbody>
           </table>
@@ -247,9 +205,7 @@ export default function SlotsPage() {
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-xl w-full max-w-md relative shadow-lg">
-            <button onClick={() => setShowAddModal(false)} className="absolute top-3 right-3 text-gray-500 hover:text-gray-700">
-              <X />
-            </button>
+            <button onClick={() => setShowAddModal(false)} className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"><X /></button>
             <h2 className="text-xl font-bold mb-4">{editing ? "Sửa Slot" : "Thêm Slot"}</h2>
             <div className="space-y-3">
               <input
@@ -290,6 +246,5 @@ export default function SlotsPage() {
         </div>
       )}
     </div>
-
   );
 }
