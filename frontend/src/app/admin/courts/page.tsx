@@ -129,7 +129,7 @@ export default function CourtsPage() {
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Tên Sân</th>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Loại</th>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Trạng Thái</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Hệ Số Nhân</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Hệ Số Tiền</th>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Hành Động</th>
             </tr>
           </thead>
