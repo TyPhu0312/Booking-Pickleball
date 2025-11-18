@@ -6,6 +6,7 @@ import {
     updateSlot,
     deleteSlot,
     getSlotStatusByDate,
+    getSlotStatusByOneDate,
     } from "../controllers/slots.controller";
 
 import { verifyToken } from "../middlewares/auth.middleware";
@@ -17,6 +18,7 @@ router.get("/getSlotById/:id", getSlotById);
 router.post("/create", createSlot);
 router.put("/update/:id", updateSlot);
 router.delete("/delete/:id", deleteSlot);
-router.get("/getSlotStatusByDate/:date", getSlotStatusByDate);
+router.get("/getSlotStatusByDate/:start_day/:end_day", getSlotStatusByDate);
+router.get("/getSlotStatusByOneDate/:date", getSlotStatusByOneDate);
 
 export default router;

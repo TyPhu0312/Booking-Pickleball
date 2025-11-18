@@ -16,6 +16,7 @@ export const getBookings = async (req: Request, res: Response) => {
                 },
                 payments: true,
             },
+            orderBy: { createdAt: "desc" },
         });
 
         res.json(bookings);
@@ -59,11 +60,11 @@ interface SlotInput {
 }
 export const createBooking = async (req: Request, res: Response) => {
     try {
-        const { user_id, phone_user, booking_date, status, total_price, deposit_amount, booking_type, discount, slots } = req.body;
+        const { user_id, phone_user, booking_date, status, total_price, deposit_amount, booking_type, discount, court_id, note, slots } = req.body;
 
 
         const newBooking = await prisma.bookings.create({
-            data: { user_id, phone_user, booking_date, status, total_price, deposit_amount, booking_type, discount },
+            data: { user_id, phone_user, booking_date, status, total_price, deposit_amount, booking_type, discount, note, court_id },
         });
         const newBookingSlots = slots.map((slot: SlotInput) => ({
             booking_id: newBooking.bookingID,
@@ -89,11 +90,11 @@ export const createBooking = async (req: Request, res: Response) => {
 export const updateBooking = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { user_id, booking_date, status, total_price, deposit_amount, booking_type, discount, slots } = req.body;
+        const { user_id, booking_date, status, total_price, deposit_amount, booking_type, discount, court_id, note, slots } = req.body;
 
         const updatedBooking = await prisma.bookings.update({
             where: { bookingID: id },
-            data: { user_id, booking_date, status, total_price, deposit_amount, booking_type, discount },
+            data: { user_id, booking_date, status, total_price, deposit_amount, booking_type, court_id, note, discount },
         });
 
         await prisma.bookingSlots.deleteMany({
@@ -142,18 +143,24 @@ export const updateBookingStatus = async (req: Request, res: Response) => {
                 data: { status: "AVAILABLE" },
             });
         }
+        else if (status === "CHECKED_IN") {
+            await prisma.courts.update({
+                where: { courtID: booking.court_id },
+                data: { status: "OCCUPIED" },
+            });
+        }
         else if (courtID) {
             const court = await prisma.courts.findUnique({
-                where: { courtID: courtID },
+                where: { courtID: courtID , status: "AVAILABLE"},
             });
 
             if (!court) {
                 return res.status(404).json({ message: "Không tìm thấy sân" });
             }
 
-            await prisma.courts.update({
-                where: { courtID: courtID },
-                data: { status: "OCCUPIED" },
+            await prisma.bookings.update({
+                where: { bookingID: id },
+                data: { court_id: courtID },
             });
         }
 
@@ -175,7 +182,7 @@ export const updateBookingStatus = async (req: Request, res: Response) => {
                 payments: true,
             },
         });
-        
+
         res.json(updatedBooking,);
     }
     catch (error) {
@@ -186,51 +193,52 @@ export const updateBookingStatus = async (req: Request, res: Response) => {
 
 export const getBookingByUserIdOrPhone = async (req: Request, res: Response) => {
     try {
-      const { user_id } = req.params;
-  
-      if (!user_id ) {
-        return res.status(400).json({ error: "Vui lòng cung cấp user ID hoặc số điện thoại" });
-      }
+        const { user_id } = req.params;
 
-      const includeConfig = {
-        user: true,
-        court: true,
-        bookingSlots: {
-          include: {
-            slot: true,
-          },
-        },
-        payments: true,
-      };
-  
-      let bookings;
-  
+        if (!user_id) {
+            return res.status(400).json({ error: "Vui lòng cung cấp user ID hoặc số điện thoại" });
+        }
+
+        const includeConfig = {
+            user: true,
+            court: true,
+            bookingSlots: {
+                include: {
+                    slot: true,
+                },
+            },
+            payments: true,
+        };
+
+        let bookings;
+
         bookings = await prisma.bookings.findMany({
             where: {
-            user_id: user_id,
+                user_id: user_id,
             },
             include: includeConfig,
+            orderBy: { createdAt: "desc" },
         });
-  
-      if (!bookings || bookings.length === 0) {
-        return res.status(404).json({ error: "Không tìm thấy đặt sân" });
-      }
-  
-      return res.status(200).json(bookings);
+
+        if (!bookings || bookings.length === 0) {
+            return res.status(404).json({ error: "Không tìm thấy đặt sân" });
+        }
+
+        return res.status(200).json(bookings);
     } catch (error) {
-      console.error(error);
-      return res.status(500).json({ error: "Lỗi khi lấy thông tin đặt sân" });
+        console.error(error);
+        return res.status(500).json({ error: "Lỗi khi lấy thông tin đặt sân" });
     }
-  };
-  
+};
+
 
 export const deleteBooking = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         await prisma.bookings.update({
-             where: { bookingID: id } ,
+            where: { bookingID: id },
             data: { status: "CANCELLED" }
-            });
+        });
         res.json({ message: "Đặt sân đã được huỷ" });
     } catch (error) {
         res.status(500).json({ error: "Lỗi khi huỷ đặt sân" });
