@@ -32,12 +32,13 @@ export const createCourt = async (req: Request, res: Response) => {
         });
 
         res.status(201).json(newCourt);
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const err = error as { message?: string; meta?: unknown };
         console.error("Error creating court:", error);
         res.status(500).json({
             error: "Lỗi khi tạo sân",
-            message: error.message,
-            meta: error.meta,
+            message: err.message,
+            meta: err.meta,
         });
     }
 };
@@ -62,9 +63,10 @@ export const updateCourt = async (req: Request, res: Response) => {
         });
       
         res.json(updatedCourt);
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const err = error as { message?: string };
         console.error("Error updating court:", error);
-        res.status(500).json({ error: "Lỗi khi cập nhật sân", message: error.message });
+        res.status(500).json({ error: "Lỗi khi cập nhật sân", message: err.message });
       }      
 };
 

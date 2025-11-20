@@ -45,11 +45,12 @@ export const createSlot = async (req: Request, res: Response) => {
         });
 
         res.status(201).json(newSlot);
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const err = error as { message?: string; meta?: unknown };
         res.status(500).json({
             error: "Lỗi khi tạo khung giờ",
-            message: error.message,
-            meta: error.meta,
+            message: err.message,
+            meta: err.meta,
         });
     }
 }
@@ -211,7 +212,18 @@ export const getSlotStatusByDate = async (req: Request, res: Response) => {
 
         const slots = await prisma.slots.findMany();
 
-        const result: Record<string, any[]> = {};
+        interface SlotStatus {
+            slot_id: string;
+            slot_name: string;
+            start_time: string;
+            end_time: string;
+            price: number;
+            totalCourts: Record<string, number>;
+            bookedCourts: number;
+            availableCourts: Record<string, number>;
+        }
+
+        const result: Record<string, SlotStatus[]> = {};
 
         for (let d = startDate; d <= endDate; d.setDate(d.getDate() + 1)) {
             const formattedDate = d.toISOString().split("T")[0];

@@ -79,11 +79,12 @@ export const createBooking = async (req: Request, res: Response) => {
             data: newBookingSlots,
         });
         res.status(201).json(newBooking);
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const err = error as { message?: string; meta?: unknown };
         res.status(500).json({
             error: "Lỗi khi tạo đặt sân",
-            message: error.message,
-            meta: error.meta,
+            message: err.message,
+            meta: err.meta,
         });
     }
 }

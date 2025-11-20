@@ -70,11 +70,12 @@ export const createUser = async (req: Request, res: Response) => {
         });
 
         res.status(201).json(newUser);
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const err = error as { message?: string };
         console.error("Error creating user:", error);
         res.status(500).json({
             error: "Lỗi khi tạo người dùng",
-            message: error.message,
+            message: err.message,
         });
     }
 };
@@ -104,9 +105,10 @@ export const updateUser = async (req: Request, res: Response) => {
         });
 
         res.json(updatedUser);
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const err = error as { message?: string };
         console.error("Error updating user:", error);
-        res.status(500).json({ error: "Lỗi khi cập nhật người dùng", message: error.message });
+        res.status(500).json({ error: "Lỗi khi cập nhật người dùng", message: err.message });
     }
 };
 
