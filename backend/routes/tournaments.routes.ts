@@ -10,6 +10,7 @@ getTournamentStats,
 getActiveTournaments,
 getUpcomingTournaments,
 getAllTournaments,
+getUpcomingTournamentsByUser,
 } from "../controllers/tournaments.controller";
 
 const router = express.Router();
@@ -17,6 +18,7 @@ const router = express.Router();
 router.get("/stats", getTournamentStats);
 router.get("/active", getActiveTournaments);
 router.get("/upcoming", getUpcomingTournaments);
+router.get("/upcoming/user/:userId", getUpcomingTournamentsByUser);
 router.get("/all", getAllTournaments);
 router.post("/create", createTournament);
 router.get("/getTournamentById/:id", getTournamentById);

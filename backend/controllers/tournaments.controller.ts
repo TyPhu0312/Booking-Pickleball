@@ -330,3 +330,24 @@ export const getTournamentStats = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Lỗi khi lấy thống kê giải đấu" });
   }
 };
+
+export const getUpcomingTournamentsByUser = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const now = new Date();
+    
+    const tournaments = await prisma.tournaments.findMany({
+      where: {
+        user_id: userId,
+        status: "UPCOMING",
+        start_day: { gt: now },
+      },
+      orderBy: { start_day: "asc" },
+    });
+    
+    res.json(tournaments);
+  } catch (error) {
+    console.error("Error fetching user's upcoming tournaments:", error);
+    res.status(500).json({ error: "Lỗi khi lấy giải đấu sắp diễn ra của người dùng" });
+  }
+};
