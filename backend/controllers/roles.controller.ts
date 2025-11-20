@@ -32,11 +32,12 @@ export const createRole = async (req: Request, res: Response) => {
         });
 
         res.status(201).json(newRole);
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const err = error as { message?: string };
         console.error("Error creating role:", error);
         res.status(500).json({
             error: "Lỗi khi tạo vai trò",
-            message: error.message,
+            message: err.message,
         });
     }
 };
@@ -57,9 +58,10 @@ export const updateRole = async (req: Request, res: Response) => {
         });
 
         res.json(updatedRole);
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const err = error as { message?: string };
         console.error("Error updating role:", error);
-        res.status(500).json({ error: "Lỗi khi cập nhật vai trò", message: error.message });
+        res.status(500).json({ error: "Lỗi khi cập nhật vai trò", message: err.message });
     }
 };
 

@@ -61,35 +61,32 @@ export default function EditBookingModal({ booking, onClose, onUpdate }: EditBoo
     const fetchAvailableCourts = async () => {
       setCheckingAvailability(true);
       try {
-        // Lấy tất cả các sân
+     
         const courtsResponse = await fetch(`${API_URL}/api/courts`);
         if (!courtsResponse.ok) return;
         const allCourts: Court[] = await courtsResponse.json();
 
-        // Lấy tất cả bookings trong cùng ngày
+      
         const bookingsResponse = await fetch(`${API_URL}/api/bookings`);
         if (!bookingsResponse.ok) return;
         const allBookings: Booking[] = await bookingsResponse.json();
 
-        // Lọc các sân cùng loại
+       
         const courtsOfSameType = allCourts.filter(c => c.type === booking.court.type);
 
-        // Kiểm tra từng sân xem có trống không
         const slotIds = booking.bookingSlots.map(bs => bs.slot.slotID);
         const bookingDate = booking.booking_date.split('T')[0];
 
         const availabilityChecks = courtsOfSameType.map(court => {
-          // Nếu là sân hiện tại, luôn cho phép
           if (court.courtID === booking.court.courtID) {
             return { court, available: true };
           }
 
-          // Kiểm tra xem sân có bị book trong cùng khung giờ không
           const courtBookings = allBookings.filter((b: Booking) => 
             b.court.courtID === court.courtID && 
             b.booking_date.startsWith(bookingDate) &&
             b.status !== "CANCELLED" &&
-            b.bookingID !== booking.bookingID // Bỏ qua booking hiện tại
+            b.bookingID !== booking.bookingID 
           );
 
           const isAvailable = slotIds.every(slotId => {

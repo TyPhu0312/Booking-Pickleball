@@ -28,8 +28,8 @@ export default function UsersPage() {
       if (!res.ok) throw new Error("Không thể tải danh sách người dùng");
       const data = await res.json();
       setUsers(data || []);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }
@@ -47,8 +47,8 @@ export default function UsersPage() {
       if (!res.ok) throw new Error("Xóa thất bại");
       alert("Xóa người dùng thành công");
       fetchUsers();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert((err as Error).message);
     }
   };
   return (

@@ -1,11 +1,45 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import Link from "next/link";
 import { Clock, MapPin, Users, Trophy, Calendar, ChevronRight, Star, Zap, Sparkles } from "lucide-react";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+interface Tournament {
+  tournamentID: string;
+  name: string;
+  start_day: string;
+  description: string | null;
+  status: string;
+  max_teams: number;
+  image: string | null;
+}
+
 export default function HomePage() {
+  const [upcomingTournaments, setUpcomingTournaments] = useState<Tournament[]>([]);
+  const [loadingTournaments, setLoadingTournaments] = useState(true);
+
+  useEffect(() => {
+    fetchUpcomingTournaments();
+  }, []);
+
+  const fetchUpcomingTournaments = async () => {
+    try {
+      setLoadingTournaments(true);
+      const res = await fetch(`${API_URL}/api/tournaments/upcoming`);
+      if (res.ok) {
+        const data = await res.json();
+        setUpcomingTournaments(data.slice(0, 3)); // Lấy 3 giải sắp tới
+      }
+    } catch (error) {
+      console.error("Error fetching upcoming tournaments:", error);
+    } finally {
+      setLoadingTournaments(false);
+    }
+  };
 
   const popularSlots = [
     { time: "6:00 - 9:00", label: "Buổi Sáng", price: 200000, bg: "from-orange-400 to-red-500" },
@@ -18,13 +52,6 @@ export default function HomePage() {
     { icon: <MapPin className="w-6 h-6" />, title: "Sân Đẹp - Hiện Đại", desc: "4 sân trong nhà, 4 sân ngoài trời" },
     { icon: <Users className="w-6 h-6" />, title: "Cộng Đồng Pickleball", desc: "Hàng trăm người chơi mỗi ngày" },
     { icon: <Trophy className="w-6 h-6" />, title: "Giải Đấu Hàng Tháng", desc: "Tham gia thi đấu, nhận quà" },
-  ];
-
-  const stats = [
-    { number: "8+", label: "Sân Chuyên Nghiệp" },
-    { number: "500+", label: "Thành Viên" },
-    { number: "100+", label: "Trận Đấu/Tuần" },
-    { number: "4.9★", label: "Đánh Giá" },
   ];
 
   return (
@@ -143,126 +170,102 @@ export default function HomePage() {
             <p className="text-xl text-gray-600">Tham gia ngay – Cơ hội nhận giải thưởng khủng!</p>
           </div>
 
-          <div className="max-w-5xl mx-auto">
-            <div className="relative rounded-3xl overflow-hidden shadow-2xl">
-              <div className="absolute inset-0 bg-linear-to-r from-purple-600 via-pink-600 to-red-600"></div>
-              
-              <div className="absolute top-10 right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-              <div className="absolute bottom-10 left-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
-              
-              <div className="relative p-12">
-                <div className="grid md:grid-cols-2 gap-12 items-center">
-                  <div className="text-white space-y-6">
-                    <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full border border-white/30">
-                      <Star className="w-4 h-4 text-yellow-300 fill-yellow-300" />
-                      <span className="text-sm font-semibold">Giải Đấu Chính Thức</span>
-                    </div>
-                    
-                    <h3 className="text-4xl lg:text-5xl font-black leading-tight">
-                      Giải Pickleball <br />
-                      Mùa Thu 2025
-                    </h3>
-                    
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3 text-lg">
-                        <Calendar className="w-5 h-5 text-yellow-300" />
-                        <span className="font-semibold">15 - 16 Tháng 11, 2025</span>
-                      </div>
-                      <div className="flex items-center gap-3 text-lg">
-                        <Users className="w-5 h-5 text-yellow-300" />
-                        <span className="font-semibold">16 đội tham gia</span>
-                      </div>
-                      <div className="flex items-center gap-3 text-lg">
-                        <Trophy className="w-5 h-5 text-yellow-300" />
-                        <span className="font-semibold">Giải thưởng: 20.000.000 VNĐ</span>
-                      </div>
-                    </div>
-
-                    <Link
-                      href="/tournaments/1"
-                      className="inline-flex items-center gap-3 bg-white text-purple-600 px-8 py-4 rounded-full font-bold text-lg hover:bg-yellow-300 hover:text-purple-700 transition-all shadow-2xl hover:shadow-yellow-300/50 hover:scale-105 mt-4"
-                    >
-                      Xem Chi Tiết
-                      <ChevronRight className="w-5 h-5" />
-                    </Link>
-                  </div>
-                  
-                  <div className="hidden md:flex items-center justify-center">
-                    <div className="relative">
-                      <div className="w-64 h-64 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center border-8 border-white/20">
-                        <Trophy className="w-32 h-32 text-yellow-300" />
-                      </div>
-                      <div className="absolute -top-4 -right-4 bg-yellow-300 text-purple-600 w-20 h-20 rounded-full flex items-center justify-center font-black text-2xl shadow-xl">
-                        20M
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          {loadingTournaments ? (
+            <div className="flex justify-center items-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="relative py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-linear-to-r from-emerald-600 via-teal-600 to-cyan-600"></div>
-        
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48Y2lyY2xlIGN4PSIzMCIgY3k9IjMwIiByPSIyIi8+PC9nPjwvZz48L3N2Zz4=')] opacity-40"></div>
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-yellow-400/20 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-emerald-400/20 rounded-full blur-3xl"></div>
-        </div>
-        
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-4xl mx-auto text-center text-white space-y-8">
-            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full border border-white/30">
-              <Sparkles className="w-4 h-4 text-yellow-300" />
-              <span className="text-sm font-semibold">Bắt Đầu Ngay Hôm Nay</span>
-            </div>
-            
-            <h2 className="text-5xl lg:text-6xl font-black leading-tight">
-              Sẵn Sàng Chơi <br className="hidden md:block" />
-              Pickleball?
-            </h2>
-            
-            <p className="text-2xl text-emerald-50 leading-relaxed">
-              Đặt sân ngay hôm nay – Miễn phí hủy trước 2 giờ!
-            </p>
-            
-            <div className="flex flex-wrap items-center justify-center gap-4">
-              <Link
-                href="/bookings"
-                className="inline-flex items-center gap-3 bg-white text-emerald-600 px-10 py-5 rounded-full font-black text-xl hover:bg-yellow-300 hover:text-emerald-700 transition-all shadow-2xl hover:shadow-yellow-300/50 hover:scale-105"
-              >
-                <Calendar className="w-7 h-7" />
-                Đặt Sân Ngay
-                <ChevronRight className="w-6 h-6" />
-              </Link>
-              
-              <Link
+          ) : upcomingTournaments.length === 0 ? (
+            <div className="max-w-3xl mx-auto text-center py-16">
+              <Trophy className="w-20 h-20 mx-auto text-gray-300 mb-4" />
+              <p className="text-xl text-gray-500">Chưa có giải đấu sắp tới</p>
+              <Link 
                 href="/tournaments"
-                className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-sm text-white px-10 py-5 rounded-full font-bold text-xl hover:bg-white/20 transition-all border-2 border-white/30"
+                className="inline-flex items-center gap-2 mt-6 text-purple-600 hover:text-purple-700 font-semibold"
               >
-                <Trophy className="w-7 h-7" />
-                Xem Giải Đấu
+                Xem tất cả giải đấu
+                <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
-            
-            <div className="pt-8 flex flex-wrap items-center justify-center gap-8 text-emerald-50">
-              {[
-                "✓ Miễn phí hủy trước 2h",
-                "✓ Thanh toán linh hoạt",
-                "✓ Sân chuẩn quốc tế",
-                "✓ Hỗ trợ 24/7",
-              ].map((item, i) => (
-                <div key={i} className="text-lg font-semibold">
-                  {item}
-                </div>
-              ))}
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+              {upcomingTournaments.map((tournament, index) => {
+                const gradients = [
+                  "from-purple-600 via-pink-600 to-red-600",
+                  "from-blue-600 via-indigo-600 to-purple-600",
+                  "from-emerald-600 via-teal-600 to-cyan-600",
+                ];
+                
+                return (
+                  <div
+                    key={tournament.tournamentID}
+                    className="group relative rounded-3xl overflow-hidden shadow-2xl hover:shadow-3xl transition-all duration-300 hover:-translate-y-2"
+                  >
+                    <div className={`absolute inset-0 bg-linear-to-r ${gradients[index % 3]}`}></div>
+                    
+                    <div className="absolute top-10 right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+                    <div className="absolute bottom-10 left-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+                    
+                    {tournament.image && (
+                      <div className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity">
+                        <img 
+                          src={tournament.image} 
+                          alt={tournament.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    
+                    <div className="relative p-8 text-white min-h-[400px] flex flex-col">
+                      <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/30 self-start mb-4">
+                        <Star className="w-4 h-4 text-yellow-300 fill-yellow-300" />
+                        <span className="text-sm font-semibold">Sắp diễn ra</span>
+                      </div>
+                      
+                      <h3 className="text-3xl font-black leading-tight mb-6 line-clamp-2 group-hover:scale-105 transition-transform">
+                        {tournament.name}
+                      </h3>
+                      
+                      <div className="space-y-3 mb-6 flex-1">
+                        <div className="flex items-center gap-3">
+                          <Calendar className="w-5 h-5 text-yellow-300" />
+                          <span className="font-semibold">
+                            {format(new Date(tournament.start_day), "dd/MM/yyyy")}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Users className="w-5 h-5 text-yellow-300" />
+                          <span className="font-semibold">{tournament.max_teams} đội</span>
+                        </div>
+                        {tournament.description && (
+                          <p className="text-sm text-white/80 mt-4 line-clamp-2">
+                            {tournament.description}
+                          </p>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center justify-between mt-auto">
+                        <div className="text-lg font-bold">
+                          20.000.000đ Giải Thưởng
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+          )}
+
+          <div className="text-center mt-12">
+            <Link
+              href="/tournaments"
+              className="inline-flex items-center gap-2 bg-linear-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-full font-bold text-lg hover:shadow-2xl hover:scale-105 transition-all"
+            >
+              Xem Tất Cả Giải Đấu
+              <ChevronRight className="w-5 h-5" />
+            </Link>
           </div>
         </div>
-      </section>
+      </section>      
     </main>
   );
 }
