@@ -2,7 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { Plus, Edit, Trash2, Clock, Calendar, DollarSign, FileDown, Save, X } from "lucide-react";
+import { Plus, Edit, Trash2, Clock, Calendar, DollarSign, FileDown } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import TimePicker from "react-time-picker";
 import "react-time-picker/dist/TimePicker.css";
@@ -36,8 +41,8 @@ export default function SlotsPage() {
       const data = await res.json();
       
       setSlotsStatus(data.slots || []);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }
@@ -81,33 +86,53 @@ export default function SlotsPage() {
   };
 
   const handleSave = async () => {
-    const method = editing ? "PUT" : "POST";
-    const url = editing
-      ? `http://localhost:5000/api/slots/update/${formData.slot_id}`
-      : "http://localhost:5000/api/slots/create";
-
     try {
+      if (!formData.slot_name || !formData.start_time || !formData.end_time || !formData.price) {
+        toast.error("Vui lòng điền đầy đủ thông tin");
+        return;
+      }
+
+      const method = editing ? "PUT" : "POST";
+      const url = editing
+        ? `http://localhost:5000/api/slots/update/${formData.slot_id}`
+        : "http://localhost:5000/api/slots/create";
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
-      if (!res.ok) throw new Error("Không thể lưu slot");
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Không thể lưu slot");
+      }
+
+      toast.success(editing ? "Cập nhật slot thành công!" : "Tạo slot thành công!");
       await fetchSlotsByDate();
       setShowAddModal(false);
-    } catch (err: any) {
-      alert(err.message);
+      setFormData({});
+    } catch (err: unknown) {
+      toast.error((err as Error).message || "Có lỗi xảy ra");
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Bạn có chắc muốn xoá slot này?")) return;
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Bạn có chắc muốn xoá slot "${name}"?`)) return;
+    
     try {
       const res = await fetch(`http://localhost:5000/api/slots/delete/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Không thể xoá slot");
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Không thể xoá slot");
+      }
+
+      toast.success("Xóa slot thành công!");
       fetchSlotsByDate();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      toast.error((err as Error).message || "Có lỗi xảy ra");
     }
   };
 
@@ -192,7 +217,7 @@ export default function SlotsPage() {
                       <td className={`px-6 py-4 text-center font-bold ${slot.availableCourts.OUTDOOR > 0 ? "text-green-600" : "text-red-600"}`}>{slot.availableCourts.OUTDOOR}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                         <button className="text-blue-600 hover:text-blue-900" onClick={() => openEditModal(slot)}><Edit className="w-4 h-4" /></button>
-                        <button className="text-red-600 hover:text-red-900" onClick={() => handleDelete(slot.slot_id)}><Trash2 className="w-4 h-4" /></button>
+                        <button className="text-red-600 hover:text-red-900" onClick={() => handleDelete(slot.slot_id, slot.slot_name)}><Trash2 className="w-4 h-4" /></button>
                       </td>
                     </tr>
                   ))
@@ -202,49 +227,85 @@ export default function SlotsPage() {
         </div>
       )}
 
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md relative shadow-lg">
-            <button onClick={() => setShowAddModal(false)} className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"><X /></button>
-            <h2 className="text-xl font-bold mb-4">{editing ? "Sửa Slot" : "Thêm Slot"}</h2>
-            <div className="space-y-3">
-              <input
-                type="text"
-                placeholder="Tên slot"
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editing ? "Chỉnh Sửa Slot" : "Thêm Slot Mới"}</DialogTitle>
+            <DialogDescription>
+              {editing ? "Cập nhật thông tin khung giờ" : "Nhập thông tin để tạo khung giờ mới"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="slot_name">Tên slot *</Label>
+              <Input
+                id="slot_name"
+                placeholder="VD: Slot 1"
                 value={formData.slot_name || ""}
                 onChange={(e) => setFormData({ ...formData, slot_name: e.target.value })}
-                className="w-full border p-2 rounded"
-              />
-              <TimePicker
-                value={formData.start_time}
-                onChange={(value) => setFormData({ ...formData, start_time: value || "" })}
-                disableClock={true}
-                format="HH:mm"
-              />
-              <TimePicker
-                value={formData.end_time}
-                onChange={(value) => setFormData({ ...formData, end_time: value || "" })}
-                disableClock={true}
-                format="HH:mm"
-              />
-              <input
-                type="number"
-                placeholder="Giá / giờ"
-                value={formData.price || ""}
-                onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
-                className="w-full border p-2 rounded"
               />
             </div>
-            <button
-              onClick={handleSave}
-              className="mt-4 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
-            >
-              <Save className="inline w-4 h-4 mr-2" />
-              Lưu
-            </button>
+
+            <div>
+              <Label htmlFor="start_time">Giờ bắt đầu *</Label>
+              <div className="mt-1">
+                <TimePicker
+                  value={formData.start_time}
+                  onChange={(value) => setFormData({ ...formData, start_time: value || "" })}
+                  disableClock={true}
+                  format="HH:mm"
+                  className="w-full"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Chọn giờ bắt đầu khung giờ</p>
+            </div>
+
+            <div>
+              <Label htmlFor="end_time">Giờ kết thúc *</Label>
+              <div className="mt-1">
+                <TimePicker
+                  value={formData.end_time}
+                  onChange={(value) => setFormData({ ...formData, end_time: value || "" })}
+                  disableClock={true}
+                  format="HH:mm"
+                  className="w-full"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Chọn giờ kết thúc khung giờ</p>
+            </div>
+
+            <div>
+              <Label htmlFor="price">Giá / giờ (VNĐ) *</Label>
+              <Input
+                id="price"
+                type="number"
+                min="0"
+                step="1000"
+                placeholder="VD: 200000"
+                value={formData.price || ""}
+                onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+              />
+              <p className="text-xs text-gray-500 mt-1">Nhập giá cho mỗi giờ chơi</p>
+            </div>
           </div>
-        </div>
-      )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowAddModal(false);
+              setFormData({});
+            }}>
+              Hủy
+            </Button>
+            <Button 
+              onClick={handleSave} 
+              className={editing ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700"}
+            >
+              {editing ? "Cập nhật" : "Tạo slot"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

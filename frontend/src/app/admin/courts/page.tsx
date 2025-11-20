@@ -2,6 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { Plus, Edit, Trash2, Search } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 
 interface Court {
   courtID: string;
@@ -44,46 +50,80 @@ export default function CourtsPage() {
 
   const handleCreateCourt = async () => {
     try {
+      if (!formData.name || !formData.type || !formData.status) {
+        toast.error("Vui lòng điền đầy đủ thông tin");
+        return;
+      }
+
       const res = await fetch("http://localhost:5000/api/courts/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
-      if (!res.ok) throw new Error("Lỗi khi tạo sân");
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || "Lỗi khi tạo sân");
+      }
+      
+      toast.success("Tạo sân thành công!");
       setShowForm(false);
       setFormData({ name: "", type: "", status: "", multiplier: 1, image: "" });
       fetchCourts();
-    } catch (error) {
-      console.error(error);
+    } catch (error: unknown) {
+      toast.error((error as Error).message || "Lỗi khi tạo sân");
     }
   };
 
   const handleUpdateCourt = async () => {
     if (!editingCourt) return;
+    
     try {
+      if (!editingCourt.name || !editingCourt.type || !editingCourt.status) {
+        toast.error("Vui lòng điền đầy đủ thông tin");
+        return;
+      }
+
       const res = await fetch(`http://localhost:5000/api/courts/update/${editingCourt.courtID}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editingCourt),
       });
-      if (!res.ok) throw new Error("Lỗi khi cập nhật sân");
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || "Lỗi khi cập nhật sân");
+      }
+      
+      toast.success("Cập nhật sân thành công!");
       setEditingCourt(null);
       fetchCourts();
-    } catch (error) {
-      console.error(error);
+    } catch (error: unknown) {
+      toast.error((error as Error).message || "Lỗi khi cập nhật sân");
     }
   };
 
 
-  const handleDeleteCourt = async (id: string) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa sân này?")) return;
+  const handleDeleteCourt = async (id: string, name: string) => {
+    if (!confirm(`Bạn có chắc chắn muốn xóa sân "${name}"?`)) return;
+    
     try {
-      await fetch(`http://localhost:5000/api/courts/delete/${id}`, {
+      const res = await fetch(`http://localhost:5000/api/courts/delete/${id}`, {
         method: "DELETE",
       });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || "Lỗi khi xóa sân");
+      }
+      
+      toast.success("Xóa sân thành công!");
       fetchCourts();
-    } catch (error) {
-      console.error("Lỗi khi xóa sân:", error);
+    } catch (error: unknown) {
+      toast.error((error as Error).message || "Lỗi khi xóa sân");
     }
   };
 
@@ -163,7 +203,7 @@ export default function CourtsPage() {
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => handleDeleteCourt(court.courtID)}
+                    onClick={() => handleDeleteCourt(court.courtID, court.name)}
                     className="text-red-600 hover:text-red-900"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -175,128 +215,181 @@ export default function CourtsPage() {
         </table>
       </div>
 
-      {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-xl w-[400px] shadow-lg">
-            <h2 className="text-xl font-semibold mb-4">Thêm Sân Mới</h2>
-            <input
-              type="text"
-              placeholder="Tên sân"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full border p-2 rounded mb-3"
-            />
-            <select
-              value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-              className="w-full border p-2 rounded mb-3"
-            >
-              <option value="">Chọn loại sân</option>
-              <option value="INDOOR">Trong nhà</option>
-              <option value="OUTDOOR">Ngoài trời</option>
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Thêm Sân Mới</DialogTitle>
+            <DialogDescription>
+              Nhập thông tin để tạo sân mới
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="name">Tên sân *</Label>
+              <Input
+                id="name"
+                placeholder="VD: Sân A1"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              />
+            </div>
 
-            </select>
-            <input
-              type="number"
-              placeholder="Hệ số nhân"
-              value={isNaN(formData.multiplier) ? "" : formData.multiplier}
-              onChange={(e) => setFormData({ ...formData, multiplier: parseFloat(e.target.value) })}
-              className="w-full border p-2 rounded mb-3"
-            />
-            <select
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="w-full border p-2 rounded mb-3"
-            >
-              <option value="">Chọn trạng thái</option>
-              <option value="AVAILABLE">Hoạt động</option>
-              <option value="OCCUPIED">Đang sử dụng</option>
-              <option value="MAINTENANCE">Bảo trì</option>
-              <option value="CLOSED">Đóng cửa</option>
-            </select>
+            <div>
+              <Label htmlFor="type">Loại sân *</Label>
+              <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn loại sân" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="INDOOR">Trong nhà</SelectItem>
+                  <SelectItem value="OUTDOOR">Ngoài trời</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowForm(false)}
-                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleCreateCourt}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                Lưu
-              </button>
+            <div>
+              <Label htmlFor="multiplier">Hệ số nhân *</Label>
+              <Input
+                id="multiplier"
+                type="number"
+                step="0.1"
+                min="0"
+                placeholder="VD: 1.2"
+                value={isNaN(formData.multiplier) ? "" : formData.multiplier}
+                onChange={(e) => setFormData({ ...formData, multiplier: parseFloat(e.target.value) })}
+              />
+              <p className="text-xs text-gray-500 mt-1">Hệ số nhân giá tiền (VD: 1.2 = tăng 20%)</p>
+            </div>
+
+            <div>
+              <Label htmlFor="status">Trạng thái *</Label>
+              <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="AVAILABLE">Hoạt động</SelectItem>
+                  <SelectItem value="OCCUPIED">Đang sử dụng</SelectItem>
+                  <SelectItem value="MAINTENANCE">Bảo trì</SelectItem>
+                  <SelectItem value="CLOSED">Đóng cửa</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="image">Link hình ảnh</Label>
+              <Input
+                id="image"
+                placeholder="https://example.com/image.jpg"
+                value={formData.image}
+                onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+              />
             </div>
           </div>
-        </div>
-      )}
 
-      {editingCourt && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-xl w-[400px] shadow-lg">
-            <h2 className="text-xl font-semibold mb-4">Chỉnh Sửa Sân</h2>
-            <input
-              type="text"
-              placeholder="Tên sân"
-              value={editingCourt.name}
-              onChange={(e) =>
-                setEditingCourt({ ...editingCourt, name: e.target.value })
-              }
-              className="w-full border p-2 rounded mb-3"
-            />
-            <select
-              value={editingCourt.type}
-              onChange={(e) =>
-                setEditingCourt({ ...editingCourt, type: e.target.value })
-              }
-              className="w-full border p-2 rounded mb-3"
-            >
-              <option value="">Chọn loại sân</option>
-              <option value="INDOOR">Trong nhà</option>
-              <option value="OUTDOOR">Ngoài trời</option>
-            </select>
-            <input
-              type="number"
-              placeholder="Tên sân"
-              value={editingCourt.multiplier}
-              onChange={(e) =>
-                setEditingCourt({ ...editingCourt, multiplier: parseFloat(e.target.value) })
-              }
-              className="w-full border p-2 rounded mb-3"
-            />
-            <select
-              value={editingCourt.status}
-              onChange={(e) =>
-                setEditingCourt({ ...editingCourt, status: e.target.value })
-              }
-              className="w-full border p-2 rounded mb-3"
-            >
-              <option value="">Chọn trạng thái</option>
-              <option value="AVAILABLE">Hoạt động</option>
-              <option value="OCCUPIED">Đang sử dụng</option>
-              <option value="MAINTENANCE">Bảo trì</option>
-              <option value="CLOSED">Đóng cửa</option>
-            </select>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowForm(false)}>
+              Hủy
+            </Button>
+            <Button onClick={handleCreateCourt} className="bg-blue-600 hover:bg-blue-700">
+              Tạo sân
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setEditingCourt(null)}
-                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleUpdateCourt}
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-              >
-                Lưu thay đổi
-              </button>
+      <Dialog open={!!editingCourt} onOpenChange={(open) => !open && setEditingCourt(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Chỉnh Sửa Sân</DialogTitle>
+            <DialogDescription>
+              Cập nhật thông tin sân
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editingCourt && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-name">Tên sân *</Label>
+                <Input
+                  id="edit-name"
+                  placeholder="VD: Sân A1"
+                  value={editingCourt.name}
+                  onChange={(e) => setEditingCourt({ ...editingCourt, name: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="edit-type">Loại sân *</Label>
+                <Select 
+                  value={editingCourt.type} 
+                  onValueChange={(value) => setEditingCourt({ ...editingCourt, type: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="INDOOR">Trong nhà</SelectItem>
+                    <SelectItem value="OUTDOOR">Ngoài trời</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-multiplier">Hệ số nhân *</Label>
+                <Input
+                  id="edit-multiplier"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  placeholder="VD: 1.2"
+                  value={editingCourt.multiplier}
+                  onChange={(e) => setEditingCourt({ ...editingCourt, multiplier: parseFloat(e.target.value) })}
+                />
+                <p className="text-xs text-gray-500 mt-1">Hệ số nhân giá tiền (VD: 1.2 = tăng 20%)</p>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-status">Trạng thái *</Label>
+                <Select 
+                  value={editingCourt.status} 
+                  onValueChange={(value) => setEditingCourt({ ...editingCourt, status: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AVAILABLE">Hoạt động</SelectItem>
+                    <SelectItem value="OCCUPIED">Đang sử dụng</SelectItem>
+                    <SelectItem value="MAINTENANCE">Bảo trì</SelectItem>
+                    <SelectItem value="CLOSED">Đóng cửa</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-image">Link hình ảnh</Label>
+                <Input
+                  id="edit-image"
+                  placeholder="https://example.com/image.jpg"
+                  value={editingCourt.image || ""}
+                  onChange={(e) => setEditingCourt({ ...editingCourt, image: e.target.value })}
+                />
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingCourt(null)}>
+              Hủy
+            </Button>
+            <Button onClick={handleUpdateCourt} className="bg-green-600 hover:bg-green-700">
+              Cập nhật
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
