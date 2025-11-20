@@ -2,6 +2,7 @@
 
 import { format } from "date-fns";
 import DatePicker from "react-datepicker";
+import { useState, useEffect } from "react";
 
 type CourtType = "INDOOR" | "OUTDOOR";
 
@@ -19,6 +20,15 @@ interface CourtsMultiplier {
   multiplier: number;
 }
 
+interface Tournament {
+  tournamentID: string;
+  name: string;
+  start_day: string;
+  description?: string;
+  status: string;
+  max_teams: number;
+}
+
 interface TournamentBookingProps {
   StartDate: string;
   EndDate: string;
@@ -34,6 +44,8 @@ interface TournamentBookingProps {
   onTournamentChange: (tournament: number | null) => void;
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 export default function TournamentBooking({
   StartDate,
   EndDate,
@@ -48,6 +60,33 @@ export default function TournamentBooking({
   onCourtChange,
   onTournamentChange,
 }: TournamentBookingProps) {
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchUserTournaments = async () => {
+      try {
+        const storedUser = localStorage.getItem("user");
+        if (!storedUser) return;
+
+        const user = JSON.parse(storedUser);
+        setLoading(true);
+
+        const res = await fetch(`${API_URL}/api/tournaments/upcoming/user/${user.userID}`);
+        if (!res.ok) throw new Error("Không thể tải giải đấu");
+
+        const data = await res.json();
+        setTournaments(data);
+      } catch (error) {
+        console.error("Error fetching tournaments:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserTournaments();
+  }, []);
+
   return (
     <>
       <div className="flex justify-center">
@@ -155,10 +194,22 @@ export default function TournamentBooking({
               value={selectedTournament || ""}
               onChange={(e) => onTournamentChange(Number(e.target.value) || null)}
               className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-sm shadow-sm"
+              disabled={loading}
             >
-              <option value="">-- Chọn giải đấu --</option>
-              <option value="1">Giải Mùa Thu 2025</option>
+              <option value="">
+                {loading ? "Đang tải..." : tournaments.length === 0 ? "Không có giải đấu sắp tới" : "-- Chọn giải đấu --"}
+              </option>
+              {tournaments.map((tournament) => (
+                <option key={tournament.tournamentID} value={tournament.tournamentID}>
+                  {tournament.name} - {format(new Date(tournament.start_day), "dd/MM/yyyy")}
+                </option>
+              ))}
             </select>
+            {tournaments.length === 0 && !loading && (
+              <p className="text-xs text-gray-600 mt-2">
+                Bạn chưa tạo giải đấu nào. Hãy tạo giải đấu trong trang Admin.
+              </p>
+            )}
           </div>
         </div>
       </div>
