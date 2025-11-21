@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -62,7 +63,7 @@ interface Courts {
   multiplier: number;
 }
 
-const MAX_CONSECUTIVE_SLOTS = 5;
+
 const MAX_WEEKS = 12;
 const VAT = 0.08;
 
@@ -77,7 +78,7 @@ export default function BookingPage() {
   const [EndDate, setEndDate] = useState("");
   const [selectedSlotsByDate, setSelectedSlotsByDate] = useState<Record<string, string[]>>({}); 
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([]);
-  const [selectedTournament, setSelectedTournament] = useState<number | null>(null);
+  const [selectedTournament, setSelectedTournament] = useState<string | null>(null);
   const [selectedSlots, setselectedSlots] = useState<Slots[]>([]);
   const [slotData, setSlotData] = useState<SlotData[]>([]);
   const [slotDataByDate, setSlotDataByDate] = useState<Record<string, SlotData[]>>({});
@@ -170,10 +171,7 @@ export default function BookingPage() {
       ? currentDateSlots.filter((s) => s !== slotId)
       : [...currentDateSlots, slotId];
 
-    if (newSlots.length > MAX_CONSECUTIVE_SLOTS) {
-      alert(`Tối đa ${MAX_CONSECUTIVE_SLOTS} slot liên tiếp!`);
-      return;
-    }
+   
 
     if (!isConsecutive(newSlots, dateSlots)) {
       alert("Chỉ được chọn các slot liên tiếp!");
@@ -372,7 +370,7 @@ export default function BookingPage() {
     console.log("Tổng số bookingSlots sẽ tạo:", slots.length);
     console.log("Chi tiết slots:", slots);
 
-    const bookingData = {
+    const bookingData: any = {
       user_id: user.userID,
       booking_date: bookingDate,
       status: "PENDING",
@@ -383,6 +381,10 @@ export default function BookingPage() {
       court_id: selectedCourt.courtID,
       slots,
     };
+
+    if (bookingType === "tournament" && selectedTournament) {
+      bookingData.tournament_id = selectedTournament;
+    }
 
     try {
       const res = await fetch("http://localhost:5000/api/bookings/create", {
@@ -507,7 +509,7 @@ export default function BookingPage() {
       ) && (
           <>
             <h2 className="text-xl font-semibold mb-4">
-              Chọn Slot Liên Tiếp (Tối đa {MAX_CONSECUTIVE_SLOTS})
+              Chọn Slot Sân
               {bookingType === "weekly" && (
                 <span className="text-sm font-normal text-gray-600 ml-2">
                   - Slot sẽ được đồng bộ cho tất cả các ngày cùng thứ
@@ -586,7 +588,7 @@ export default function BookingPage() {
               </div>
               <div>
                 <div className="flex justify-between">
-                  <span className="font-medium">Tiền cọc (30%):</span>
+                  <span className="font-medium">Tiền cọc:</span>
                   <span className="font-bold ">{deposit.toLocaleString()} VNĐ</span>
                 </div>
               </div>
