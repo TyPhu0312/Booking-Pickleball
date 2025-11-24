@@ -197,6 +197,12 @@ export default function BlogsPage() {
 
   if (loading) return <p>Đang tải dữ liệu...</p>;
 
+   const truncateContent = (content: string, maxLength: number = 150) => {
+    const plainText = content.replace(/<[^>]*>/g, '');
+    if (plainText.length <= maxLength) return plainText;
+    return plainText.substring(0, maxLength) + "...";
+  };
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-8">
@@ -249,7 +255,7 @@ export default function BlogsPage() {
                 </td>
                 <td className="px-6 py-4">
                   <div className="font-medium max-w-xs truncate">{blog.title}</div>
-                  <div className="text-sm text-gray-500 max-w-xs truncate">{blog.content}</div>
+                  <div className="text-sm text-gray-500 max-w-xs truncate">{truncateContent(blog.content)}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">{blog.author}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

@@ -47,7 +47,6 @@ export default function BlogsPage() {
   };
 
   const truncateContent = (content: string, maxLength: number = 150) => {
-    // Remove HTML tags for preview
     const plainText = content.replace(/<[^>]*>/g, '');
     if (plainText.length <= maxLength) return plainText;
     return plainText.substring(0, maxLength) + "...";

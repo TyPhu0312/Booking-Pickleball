@@ -62,6 +62,7 @@ interface CreateBookingModalProps {
 }
 
 const VAT = 0.08;
+type BookingType = "CASUAL" | "WEEKLY" | "TOURNAMENT";
 
 export default function CreateBookingModal({ courts, slots, onClose, onSubmit }: CreateBookingModalProps) {
   const [formData, setFormData] = useState({
@@ -74,7 +75,7 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
     recurring_day: null as number | null,
     num_weeks: 1,
   });
-
+  const [bookingType, setBookingType] = useState<BookingType>("CASUAL");
   const [availableCourts, setAvailableCourts] = useState<Court[]>([]);
   const [selectedCourtId, setSelectedCourtId] = useState("");
   const [checkingAvailability, setCheckingAvailability] = useState(false);
@@ -159,6 +160,15 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.booking_date, formData.court_type, formData.slot_ids.length, courts]);
 
+  const selectedSlots = slots.filter(s => formData.slot_ids.includes(s.slotID));
+  const basePrice = selectedSlots.reduce((sum, slot) => sum + slot.price, 0);
+  const priceWithMultiplier = basePrice * courtMultiplier;
+  const priceWithWeeks = formData.is_recurring ? priceWithMultiplier * formData.num_weeks : priceWithMultiplier;
+  const vatAmount = priceWithWeeks * VAT;
+  const total = Math.round(priceWithWeeks + vatAmount);
+  const depositPercent = bookingType === "TOURNAMENT" ? 0.5 : bookingType === "WEEKLY" ? 0.5 : 0.2;
+  const deposit = Math.round(total * depositPercent);
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -176,12 +186,6 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
     }
 
     try {
-      const basePrice = selectedSlots.reduce((sum, slot) => sum + slot.price, 0);
-      const priceWithMultiplier = basePrice * courtMultiplier;
-      const priceWithWeeks = formData.is_recurring ? priceWithMultiplier * formData.num_weeks : priceWithMultiplier;
-      const vatAmount = priceWithWeeks * VAT;
-      const total_price = Math.round(priceWithWeeks + vatAmount);
-      
       const bookingDate = new Date(formData.booking_date);
       
       let slotsToCreate: Array<{
@@ -228,9 +232,9 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
         phone_user: formData.phone_user,
         booking_date: bookingDate.toISOString(),
         status: "PENDING",
-        total_price: total_price,
-        deposit_amount: total_price * 0.3,
-        booking_type: "CASUAL",
+        total_price: total,
+        deposit_amount: deposit,
+        booking_type: bookingType,
         court_id: selectedCourtId,
         note: formData.note,
         slots: slotsToCreate
@@ -295,6 +299,27 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
               onChange={(e) => setFormData({ ...formData, booking_date: e.target.value })}
               className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500 transition-colors"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">
+              Loại booking *
+            </label>
+            <select
+              required
+              value={bookingType}
+              onChange={(e) => setBookingType(e.target.value as BookingType)}
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500 transition-colors"
+            >
+              <option value="CASUAL">🎾 Thường (Cọc 20%)</option>
+              <option value="WEEKLY">📅 Đặt theo tuần (Cọc 50%)</option>
+              <option value="TOURNAMENT">🏆 Giải đấu (Cọc 50%)</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              {bookingType === "CASUAL" && "📌 Đặt sân thường - Cọc 20% tổng tiền"}
+              {bookingType === "WEEKLY" && "🔄 Đặt sân theo tuần - Cọc 50% tổng tiền"}
+              {bookingType === "TOURNAMENT" && "🏅 Đặt sân cho giải đấu - Cọc 50% tổng tiền"}
+            </p>
           </div>
 
           <div>
@@ -497,6 +522,41 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
               className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500 transition-colors resize-none"
             />
           </div>
+
+          {formData.slot_ids.length > 0 && (
+            <div className="p-5 bg-linear-to-br from-emerald-50 to-teal-50 rounded-xl border-2 border-emerald-200">
+              <h3 className="font-black text-gray-800 mb-3 text-lg">📊 Chi tiết thanh toán</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">Giá cơ bản ({formData.slot_ids.length} slot):</span>
+                  <span className="font-semibold text-gray-800">{basePrice.toLocaleString()}đ</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">Hệ số sân (x{courtMultiplier}):</span>
+                  <span className="font-semibold text-gray-800">{priceWithMultiplier.toLocaleString()}đ</span>
+                </div>
+                {formData.is_recurring && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Số tuần (x{formData.num_weeks}):</span>
+                    <span className="font-semibold text-gray-800">{priceWithWeeks.toLocaleString()}đ</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">VAT ({(VAT * 100).toFixed(0)}%):</span>
+                  <span className="font-semibold text-gray-800">+{vatAmount.toLocaleString()}đ</span>
+                </div>
+                <div className="h-px bg-emerald-300 my-2"></div>
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-gray-800">💵 Tổng cộng:</span>
+                  <span className="font-black text-emerald-600 text-xl">{total.toLocaleString()}đ</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-orange-700">💳 Tiền cọc ({(depositPercent * 100).toFixed(0)}%):</span>
+                  <span className="font-black text-orange-600 text-xl">{deposit.toLocaleString()}đ</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-4">
             <button
