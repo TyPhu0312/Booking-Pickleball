@@ -166,12 +166,19 @@ export default function BookingPage() {
 
     if (availableCourts === 0) return;
 
+    // Với Casual và Tournament: Chỉ cho phép chọn 1 ngày duy nhất
+    if (bookingType === "casual" || bookingType === "tournament") {
+      const hasOtherDateSelected = Object.keys(selectedSlotsByDate).some(d => d !== date && selectedSlotsByDate[d].length > 0);
+      if (hasOtherDateSelected) {
+        alert("Chỉ được chọn slot trong 1 ngày duy nhất!");
+        return;
+      }
+    }
+
     const currentDateSlots = selectedSlotsByDate[date] || [];
     const newSlots = currentDateSlots.includes(slotId)
       ? currentDateSlots.filter((s) => s !== slotId)
       : [...currentDateSlots, slotId];
-
-   
 
     if (!isConsecutive(newSlots, dateSlots)) {
       alert("Chỉ được chọn các slot liên tiếp!");
@@ -195,16 +202,23 @@ export default function BookingPage() {
       Object.keys(slotDataByDate).forEach((d) => {
         const dayOfWeek = new Date(d).getDay();
         if (dayOfWeek === clickedDayOfWeek) {
-          updatedSlots[d] = sortedSlots;
+          if (sortedSlots.length > 0) {
+            updatedSlots[d] = sortedSlots;
+          } else {
+            delete updatedSlots[d];
+          }
         }
       });
 
       setSelectedSlotsByDate(updatedSlots);
     } else {
-      setSelectedSlotsByDate(prev => ({
-        ...prev,
-        [date]: sortedSlots
-      }));
+      if (sortedSlots.length > 0) {
+        setSelectedSlotsByDate({
+          [date]: sortedSlots
+        });
+      } else {
+        setSelectedSlotsByDate({});
+      }
     }
   };
 
@@ -258,13 +272,7 @@ export default function BookingPage() {
     }
   }
 
-  useEffect(() => {
-    if (selectedCourtType) {
-      fetchCourts();
-    }
-  }, [selectedCourtType]);
-
-  const fetchCourts = async () => {
+  const fetchCourts = useCallback(async () => {
     try {
       const res = await fetch(`http://localhost:5000/api/courts/getAvailableCourtsByType/${selectedCourtType}`);
       if (!res.ok) throw new Error("Lỗi khi tải dữ liệu court");
@@ -273,7 +281,13 @@ export default function BookingPage() {
     } catch (err: unknown) {
       console.error(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
     }
-  }
+  }, [selectedCourtType]);
+
+  useEffect(() => {
+    if (selectedCourtType) {
+      fetchCourts();
+    }
+  }, [selectedCourtType, fetchCourts]);
 
   const total = getTotalPrice();
   const deposit = total * (bookingType === "tournament" ? 0.5 : bookingType === "weekly" ? 0.5 : 0.2);
