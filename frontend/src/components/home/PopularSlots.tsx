@@ -1,9 +1,9 @@
 import { Calendar, Clock } from "lucide-react";
 
 const popularSlots = [
-  { time: "6:00 - 9:00", label: "Buổi Sáng", price: 200000, bg: "from-orange-400 to-red-500" },
-  { time: "15:00 - 18:00", label: "Buổi Chiều", price: 250000, bg: "from-yellow-400 to-orange-500" },
-  { time: "19:00 - 22:00", label: "Buổi Tối", price: 300000, bg: "from-indigo-600 to-purple-700" },
+  { time: "6:00 - 9:00", label: "Buổi Sáng", price: 100000, bg: "from-orange-400 to-red-500" },
+  { time: "15:00 - 18:00", label: "Buổi Chiều", price: 150000, bg: "from-yellow-400 to-orange-500" },
+  { time: "19:00 - 22:00", label: "Buổi Tối", price: 200000, bg: "from-indigo-600 to-purple-700" },
 ];
 
 export default function PopularSlots() {

@@ -276,7 +276,7 @@ export default function BookingPage() {
   }
 
   const total = getTotalPrice();
-  const deposit = total * (bookingType === "tournament" ? 1 : bookingType === "weekly" ? 1 : 0.3);
+  const deposit = total * (bookingType === "tournament" ? 0.5 : bookingType === "weekly" ? 0.5 : 0.2);
 
   const handleSubmit = async () => {
     const totalSelectedSlots = Object.values(selectedSlotsByDate).flat().length;
