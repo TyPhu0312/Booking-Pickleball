@@ -5,7 +5,14 @@ import { useState, useEffect } from "react";
 import { Menu } from "lucide-react";
 import Image from "next/image";
 import Cookies from "js-cookie";
-
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface User {
     userID: string;
@@ -29,7 +36,6 @@ interface User {
 export default function Navbar() {
     const [open, setOpen] = useState(false);
     const [user, setUser] = useState<User | null>(null);
-    const [dropdown, setDropdown] = useState(false);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -114,54 +120,45 @@ export default function Navbar() {
                             Lịch sử
                             <span className="absolute left-0 -bottom-1 w-0 h-0.5 bg-blue-500 transition-all group-hover:w-full"></span>
                         </Link>
+                        <Link
+                            href="/blogs"
+                            className="relative group px-1 py-1 transition-all duration-300 hover:text-blue-600"
+                        >
+                            Bài viết
+                            <span className="absolute left-0 -bottom-1 w-0 h-0.5 bg-blue-500 transition-all group-hover:w-full"></span>
+                        </Link>
                     </div>
 
 
                     {user ? (
-                        <div className="relative">
-                            <button
-                                className="relative group px-1 py-1 transition-all duration-300 hover:text-blue-600"
-                                onClick={() => setDropdown(!dropdown)}
-                            >
+                        <DropdownMenu>
+                            <DropdownMenuTrigger className="relative group px-1 py-1 transition-all duration-300 hover:text-blue-600 outline-none">
                                 {user.full_name}
                                 <span className="absolute left-0 -bottom-1 w-0 h-0.5 bg-blue-500 transition-all group-hover:w-full"></span>
-                            </button>
-                            {dropdown && (
-                                <div className="absolute right-0 mt-2 w-44 bg-white shadow-lg rounded-lg overflow-hidden z-50 border border-green-300">
-                                    <Link
-                                        href="/profile"
-                                        className="block px-4 py-2 hover:bg-green-100 text-green-700 font-medium transition-colors"
-                                    >
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44">
+                                <DropdownMenuLabel>Tài khoản</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem asChild>
+                                    <Link href="/profile" className="cursor-pointer">
                                         Thông tin
                                     </Link>
-
-                                    {user.role.name === "admin"  && (
-                                        <Link
-                                            href="/admin"
-                                            className="block px-4 py-2 hover:bg-blue-100 text-blue-700 font-medium transition-colors"
-                                        >
+                                </DropdownMenuItem>
+                                
+                                {(user.role.name === "admin" || user.role.name === "superadmin") && (
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/admin" className="cursor-pointer">
                                             Admin
                                         </Link>
-                                    )}
-                                     {user.role.name === "superadmin"  && (
-                                        <Link
-                                            href="/admin"
-                                            className="block px-4 py-2 hover:bg-blue-100 text-blue-700 font-medium transition-colors"
-                                        >
-                                            Admin
-                                        </Link>
-                                    )}
-
-                                    <button
-                                        onClick={handleLogout}
-                                        className="w-full text-left px-4 py-2 hover:bg-red-100 text-red-600 font-medium transition-colors"
-                                    >
-                                        Logout
-                                    </button>
-                                </div>
-
-                            )}
-                        </div>
+                                    </DropdownMenuItem>
+                                )}
+                                
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600">
+                                    Đăng xuất
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     ) : (
                         <>
                             <Link
@@ -201,6 +198,9 @@ export default function Navbar() {
                     </Link>
                     <Link href="/history" className="block px-4 py-2 border-b">
                         Lịch sử
+                    </Link>
+                    <Link href="/blogs" className="block px-4 py-2 border-b">
+                        Bài viết
                     </Link>
                     {user ? (
                         <>

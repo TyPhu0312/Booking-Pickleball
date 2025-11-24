@@ -92,8 +92,7 @@ export default function TournamentsPage() {
     }
 
     fetchTournaments();
-    const interval = setInterval(fetchTournaments, 10000); 
-    return () => clearInterval(interval);
+   
   }, [currentPage, statusFilter, debouncedSearch]);
 
 

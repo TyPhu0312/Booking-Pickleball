@@ -34,14 +34,14 @@ interface TournamentBookingProps {
   EndDate: string;
   selectedCourtType: string;
   selectedCourt: Courts | null;
-  selectedTournament: number | null;
+  selectedTournament: string | null;
   courtsMultiplier: CourtsMultiplier[];
   courts: Courts[] | null;
   onStartDateChange: (date: string) => void;
   onEndDateChange: (date: string) => void;
   onCourtTypeChange: (type: string) => void;
   onCourtChange: (court: Courts | null) => void;
-  onTournamentChange: (tournament: number | null) => void;
+  onTournamentChange: (tournament: string | null) => void;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -192,7 +192,7 @@ export default function TournamentBooking({
             </label>
             <select
               value={selectedTournament || ""}
-              onChange={(e) => onTournamentChange(Number(e.target.value) || null)}
+              onChange={(e) => onTournamentChange(e.target.value || null)}
               className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-sm shadow-sm"
               disabled={loading}
             >

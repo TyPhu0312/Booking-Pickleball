@@ -155,6 +155,18 @@ model Payments {
   updatedAt      DateTime      @updatedAt
 
   booking Bookings @relation(fields: [booking_id], references: [bookingID])
+  paymentImages PaymentImages[]
+}
+
+model PaymentImages {
+  imageID    String   @id @default(uuid())
+  payment_id String
+  image_url  String
+  description String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  payment Payments @relation(fields: [payment_id], references: [paymentID], onDelete: Cascade)
 }
 
 model Feedbacks {
@@ -189,8 +201,9 @@ model Tournaments {
 model Blogs {
   blogID      String @id @default(uuid())
   title       String 
-  content     String
+  content     String    @db.LongText
   image       String?
+  author      String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 

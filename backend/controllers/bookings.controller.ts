@@ -21,7 +21,7 @@ export const getBookings = async (req: Request, res: Response) => {
 
         res.json(bookings);
     } catch (error) {
-        console.error("Lỗi khi lấy danh sách đặt sân:", error); // 👈 thêm dòng này
+        console.error("Lỗi khi lấy danh sách đặt sân:", error);
         res.status(500).json({ error: "Lỗi khi lấy danh sách đặt sân" });
     }
 };
