@@ -33,7 +33,6 @@ export default function TournamentsPage() {
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -48,16 +47,6 @@ export default function TournamentsPage() {
     user_id: "",
   });
 
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery);
-      setCurrentPage(1); 
-    }, 1000); 
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
   useEffect(() => {
     async function fetchTournaments() {
       try {
@@ -69,10 +58,6 @@ export default function TournamentsPage() {
 
         if (statusFilter !== "all") {
           params.append("status", statusFilter);
-        }
-
-        if (debouncedSearch) {
-          params.append("search", debouncedSearch);
         }
 
         const response = await fetch(`${API_URL}/api/tournaments?${params.toString()}`);
@@ -93,7 +78,7 @@ export default function TournamentsPage() {
 
     fetchTournaments();
    
-  }, [currentPage, statusFilter, debouncedSearch]);
+  }, [currentPage, statusFilter]);
 
 
 
@@ -155,7 +140,14 @@ export default function TournamentsPage() {
   }
 
 
-  const filteredTournaments = tournaments;
+  const filteredTournaments = tournaments.filter(tournament => {
+    const keyword = searchQuery.toLowerCase();
+    const matchesStatus = statusFilter === "all" || tournament.status === statusFilter;
+    const matchesSearch = tournament.name.toLowerCase().includes(keyword) ||
+                          tournament.description?.toLowerCase().includes(keyword) ||
+                          tournament.start_day.toLowerCase().includes(keyword);
+    return matchesStatus && matchesSearch;
+  });
 
   function getStatusBadge(status: string) {
     const config = {
