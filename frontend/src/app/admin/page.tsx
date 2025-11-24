@@ -153,7 +153,6 @@ export default function AdminDashboard() {
       setRecentBookings(recent);
 
       const hours = Array.from({ length: 16 }, (_, i) => i + 6);
-      //làm giả dữ liệu sân theo giờ
       const hourlyData = hours.map(hour => ({
         hour: `${hour}:00`,
         available: Math.floor(Math.random() * courts.length) + 1,

@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import morgan from "morgan";
 import { PrismaClient } from "@prisma/client";
+import path from "path";
 
 
 
@@ -13,6 +14,7 @@ import auth from "./routes/auth.routes";
 import slots from "./routes/slots.routes";
 import bookings from "./routes/bookings.routes";
 import tournaments from "./routes/tournaments.routes";
+import blogs from "./routes/blogs.routes";
 
 
 dotenv.config();
@@ -29,6 +31,8 @@ app.use(cors({
 app.use(express.json());
 app.use(morgan("dev"));
 
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 
 app.use("/api/courts", courts);
 app.use("/api/roles", roles);
@@ -37,6 +41,7 @@ app.use("/api/auth", auth);
 app.use("/api/slots", slots);
 app.use("/api/bookings", bookings);
 app.use("/api/tournaments", tournaments);
+app.use("/api/blogs", blogs);
 
 
 

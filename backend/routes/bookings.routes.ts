@@ -13,7 +13,7 @@ import { verifyToken } from "../middlewares/auth.middleware";
 
 const router = express.Router();
 
-// app.get("/bookings", verifyToken, getBookings); // Bảo vệ route này bằng middleware xác thực token
+// app.get("/bookings", verifyToken, getBookings);
 router.get("/", getBookings);
 router.get("/getBookingById/:id", getBookingById);
 router.post("/create", createBooking);

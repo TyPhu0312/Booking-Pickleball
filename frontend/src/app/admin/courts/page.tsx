@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -31,12 +32,18 @@ export default function CourtsPage() {
   });
   const [editingCourt, setEditingCourt] = useState<Court | null>(null);
   const [searchInput, setSearchInput] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [editImagePreview, setEditImagePreview] = useState<string>("");
 
   const fetchCourts = async () => {
     try {
       const res = await fetch("http://localhost:5000/api/courts");
       const data = await res.json();
       setCourts(data);
+      console.log(`http://localhost:5000${data[0]?.image}`)
+
     } catch (error) {
       console.error("Lỗi khi tải sân:", error);
     } finally {
@@ -48,6 +55,30 @@ export default function CourtsPage() {
     fetchCourts();
   }, []);
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleEditImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setEditImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleCreateCourt = async () => {
     try {
       if (!formData.name || !formData.type || !formData.status) {
@@ -55,10 +86,19 @@ export default function CourtsPage() {
         return;
       }
 
+      const formDataToSend = new FormData();
+      formDataToSend.append("name", formData.name);
+      formDataToSend.append("type", formData.type);
+      formDataToSend.append("status", formData.status);
+      formDataToSend.append("multiplier", formData.multiplier.toString());
+      
+      if (imageFile) {
+        formDataToSend.append("image", imageFile);
+      }
+
       const res = await fetch("http://localhost:5000/api/courts/create", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: formDataToSend,
       });
       
       const data = await res.json();
@@ -70,6 +110,8 @@ export default function CourtsPage() {
       toast.success("Tạo sân thành công!");
       setShowForm(false);
       setFormData({ name: "", type: "", status: "", multiplier: 1, image: "" });
+      setImageFile(null);
+      setImagePreview("");
       fetchCourts();
     } catch (error: unknown) {
       toast.error((error as Error).message || "Lỗi khi tạo sân");
@@ -85,10 +127,19 @@ export default function CourtsPage() {
         return;
       }
 
+      const formDataToSend = new FormData();
+      formDataToSend.append("name", editingCourt.name);
+      formDataToSend.append("type", editingCourt.type);
+      formDataToSend.append("status", editingCourt.status);
+      formDataToSend.append("multiplier", editingCourt.multiplier.toString());
+      
+      if (editImageFile) {
+        formDataToSend.append("image", editImageFile);
+      }
+
       const res = await fetch(`http://localhost:5000/api/courts/update/${editingCourt.courtID}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editingCourt),
+        body: formDataToSend,
       });
       
       const data = await res.json();
@@ -99,6 +150,8 @@ export default function CourtsPage() {
       
       toast.success("Cập nhật sân thành công!");
       setEditingCourt(null);
+      setEditImageFile(null);
+      setEditImagePreview("");
       fetchCourts();
     } catch (error: unknown) {
       toast.error((error as Error).message || "Lỗi khi cập nhật sân");
@@ -166,6 +219,7 @@ export default function CourtsPage() {
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Hình Ảnh</th>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Tên Sân</th>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Loại</th>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Trạng Thái</th>
@@ -176,6 +230,19 @@ export default function CourtsPage() {
           <tbody className="divide-y divide-gray-200">
             {filteredCourts.map((court) => (
               <tr key={court.courtID} className="hover:bg-gray-50">
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {court.image ? (
+                    <img 
+                      src={`http://localhost:5000${court.image}`} 
+                      alt={court.name}
+                      className="w-16 h-16 object-cover rounded-lg"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
+                      <span className="text-gray-400 text-xs">No Image</span>
+                    </div>
+                  )}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap font-medium">{court.name}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {court.type === "INDOOR" ? "Trong nhà" : "Ngoài trời"}
@@ -278,18 +345,32 @@ export default function CourtsPage() {
             </div>
 
             <div>
-              <Label htmlFor="image">Link hình ảnh</Label>
+              <Label htmlFor="image">Hình ảnh sân</Label>
               <Input
                 id="image"
-                placeholder="https://example.com/image.jpg"
-                value={formData.image}
-                onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="cursor-pointer"
               />
+              {imagePreview && (
+                <div className="mt-3">
+                  <img 
+                    src={imagePreview} 
+                    alt="Preview" 
+                    className="w-full h-48 object-cover rounded-lg border-2 border-gray-200"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowForm(false)}>
+            <Button variant="outline" onClick={() => {
+              setShowForm(false);
+              setImageFile(null);
+              setImagePreview("");
+            }}>
               Hủy
             </Button>
             <Button onClick={handleCreateCourt} className="bg-blue-600 hover:bg-blue-700">
@@ -369,19 +450,44 @@ export default function CourtsPage() {
               </div>
 
               <div>
-                <Label htmlFor="edit-image">Link hình ảnh</Label>
+                <Label htmlFor="edit-image">Hình ảnh sân</Label>
+                {editingCourt.image && !editImagePreview && (
+                  <div className="mb-3">
+                    <p className="text-sm text-gray-600 mb-2">Ảnh hiện tại:</p>
+                    <img 
+                      src={`http://localhost:5000${editingCourt.image}`} 
+                      alt={editingCourt.name}
+                      className="w-full h-48 object-cover rounded-lg border-2 border-gray-200"
+                    />
+                  </div>
+                )}
                 <Input
                   id="edit-image"
-                  placeholder="https://example.com/image.jpg"
-                  value={editingCourt.image || ""}
-                  onChange={(e) => setEditingCourt({ ...editingCourt, image: e.target.value })}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleEditImageChange}
+                  className="cursor-pointer"
                 />
+                {editImagePreview && (
+                  <div className="mt-3">
+                    <p className="text-sm text-gray-600 mb-2">Ảnh mới:</p>
+                    <img 
+                      src={editImagePreview} 
+                      alt="Preview" 
+                      className="w-full h-48 object-cover rounded-lg border-2 border-green-200"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingCourt(null)}>
+            <Button variant="outline" onClick={() => {
+              setEditingCourt(null);
+              setEditImageFile(null);
+              setEditImagePreview("");
+            }}>
               Hủy
             </Button>
             <Button onClick={handleUpdateCourt} className="bg-green-600 hover:bg-green-700">

@@ -1,5 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { Request, Response } from "express";
+import { deleteFile } from "../config/multer";
+import path from "path";
 
 const prisma = new PrismaClient();
 
@@ -25,10 +27,17 @@ export const getCourtById = async (req: Request, res: Response) => {
 
 export const createCourt = async (req: Request, res: Response) => {
     try {
-        const { name, type,  status, multiplier, image } = req.body;
+        const { name, type, status, multiplier } = req.body;
+        const imagePath = req.file ? `/uploads/courts/${req.file.filename}` : null;
 
         const newCourt = await prisma.courts.create({
-            data: { name, type,  status, multiplier, image },
+            data: { 
+                name, 
+                type, 
+                status, 
+                multiplier: parseFloat(multiplier), 
+                image: imagePath 
+            },
         });
 
         res.status(201).json(newCourt);
@@ -47,7 +56,7 @@ export const createCourt = async (req: Request, res: Response) => {
 export const updateCourt = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const data = req.body;
+        const { name, type, status, multiplier } = req.body;
       
         const existingCourt = await prisma.courts.findUnique({
           where: { courtID: id },
@@ -56,10 +65,27 @@ export const updateCourt = async (req: Request, res: Response) => {
         if (!existingCourt) {
           return res.status(404).json({ error: "Không tìm thấy sân" });
         }
+
+        let imagePath = existingCourt.image;
+
+       
+        if (req.file) {
+            if (existingCourt.image) {
+                const oldImagePath = path.join(process.cwd(), existingCourt.image);
+                deleteFile(oldImagePath);
+            }
+            imagePath = `/uploads/courts/${req.file.filename}`;
+        }
       
         const updatedCourt = await prisma.courts.update({
           where: { courtID: id },
-          data,
+          data: {
+            name,
+            type,
+            status,
+            multiplier: multiplier ? parseFloat(multiplier) : existingCourt.multiplier,
+            image: imagePath
+          },
         });
       
         res.json(updatedCourt);
