@@ -29,7 +29,7 @@ export default function Sidebar() {
     { href: "/admin/tournaments", label: "Giải Đấu", icon: Trophy },
     { href: "/admin/users", label: "Người Dùng", icon: Users },
     { href: "/admin/blogs", label: "Bài viết", icon: PenLine },
-    { href: "/admin/deposits", label: "Đặt cọc", icon: CircleDollarSign },
+    { href: "/admin/payments", label: "Thanh toán", icon: CircleDollarSign },
     { href: "/admin/stats", label: "Báo cáo", icon: BarChart3 },
   ];
 

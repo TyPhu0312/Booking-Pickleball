@@ -206,7 +206,7 @@ export default function BlogsPage() {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Quản Lý Blogs</h1>
+        <h1 className="text-3xl font-bold">Quản Lý Bài Viết</h1>
         <div className="relative w-full max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
