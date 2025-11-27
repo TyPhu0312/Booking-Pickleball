@@ -43,6 +43,7 @@ enum PaymentStatus {
   FAILED 
   REFUNDED 
   CANCELLED
+  EXPIRED
 }
 
 enum PaymentMethod {
@@ -51,7 +52,8 @@ enum PaymentMethod {
   CREDIT_CARD 
   MOMO
   ZALOPAY 
-  VNPAY 
+  VNPAY
+  PAYOS
 }
 
 // ================= MODELS =================
@@ -145,16 +147,25 @@ model BookingSlots {
 }
 
 model Payments {
-  paymentID      String        @id @default(uuid())
-  booking_id     String
-  payment_method PaymentMethod
-  status         PaymentStatus @default(PENDING)
-  image          String?
-  transaction_id String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  paymentID        String        @id @default(uuid())
+  booking_id       String
+  payment_method   PaymentMethod
+  status           PaymentStatus @default(PENDING)
+  image            String?
+  transaction_id   String?
+  order_code       Int?          @unique
+  paid_amount      Float         @default(0)
+  qr_code_url      String?
+  payment_url      String?
+  payment_link_id  String?
+  payment_deadline DateTime?
+  refund_amount    Float         @default(0)
+  refund_reason    String?
+  refund_date      DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
-  booking Bookings @relation(fields: [booking_id], references: [bookingID])
+  booking       Bookings        @relation(fields: [booking_id], references: [bookingID])
   paymentImages PaymentImages[]
 }
 
@@ -162,7 +173,7 @@ model PaymentImages {
   imageID    String   @id @default(uuid())
   payment_id String
   image_url  String
-  description String?
+  description String?  @db.Text
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
