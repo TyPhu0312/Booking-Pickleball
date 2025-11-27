@@ -5,8 +5,6 @@ import morgan from "morgan";
 import { PrismaClient } from "@prisma/client";
 import path from "path";
 
-
-
 import courts from "./routes/courts.routes";
 import roles from "./routes/roles.routes";
 import users from "./routes/users.routes";
@@ -15,7 +13,8 @@ import slots from "./routes/slots.routes";
 import bookings from "./routes/bookings.routes";
 import tournaments from "./routes/tournaments.routes";
 import blogs from "./routes/blogs.routes";
-
+import payos from "./routes/payos.routes";
+import { startAutoCancelScheduler } from "./services/scheduler.service";
 
 dotenv.config();
 
@@ -42,14 +41,15 @@ app.use("/api/slots", slots);
 app.use("/api/bookings", bookings);
 app.use("/api/tournaments", tournaments);
 app.use("/api/blogs", blogs);
-
-
+app.use("/api/payos", payos);
 
 app.listen(port, async () => {
   console.log(`🚀 Server đang chạy tại cổng ${port}`);
   try {
     await prisma.$connect();
     console.log("✅ Database connected");
+    
+    startAutoCancelScheduler();
   } catch (err) {
     console.error("❌ Error connecting to database:", err);
   }
