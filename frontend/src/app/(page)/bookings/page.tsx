@@ -66,6 +66,9 @@ interface Courts {
 
 const MAX_WEEKS = 12;
 const VAT = 0.08;
+const depositCasual = 0.2;
+const depositWeekly = 0.5;
+const depositTournament = 0.5;
 
 type BookingType = "casual" | "weekly" | "tournament";
 type CourtType = "INDOOR" | "OUTDOOR";
@@ -166,7 +169,6 @@ export default function BookingPage() {
 
     if (availableCourts === 0) return;
 
-    // Với Casual và Tournament: Chỉ cho phép chọn 1 ngày duy nhất
     if (bookingType === "casual" || bookingType === "tournament") {
       const hasOtherDateSelected = Object.keys(selectedSlotsByDate).some(d => d !== date && selectedSlotsByDate[d].length > 0);
       if (hasOtherDateSelected) {
@@ -290,7 +292,7 @@ export default function BookingPage() {
   }, [selectedCourtType, fetchCourts]);
 
   const total = getTotalPrice();
-  const deposit = total * (bookingType === "tournament" ? 0.5 : bookingType === "weekly" ? 0.5 : 0.2);
+  const deposit = total * (bookingType === "tournament" ? depositTournament : bookingType === "weekly" ? depositWeekly : depositCasual);
 
   const handleSubmit = async () => {
     const totalSelectedSlots = Object.values(selectedSlotsByDate).flat().length;
@@ -602,7 +604,7 @@ export default function BookingPage() {
               </div>
               <div>
                 <div className="flex justify-between">
-                  <span className="font-medium">Tiền cọc:</span>
+                  <span className="font-medium">Tiền cọc ({bookingType === "weekly" ? depositWeekly*100 : bookingType === "tournament" ? depositTournament*100 : depositCasual*100}%):</span>
                   <span className="font-bold ">{deposit.toLocaleString()} VNĐ</span>
                 </div>
               </div>
