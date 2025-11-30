@@ -1,4 +1,5 @@
 "use client";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, set } from "date-fns";
 import { Edit, Trash2 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
@@ -167,18 +168,18 @@ export default function HistoryPage() {
             {bookings.map((booking) => (
               <tr key={booking.bookingID}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">{format(booking.booking_date, "dd-MM-yyyy")}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  {(() => {
-                    if (!booking.bookingSlots || booking.bookingSlots.length === 0) return "—";
-
-                    const startTimes = booking.bookingSlots.map(bs => bs.slot.start_time);
-                    const endTimes = booking.bookingSlots.map(bs => bs.slot.end_time);
-
-                    const earliest = startTimes.sort()[0];
-                    const latest = endTimes.sort().reverse()[0];
-
-                    return `${earliest.slice(0, 5)} - ${latest.slice(0, 5)}`;
-                  })()}
+                <td className="px-6 py-6 text-sm">
+                  {booking.bookingSlots && booking.bookingSlots.length > 0 ? (
+                    <ul className="space-y-1">
+                      {booking.bookingSlots.map((bs, idx) => (
+                        <li key={idx}>
+                          {format(new Date(bs.date), "dd/MM")} - {bs.slot.start_time.slice(0, 5)} ~ {bs.slot.end_time.slice(0, 5)}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    "—"
+                  )}
                 </td>
 
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -284,9 +285,6 @@ export default function HistoryPage() {
                 </span>
               </div>
             </div>
-
-
-
 
             <div className="mt-4">
               {selectedBooking.booking_type === "WEEKLY" && (
@@ -426,7 +424,7 @@ export default function HistoryPage() {
                             className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 mb-4 hover:shadow-md transition-shadow"
                           >
                             <h4 className="text-gray-800 font-semibold text-lg mb-2">{dayLabel}</h4>
-
+                            <ScrollArea className="h-48 rounded-md border">
                             <ul className="list-disc ml-5 space-y-1 text-sm text-gray-700">
                               {Array.from({ length: firstSlot.num_weeks || 0 }, (_, idx) => {
                                 const date = new Date(startDate);
@@ -438,6 +436,7 @@ export default function HistoryPage() {
                                 );
                               })}
                             </ul>
+                            </ScrollArea>
                           </div>
 
                         );
@@ -450,29 +449,21 @@ export default function HistoryPage() {
                     <>
                       {selectedBooking.bookingSlots && selectedBooking.bookingSlots.length > 0 && (
                         <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 mb-3 hover:shadow-md transition-shadow">
-                          <div className="flex justify-between mb-2">
-                            <span className="font-medium text-gray-600">Ngày:</span>
-                            <span className="text-gray-800">{format(selectedBooking.booking_date, "dd-MM-yyyy")}</span>
-                          </div>
-
-                          <div className="flex justify-between">
-                            <span className="font-medium text-gray-600">Giờ:</span>
-                            <span className="text-gray-800">
-                              {(() => {
-                                const startTimes = selectedBooking.bookingSlots
-                                  .map(bs => bs.slot.start_time)
-                                  .sort();
-                                const endTimes = selectedBooking.bookingSlots
-                                  .map(bs => bs.slot.end_time)
-                                  .sort()
-                                  .reverse();
-                                return `${startTimes[0].slice(0, 5)} - ${endTimes[0].slice(0, 5)}`;
-                              })()}
-                            </span>
-                          </div>
+                          <h4 className="font-semibold text-gray-800 mb-3">Danh sách slot:</h4>
+                          <ScrollArea className="h-48 rounded-md border">
+                          <ul className="space-y-2">
+                            {selectedBooking.bookingSlots.map((bs, idx) => (
+                              <li key={idx} className="flex justify-between items-center border-b pb-2 last:border-0">
+                                <span className="text-gray-600">{format(new Date(bs.date), "dd-MM-yyyy")}</span>
+                                <span className="font-medium text-gray-800">
+                                  {bs.slot.start_time.slice(0, 5)} - {bs.slot.end_time.slice(0, 5)}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                          </ScrollArea>
                         </div>
                       )}
-
                     </>
                   );
                 }

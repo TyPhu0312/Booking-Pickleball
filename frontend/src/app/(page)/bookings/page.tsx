@@ -169,21 +169,13 @@ export default function BookingPage() {
 
     if (availableCourts === 0) return;
 
-    if (bookingType === "casual" || bookingType === "tournament") {
-      const hasOtherDateSelected = Object.keys(selectedSlotsByDate).some(d => d !== date && selectedSlotsByDate[d].length > 0);
-      if (hasOtherDateSelected) {
-        alert("Chỉ được chọn slot trong 1 ngày duy nhất!");
-        return;
-      }
-    }
-
     const currentDateSlots = selectedSlotsByDate[date] || [];
     const newSlots = currentDateSlots.includes(slotId)
       ? currentDateSlots.filter((s) => s !== slotId)
       : [...currentDateSlots, slotId];
 
     if (!isConsecutive(newSlots, dateSlots)) {
-      alert("Chỉ được chọn các slot liên tiếp!");
+      alert("Chỉ được chọn các slot liên tiếp trong cùng 1 ngày!");
       return;
     }
 
@@ -214,13 +206,13 @@ export default function BookingPage() {
 
       setSelectedSlotsByDate(updatedSlots);
     } else {
+      const updatedSlots = { ...selectedSlotsByDate };
       if (sortedSlots.length > 0) {
-        setSelectedSlotsByDate({
-          [date]: sortedSlots
-        });
+        updatedSlots[date] = sortedSlots;
       } else {
-        setSelectedSlotsByDate({});
+        delete updatedSlots[date];
       }
+      setSelectedSlotsByDate(updatedSlots);
     }
   };
 
@@ -610,8 +602,8 @@ export default function BookingPage() {
               </div>
               <div>
                 <div className="flex justify-between">
-                  <span className="font-medium">VAT:</span>
-                  <span className="font-bold ">{(VAT * 100)} %</span>
+                  <span className="font-medium">VAT ({(VAT * 100)}%):</span>
+                  <span className="font-bold ">{(VAT * getPricePerWeek()).toLocaleString()} VNĐ</span>
                 </div>
               </div>
               {bookingType === "weekly" && (
