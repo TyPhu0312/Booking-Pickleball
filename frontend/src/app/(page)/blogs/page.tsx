@@ -71,6 +71,28 @@ export default function BlogsPage() {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-50 via-white to-blue-50">
+      <div className="bg-linear-to-r py-20 ">
+        <div className="container mx-auto px-4">
+          <div className="text-center">
+            <h1 className="text-5xl md:text-6xl font-bold mb-4">
+              Bài viết
+            </h1>
+          </div>
+          
+          <div className="max-w-xl mx-auto mt-10">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm bài viết..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="w-full pl-12 pr-4 py-4 rounded-full border-0 shadow-lg focus:ring-2 focus:ring-blue-300 outline-none text-gray-700"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
       <section className="py-16">
         <div className="container mx-auto px-4">

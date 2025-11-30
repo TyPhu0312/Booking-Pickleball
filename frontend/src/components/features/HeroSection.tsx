@@ -53,7 +53,6 @@ export default function HeroSection() {
                 "✓ Miễn phí hủy trước 2h",
                 "✓ Thanh toán linh hoạt",
                 "✓ Sân chuẩn quốc tế",
-                "✓ Hỗ trợ 24/7",
               ].map((item, i) => (
                 <div key={i} className="text-lg font-semibold">
                   {item}
