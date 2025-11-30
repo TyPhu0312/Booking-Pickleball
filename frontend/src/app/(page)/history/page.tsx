@@ -1,8 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, set } from "date-fns";
 import { Edit, Trash2 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
+import PaymentModal from "@/components/payment/PaymentModal";
+import RemainingPaymentModal from "@/components/payment/RemainingPaymentModal";
 
 interface Booking {
   bookingID: string;
@@ -63,6 +66,10 @@ export default function HistoryPage() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [viewMode, setViewMode] = useState<"group" | "detail">("group");
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showRemainingModal, setShowRemainingModal] = useState(false);
+  const [paymentBookingId, setPaymentBookingId] = useState<string | null>(null);
+  const [bookingPayments, setBookingPayments] = useState<Record<string, any>>({});
 
 
   useEffect(() => {
@@ -109,6 +116,28 @@ export default function HistoryPage() {
       fetchBookings();
     }
   }, [user?.userID, fetchBookings]);
+
+  useEffect(() => {
+    const fetchAllPayments = async () => {
+      if (bookings.length === 0) return;
+      
+      const paymentsData: Record<string, any> = {};
+      for (const booking of bookings) {
+        try {
+          const res = await fetch(`http://localhost:5000/api/payos/booking/${booking.bookingID}`);
+          if (res.ok) {
+            const data = await res.json();
+            paymentsData[booking.bookingID] = data;
+          }
+        } catch (error) {
+          console.error(`Lỗi khi lấy payment cho booking ${booking.bookingID}:`, error);
+        }
+      }
+      setBookingPayments(paymentsData);
+    };
+
+    fetchAllPayments();
+  }, [bookings]);
 
 
   const handleViewDetails = (booking: Booking) => {
@@ -201,21 +230,96 @@ export default function HistoryPage() {
                   </span>
                 </td>
                 <td className="px-6 py-4 text-sm">
-                  <button
-                    className="text-blue-600 hover:text-blue-900 m-2 "
-                    onClick={() => handleViewDetails(booking)}
-                  >
-                    <Edit className="w-4 h-4 mr-1" />
-                  </button>
-
-                  {booking.status === "PENDING" && (
+                  <div className="flex items-center gap-2">
                     <button
-                      onClick={() => handleCancelBooking(booking.bookingID)}
-                      className="text-red-600 hover:text-red-800 m-2"
+                      className="text-blue-600 hover:text-blue-900"
+                      onClick={() => handleViewDetails(booking)}
                     >
-                      Hủy
+                      <Edit className="w-4 h-4" />
                     </button>
-                  )}
+
+                    {booking.status === "PENDING" && (
+                      <>
+                        {(() => {
+                          const paymentInfo = bookingPayments[booking.bookingID];
+                          if (!paymentInfo) return null;
+
+                          const hasPending = paymentInfo.hasPendingPayment;
+                          const pendingPayment = paymentInfo.pendingPayment;
+                          
+                          if (hasPending && pendingPayment) {
+                            const deadline = new Date(pendingPayment.payment_deadline);
+                            const isExpired = deadline < new Date();
+                            
+                            if (isExpired) {
+                              return (
+                                <button
+                                  onClick={() => {
+                                    setPaymentBookingId(booking.bookingID);
+                                    setShowPaymentModal(true);
+                                  }}
+                                  className="text-orange-600 hover:text-orange-800 text-xs font-medium"
+                                >
+                                  Tạo lại thanh toán
+                                </button>
+                              );
+                            } else {
+                              return (
+                                <button
+                                  onClick={() => {
+                                    setPaymentBookingId(booking.bookingID);
+                                    setShowPaymentModal(true);
+                                  }}
+                                  className="text-green-600 hover:text-green-800 text-xs font-medium"
+                                >
+                                  Tiếp tục thanh toán
+                                </button>
+                              );
+                            }
+                          } else {
+                            return (
+                              <button
+                                onClick={() => {
+                                  setPaymentBookingId(booking.bookingID);
+                                  setShowPaymentModal(true);
+                                }}
+                                className="text-green-600 hover:text-green-800 text-xs font-medium"
+                              >
+                                Thanh toán cọc
+                              </button>
+                            );
+                          }
+                        })()}
+                        
+                        <button
+                          onClick={() => handleCancelBooking(booking.bookingID)}
+                          className="text-red-600 hover:text-red-800 text-xs font-medium"
+                        >
+                          Hủy
+                        </button>
+                      </>
+                    )}
+
+                    {booking.status === "CONFIRMED" && (() => {
+                      const paymentInfo = bookingPayments[booking.bookingID];
+                      if (!paymentInfo) return null;
+                      
+                      const remaining = paymentInfo.remainingAmount || 0;
+                      if (remaining > 0) {
+                        return (
+                          <button
+                            onClick={() => {
+                              setPaymentBookingId(booking.bookingID);
+                              setShowRemainingModal(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                          >
+                            Thanh toán phần còn lại
+                          </button>
+                        );
+                      }
+                    })()}
+                  </div>
                 </td>
 
               </tr>
@@ -223,6 +327,38 @@ export default function HistoryPage() {
           </tbody>
         </table>
       </div>
+
+      {showPaymentModal && paymentBookingId && (
+        <PaymentModal
+          bookingId={paymentBookingId}
+          onClose={() => {
+            setShowPaymentModal(false);
+            setPaymentBookingId(null);
+          }}
+          onPaymentSuccess={() => {
+            setShowPaymentModal(false);
+            setPaymentBookingId(null);
+            fetchBookings();
+          }}
+        />
+      )}
+
+      {showRemainingModal && paymentBookingId && (
+        <RemainingPaymentModal
+          bookingId={paymentBookingId}
+          remainingAmount={bookingPayments[paymentBookingId]?.remainingAmount || 0}
+          onClose={() => {
+            setShowRemainingModal(false);
+            setPaymentBookingId(null);
+          }}
+          onPaymentSuccess={() => {
+            setShowRemainingModal(false);
+            setPaymentBookingId(null);
+            fetchBookings();
+          }}
+        />
+      )}
+
       {showModal && selectedBooking && (
         <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 relative">

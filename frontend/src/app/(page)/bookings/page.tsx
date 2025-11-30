@@ -9,6 +9,7 @@ import moment from "moment-timezone";
 import CasualBooking from "@/components/booking/CasualBooking";
 import WeeklyBooking from "@/components/booking/WeeklyBooking";
 import TournamentBooking from "@/components/booking/TournamentBooking";
+import PaymentModal from "@/components/payment/PaymentModal";
 
 interface SlotData {
   slot_id: string;
@@ -93,7 +94,8 @@ export default function BookingPage() {
   const [numberWeeks, setNumberWeeks] = useState(1);
   const [selectedCourtType, setSelectedCourtType] = useState<string>("");
   const [selectedCourt, setSelectedCourt] = useState<Courts | null>(null);
-  const [slotByDate, setSlotByDate] = useState([]); 
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [createdBookingId, setCreatedBookingId] = useState<string | null>(null); 
 
 
 
@@ -401,15 +403,26 @@ export default function BookingPage() {
         body: JSON.stringify(bookingData),
       });
 
-      if (!res.ok) throw new Error("Lỗi khi lưu booking");
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("❌ Lỗi từ server:", errorData);
+        throw new Error(errorData.message || "Lỗi khi lưu booking");
+      }
 
-      await res.json();
-      alert("Đặt sân thành công!");
-      localStorage.removeItem("pendingBooking");
-      router.push(`/history`);
-    } catch (error) {
-      console.error(error);
-      alert("Không thể lưu booking. Vui lòng thử lại!");
+      const result = await res.json();
+      console.log("✅ Booking response:", result);
+      
+      const bookingId = result.booking?.bookingID || result.bookingID || result.booking?.id;
+      if (!bookingId) {
+        console.error("❌ Không tìm thấy bookingID trong response:", result);
+        throw new Error("Không nhận được booking ID từ server");
+      }
+      
+      setCreatedBookingId(bookingId);
+      setShowPaymentModal(true);
+    } catch (error: any) {
+      console.error("❌ Error:", error);
+      alert("Không thể lưu booking: " + (error.message || "Vui lòng thử lại!"));
     }
   };
 
@@ -641,6 +654,20 @@ export default function BookingPage() {
           Xác Nhận Đặt Slot
         </button>
       </div>
+
+      {showPaymentModal && createdBookingId && (
+        <PaymentModal
+          bookingId={createdBookingId}
+          onClose={() => {
+            setShowPaymentModal(false);
+            setCreatedBookingId(null);
+          }}
+          onPaymentSuccess={() => {
+            setShowPaymentModal(false);
+            router.push("/history");
+          }}
+        />
+      )}
     </div >
   );
 }
