@@ -22,10 +22,40 @@ export const createPayOSPayment = async (req: Request, res: Response) => {
       return sum;
     }, 0);
 
-    const pendingPayment = booking.payments.find((p: any) => p.status === "PENDING");
-    if (pendingPayment) {
-      return res.status(400).json({ message: "Đã có liên kết thanh toán đang chờ xử lý" });
+    if (!paymentType || paymentType === "DEPOSIT") {
+      const pendingPayment = booking.payments.find((p: any) => p.status === "PENDING");
+      if (pendingPayment) {
+        const now = new Date();
+        const deadline = pendingPayment.payment_deadline ? new Date(pendingPayment.payment_deadline) : now;
+        
+        if (deadline < now) {
+          console.log("⏰ Payment PENDING đã hết hạn, tự động cancel...");
+          
+          if (pendingPayment.order_code) {
+            try {
+              await cancelPaymentLink(pendingPayment.order_code, "Hết hạn thanh toán");
+            } catch (error) {
+              console.warn("⚠️ Không thể cancel payment trên PayOS:", error);
+            }
+          }
+          
+          await prisma.payments.update({
+            where: { paymentID: pendingPayment.paymentID },
+            data: { status: "EXPIRED" }
+          });
+          
+          console.log("✅ Đã cancel payment cũ, cho phép tạo payment mới");
+        } else {
+          const minutesLeft = Math.floor((deadline.getTime() - now.getTime()) / 60000);
+          return res.status(400).json({ 
+            message: `Đã có liên kết thanh toán đang chờ xử lý (còn ${minutesLeft} phút)`,
+            existingPaymentId: pendingPayment.paymentID,
+            deadline: pendingPayment.payment_deadline
+          });
+        }
+      }
     }
+    
     let amountToPay = 0;
     let description = "";
 
@@ -157,9 +187,31 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
         console.log("📦 PayOS trả về:", JSON.stringify(paymentInfo, null, 2));
         
         if (paymentInfo.status === "PAID") {
-          const currentTotalPaid = paymentInfo.amount;
+          const otherPayments = await prisma.payments.findMany({
+            where: { 
+              booking_id: payment.booking_id,
+              paymentID: { not: payment.paymentID } 
+            }
+          });
+
+          const previousPaid = otherPayments.reduce((sum: number, p: any) => {
+            if (p.status === "PARTIALLY_PAID" || p.status === "PAID") {
+              return sum + (p.paid_amount || 0);
+            }
+            return sum;
+          }, 0);
+
+          const currentTotalPaid = previousPaid + paymentInfo.amount;
           const totalPrice = payment.booking.total_price;
           const newStatus = currentTotalPaid >= totalPrice ? "PAID" : "PARTIALLY_PAID";
+
+          console.log("💰 Tính toán:", {
+            previousPaid,
+            currentPayment: paymentInfo.amount,
+            currentTotalPaid,
+            totalPrice,
+            newStatus
+          });
 
           await prisma.payments.update({
             where: { paymentID: payment.paymentID },
@@ -170,7 +222,7 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
             },
           });
 
-          if (newStatus === "PARTIALLY_PAID") {
+          if (newStatus === "PAID" || newStatus === "PARTIALLY_PAID") {
             await prisma.bookings.update({
               where: { bookingID: payment.booking_id },
               data: { status: "CONFIRMED" },
@@ -219,6 +271,50 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
   }
 };
 
+export const getBookingPayments = async (req: Request, res: Response) => {
+  const { bookingId } = req.params;
+  try {
+    const payments = await prisma.payments.findMany({
+      where: { booking_id: bookingId },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (!payments || payments.length === 0) {
+      return res.json({
+        hasPendingPayment: false,
+        hasPartiallyPaid: false,
+        payments: []
+      });
+    }
+
+    const pendingPayment = payments.find((p: any) => p.status === "PENDING");
+    const partiallyPaid = payments.some((p: any) => p.status === "PARTIALLY_PAID");
+    
+    const totalPaid = payments.reduce((sum: number, p: any) => {
+      if (p.status === "PARTIALLY_PAID" || p.status === "PAID") {
+        return sum + (p.paid_amount || 0);
+      }
+      return sum;
+    }, 0);
+
+    const booking = await prisma.bookings.findUnique({
+      where: { bookingID: bookingId }
+    });
+
+    res.json({
+      hasPendingPayment: !!pendingPayment,
+      hasPartiallyPaid: partiallyPaid,
+      pendingPayment: pendingPayment || null,
+      totalPaid,
+      totalPrice: booking?.total_price || 0,
+      remainingAmount: (booking?.total_price || 0) - totalPaid,
+      payments
+    });
+  } catch (error) {
+    console.error("Lỗi khi lấy payments của booking:", error);
+    res.status(500).json({ message: "Lỗi máy chủ" });
+  }
+};
 
 export const cancelPayOSPayment = async (req: Request, res: Response) => {
   const { id } = req.params;

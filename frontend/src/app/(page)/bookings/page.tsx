@@ -9,6 +9,7 @@ import moment from "moment-timezone";
 import CasualBooking from "@/components/booking/CasualBooking";
 import WeeklyBooking from "@/components/booking/WeeklyBooking";
 import TournamentBooking from "@/components/booking/TournamentBooking";
+import PaymentModal from "@/components/payment/PaymentModal";
 
 interface SlotData {
   slot_id: string;
@@ -93,7 +94,8 @@ export default function BookingPage() {
   const [numberWeeks, setNumberWeeks] = useState(1);
   const [selectedCourtType, setSelectedCourtType] = useState<string>("");
   const [selectedCourt, setSelectedCourt] = useState<Courts | null>(null);
-  const [slotByDate, setSlotByDate] = useState([]); 
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [createdBookingId, setCreatedBookingId] = useState<string | null>(null); 
 
 
 
@@ -169,21 +171,13 @@ export default function BookingPage() {
 
     if (availableCourts === 0) return;
 
-    if (bookingType === "casual" || bookingType === "tournament") {
-      const hasOtherDateSelected = Object.keys(selectedSlotsByDate).some(d => d !== date && selectedSlotsByDate[d].length > 0);
-      if (hasOtherDateSelected) {
-        alert("Chỉ được chọn slot trong 1 ngày duy nhất!");
-        return;
-      }
-    }
-
     const currentDateSlots = selectedSlotsByDate[date] || [];
     const newSlots = currentDateSlots.includes(slotId)
       ? currentDateSlots.filter((s) => s !== slotId)
       : [...currentDateSlots, slotId];
 
     if (!isConsecutive(newSlots, dateSlots)) {
-      alert("Chỉ được chọn các slot liên tiếp!");
+      alert("Chỉ được chọn các slot liên tiếp trong cùng 1 ngày!");
       return;
     }
 
@@ -214,13 +208,13 @@ export default function BookingPage() {
 
       setSelectedSlotsByDate(updatedSlots);
     } else {
+      const updatedSlots = { ...selectedSlotsByDate };
       if (sortedSlots.length > 0) {
-        setSelectedSlotsByDate({
-          [date]: sortedSlots
-        });
+        updatedSlots[date] = sortedSlots;
       } else {
-        setSelectedSlotsByDate({});
+        delete updatedSlots[date];
       }
+      setSelectedSlotsByDate(updatedSlots);
     }
   };
 
@@ -409,15 +403,26 @@ export default function BookingPage() {
         body: JSON.stringify(bookingData),
       });
 
-      if (!res.ok) throw new Error("Lỗi khi lưu booking");
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("❌ Lỗi từ server:", errorData);
+        throw new Error(errorData.message || "Lỗi khi lưu booking");
+      }
 
-      await res.json();
-      alert("Đặt sân thành công!");
-      localStorage.removeItem("pendingBooking");
-      router.push(`/history`);
-    } catch (error) {
-      console.error(error);
-      alert("Không thể lưu booking. Vui lòng thử lại!");
+      const result = await res.json();
+      console.log("✅ Booking response:", result);
+      
+      const bookingId = result.booking?.bookingID || result.bookingID || result.booking?.id;
+      if (!bookingId) {
+        console.error("❌ Không tìm thấy bookingID trong response:", result);
+        throw new Error("Không nhận được booking ID từ server");
+      }
+      
+      setCreatedBookingId(bookingId);
+      setShowPaymentModal(true);
+    } catch (error: any) {
+      console.error("❌ Error:", error);
+      alert("Không thể lưu booking: " + (error.message || "Vui lòng thử lại!"));
     }
   };
 
@@ -610,8 +615,8 @@ export default function BookingPage() {
               </div>
               <div>
                 <div className="flex justify-between">
-                  <span className="font-medium">VAT:</span>
-                  <span className="font-bold ">{(VAT * 100)} %</span>
+                  <span className="font-medium">VAT ({(VAT * 100)}%):</span>
+                  <span className="font-bold ">{(VAT * getPricePerWeek()).toLocaleString()} VNĐ</span>
                 </div>
               </div>
               {bookingType === "weekly" && (
@@ -649,6 +654,20 @@ export default function BookingPage() {
           Xác Nhận Đặt Slot
         </button>
       </div>
+
+      {showPaymentModal && createdBookingId && (
+        <PaymentModal
+          bookingId={createdBookingId}
+          onClose={() => {
+            setShowPaymentModal(false);
+            setCreatedBookingId(null);
+          }}
+          onPaymentSuccess={() => {
+            setShowPaymentModal(false);
+            router.push("/history");
+          }}
+        />
+      )}
     </div >
   );
 }

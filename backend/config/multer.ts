@@ -36,20 +36,6 @@ const courtStorage = multer.diskStorage({
 });
 
 
-const PaymentStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = 'uploads/payments';
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'payment-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
 const imageFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   const allowedTypes = /jpeg|jpg|png|gif|webp/;
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
@@ -74,12 +60,6 @@ export const uploadCourtImage = multer({
   fileFilter: imageFilter
 });
 
-
-export const uploadPaymentImage = multer({
-  storage: PaymentStorage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: imageFilter
-});
 
 export const deleteFile = (filePath: string) => {
   if (fs.existsSync(filePath)) {
