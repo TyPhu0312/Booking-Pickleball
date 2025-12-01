@@ -29,7 +29,6 @@ export const createPayOSPayment = async (req: Request, res: Response) => {
         const deadline = pendingPayment.payment_deadline ? new Date(pendingPayment.payment_deadline) : now;
         
         if (deadline < now) {
-          console.log("⏰ Payment PENDING đã hết hạn, tự động cancel...");
           
           if (pendingPayment.order_code) {
             try {
@@ -44,7 +43,6 @@ export const createPayOSPayment = async (req: Request, res: Response) => {
             data: { status: "EXPIRED" }
           });
           
-          console.log("✅ Đã cancel payment cũ, cho phép tạo payment mới");
         } else {
           const minutesLeft = Math.floor((deadline.getTime() - now.getTime()) / 60000);
           return res.status(400).json({ 
@@ -90,8 +88,6 @@ export const createPayOSPayment = async (req: Request, res: Response) => {
       buyerName: booking.user ? booking.user.full_name : "Khách hàng",
       buyerPhone: booking.user ? booking.user.phone : "0000000000",
     });
-
-    console.log("✅ PayOS response:", paymentLink);
 
     const payment = await prisma.payments.create({
       data: {
@@ -182,9 +178,7 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
 
     if (payment.status === "PENDING" && payment.order_code) {
       try {
-        console.log("🔍 Đang kiểm tra payment trên PayOS...");
         const paymentInfo = await getPaymentInfo(payment.order_code);
-        console.log("📦 PayOS trả về:", JSON.stringify(paymentInfo, null, 2));
         
         if (paymentInfo.status === "PAID") {
           const otherPayments = await prisma.payments.findMany({
@@ -274,6 +268,12 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
 export const getBookingPayments = async (req: Request, res: Response) => {
   const { bookingId } = req.params;
   try {
+      const booking = await prisma.bookings.findUnique({
+      where: { bookingID: bookingId }
+    });
+    if (!booking) {
+      return res.status(404).json({ message: "Booking không tồn tại" });
+    }
     const payments = await prisma.payments.findMany({
       where: { booking_id: bookingId },
       orderBy: { createdAt: 'desc' }
@@ -297,12 +297,8 @@ export const getBookingPayments = async (req: Request, res: Response) => {
       return sum;
     }, 0);
 
-    const booking = await prisma.bookings.findUnique({
-      where: { bookingID: bookingId }
-    });
-
     res.json({
-      hasPendingPayment: !!pendingPayment,
+      hasPendingPayment: pendingPayment,
       hasPartiallyPaid: partiallyPaid,
       pendingPayment: pendingPayment || null,
       totalPaid,
