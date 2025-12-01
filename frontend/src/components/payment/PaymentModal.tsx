@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { X, Clock, QrCode, CreditCard } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { API_URL } from "@/lib/config";
 
 interface PaymentModalProps {
   bookingId: string;
@@ -59,10 +60,8 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
 
   const createPayment = async () => {
     setLoading(true);
-    try {
-      console.log("🔵 Sending payment request for bookingId:", bookingId);
-      
-      const res = await fetch("http://localhost:5000/api/payos/create-payos", {
+    try {    
+      const res = await fetch(`${API_URL}/api/payos/create-payos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -71,18 +70,40 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
         })
       });
 
-      console.log("🔵 Response status:", res.status);
-
       if (!res.ok) {
         const error = await res.json();
-        console.error("❌ Error response:", error);
+        if (error.existingPaymentId) {
+          const existingRes = await fetch(`${API_URL}/api/payos/${error.existingPaymentId}/status`);
+          
+          if (existingRes.ok) {
+            const existingData = await existingRes.json();
+            const depositAmount = existingData.booking?.deposit_amount || 0;
+            
+            const paymentData: PaymentData = {
+              success: true,
+              paymentId: existingData.paymentId,
+              orderCode: existingData.orderCode,
+              checkoutUrl: existingData.paymentUrl,
+              qrCode: existingData.qrCodeUrl,
+              deadline: existingData.deadLine,
+              amount: depositAmount,
+              paymentType: "DEPOSIT",
+              totalPaid: existingData.totalPaid || 0,
+              totalPrice: existingData.booking?.totalPrice || 0,
+              remainingAmount: existingData.remainingAmount || 0
+            };
+            
+            setPaymentData(paymentData);
+            startPolling(existingData.paymentId);
+            setLoading(false);
+            return;
+          }
+        }
+        
         throw new Error(error.message || "Lỗi tạo thanh toán");
       }
 
       const data = await res.json();
-      console.log("✅ Payment created:", data);
-      console.log("🔍 QR Code value:", data.qrCode);
-      console.log("🔍 Checkout URL:", data.checkoutUrl);
       setPaymentData(data);
       startPolling(data.paymentId);
     } catch (error: any) {
@@ -98,18 +119,15 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
     setPolling(true);
     const interval = setInterval(async () => {
       try {
-        console.log("🔄 Polling payment status for:", paymentId);
-        const res = await fetch(`http://localhost:5000/api/payos/${paymentId}/status`);
-        console.log("🔄 Polling response status:", res.status);
-        
+        const res = await fetch(`${API_URL}/api/payos/${paymentId}/status`);
+                
         if (!res.ok) {
           console.warn("⚠️ Polling failed with status:", res.status);
           return;
         }
 
         const data = await res.json();
-        console.log("📦 Payment status data:", data);
-        
+    
         if (data.status === "PARTIALLY_PAID" || data.status === "PAID") {
           clearInterval(interval);
           setPolling(false);
@@ -149,7 +167,7 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 relative">
+      <div className="bg-white rounded-2xl max-w-md w-full p-6 h-auto relative">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"

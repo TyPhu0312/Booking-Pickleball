@@ -10,6 +10,7 @@ import CasualBooking from "@/components/booking/CasualBooking";
 import WeeklyBooking from "@/components/booking/WeeklyBooking";
 import TournamentBooking from "@/components/booking/TournamentBooking";
 import PaymentModal from "@/components/payment/PaymentModal";
+import { API_URL } from '@/lib/config';
 
 interface SlotData {
   slot_id: string;
@@ -116,7 +117,7 @@ export default function BookingPage() {
     const fetchSlotsByDate = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`http://localhost:5000/api/slots/getSlotStatusByDate/${StartDate}/${EndDate}`);
+        const res = await fetch(`${API_URL}/api/slots/getSlotStatusByDate/${StartDate}/${EndDate}`);
         if (!res.ok) throw new Error("Lỗi khi tải dữ liệu slot");
         const data = await res.json();
 
@@ -246,7 +247,7 @@ export default function BookingPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`http://localhost:5000/api/slots/`);
+      const res = await fetch(`${API_URL}/api/slots/`);
       if (!res.ok) throw new Error("Lỗi khi tải dữ liệu slot");
       const data = await res.json();
       setselectedSlots(data || []);
@@ -259,7 +260,7 @@ export default function BookingPage() {
 
   const fetchCourtMultiplier = async () => {
     try {
-      const res = await fetch(`http://localhost:5000/api/courts/getAllTheMultiplierOfTheCourtType`);
+      const res = await fetch(`${API_URL}/api/courts/getAllTheMultiplierOfTheCourtType`);
       if (!res.ok) throw new Error("Lỗi khi tải dữ liệu court");
       const data = await res.json();
       setCourtsMultiplier(data || null);
@@ -270,7 +271,7 @@ export default function BookingPage() {
 
   const fetchCourts = useCallback(async () => {
     try {
-      const res = await fetch(`http://localhost:5000/api/courts/getAvailableCourtsByType/${selectedCourtType}`);
+      const res = await fetch(`${API_URL}/api/courts/getAvailableCourtsByType/${selectedCourtType}`);
       if (!res.ok) throw new Error("Lỗi khi tải dữ liệu court");
       const data = await res.json();
       setCourts(data || null);
@@ -397,7 +398,7 @@ export default function BookingPage() {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/bookings/create", {
+      const res = await fetch(`${API_URL}/api/bookings/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(bookingData),

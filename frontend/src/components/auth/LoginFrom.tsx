@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import Cookies from "js-cookie";
 import { Phone } from "lucide-react";
+import { API_URL } from '@/lib/config';
 
 export default function LoginForm() {
   const [phone, setPhone] = useState("");
@@ -19,7 +20,7 @@ export default function LoginForm() {
     setError("");
 
     try {
-      const res = await fetch("http://localhost:5000/api/auth/login", {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

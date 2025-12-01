@@ -113,7 +113,7 @@ export default function BlogsPage() {
                   {blog.image ? (
                     <div className="relative h-56 overflow-hidden">
                       <img 
-                        src={`http://localhost:5000${blog.image}`} 
+                        src={`${API_URL}${blog.image}`} 
                         alt={blog.title}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />

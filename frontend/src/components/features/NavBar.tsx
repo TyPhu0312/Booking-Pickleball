@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { API_URL } from '@/lib/config';
 import { Menu } from "lucide-react";
 import Image from "next/image";
 import Cookies from "js-cookie";
@@ -45,7 +46,7 @@ export default function Navbar() {
             if (!phoneUser) return;
             try {
                 const res = await fetch(
-                    `http://localhost:5000/api/users/getUserByPhone/${phoneUser}`,
+                    `${API_URL}/api/users/getUserByPhone/${phoneUser}`,
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
                 if (!res.ok) {

@@ -3,6 +3,7 @@
 import { format } from "date-fns";
 import DatePicker from "react-datepicker";
 import { useState, useEffect } from "react";
+import { API_URL } from "@/lib/config";
 
 type CourtType = "INDOOR" | "OUTDOOR";
 
@@ -44,7 +45,7 @@ interface TournamentBookingProps {
   onTournamentChange: (tournament: string | null) => void;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 
 export default function TournamentBooking({
   StartDate,

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
+import { API_URL } from '@/lib/config';
 
 export default function RegisterForm() {
   const [form, setForm] = useState({
@@ -49,8 +50,8 @@ export default function RegisterForm() {
     }
     if (validate()) {
       try {
-        const res = await fetch("http://localhost:5000/api/auth/register", {
-          method: "POST",
+        const res = await fetch(`${API_URL}/api/auth/register`, {
+            method: "POST",
           headers: {
             "Content-Type": "application/json",
           },

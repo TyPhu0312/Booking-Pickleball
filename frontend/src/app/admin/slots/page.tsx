@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import TimePicker from "react-time-picker";
 import "react-time-picker/dist/TimePicker.css";
+import { API_URL } from "@/lib/config";
 
 interface SlotStatus {
   slot_id: string;
@@ -94,8 +95,8 @@ export default function SlotsPage() {
 
       const method = editing ? "PUT" : "POST";
       const url = editing
-        ? `http://localhost:5000/api/slots/update/${formData.slot_id}`
-        : "http://localhost:5000/api/slots/create";
+        ? `${API_URL}/api/slots/update/${formData.slot_id}`
+        : `${API_URL}/api/slots/create`;
 
       const res = await fetch(url, {
         method,
@@ -122,7 +123,7 @@ export default function SlotsPage() {
     if (!confirm(`Bạn có chắc muốn xoá slot "${name}"?`)) return;
     
     try {
-      const res = await fetch(`http://localhost:5000/api/slots/delete/${id}`, { method: "DELETE" });
+      const res = await fetch(`${API_URL}/api/slots/delete/${id}`, { method: "DELETE" });
       const data = await res.json();
 
       if (!res.ok) {

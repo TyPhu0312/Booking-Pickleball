@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { X, Clock, QrCode, CreditCard } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { API_URL } from "@/lib/config";
 
 interface RemainingPaymentModalProps {
   bookingId: string;
@@ -65,7 +66,7 @@ export default function RemainingPaymentModal({
   const createPayment = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/payos/create-payos", {
+      const res = await fetch(`${API_URL}/api/payos/create-payos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -94,9 +95,7 @@ export default function RemainingPaymentModal({
     setPolling(true);
     const interval = setInterval(async () => {
       try {
-        console.log("🔄 Polling payment status for:", paymentId);
-        const res = await fetch(`http://localhost:5000/api/payos/${paymentId}/status`);
-        console.log("🔄 Polling response status:", res.status);
+        const res = await fetch(`${API_URL}/api/payos/${paymentId}/status`);
         
         if (!res.ok) {
           console.warn("⚠️ Polling failed with status:", res.status);
@@ -104,7 +103,6 @@ export default function RemainingPaymentModal({
         }
 
         const data = await res.json();
-        console.log("📦 Payment status data:", data);
         
         if (data.status === "PAID") {
           clearInterval(interval);
@@ -120,7 +118,6 @@ export default function RemainingPaymentModal({
     setTimeout(() => {
       clearInterval(interval);
       setPolling(false);
-      console.log("⏱️ Polling timeout after 2 minutes");
     }, 120000);
   };
 
