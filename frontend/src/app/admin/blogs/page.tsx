@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { API_URL } from "@/lib/config";
 
 interface Blog {
   blogID: string;
@@ -39,7 +40,7 @@ export default function BlogsPage() {
 
   const fetchBlogs = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/blogs");
+      const res = await fetch(`${API_URL}/api/blogs`);
       const data = await res.json();
       setBlogs(data);
     } catch (error) {
@@ -94,7 +95,7 @@ export default function BlogsPage() {
         formDataToSend.append("image", imageFile);
       }
 
-      const res = await fetch("http://localhost:5000/api/blogs/create", {
+      const res = await fetch(`${API_URL}/api/blogs/create`, {
         method: "POST",
         body: formDataToSend,
       });
@@ -134,7 +135,7 @@ export default function BlogsPage() {
         formDataToSend.append("image", editImageFile);
       }
 
-      const res = await fetch(`http://localhost:5000/api/blogs/update/${editingBlog.blogID}`, {
+      const res = await fetch(`${API_URL}/api/blogs/update/${editingBlog.blogID}`, {
         method: "PUT",
         body: formDataToSend,
       });
@@ -159,7 +160,7 @@ export default function BlogsPage() {
     if (!confirm(`Bạn có chắc chắn muốn xóa blog "${title}"?`)) return;
     
     try {
-      const res = await fetch(`http://localhost:5000/api/blogs/delete/${id}`, {
+      const res = await fetch(`${API_URL}/api/blogs/delete/${id}`, {
         method: "DELETE",
       });
       
@@ -243,7 +244,7 @@ export default function BlogsPage() {
                 <td className="px-6 py-4 whitespace-nowrap">
                   {blog.image ? (
                     <img 
-                      src={`http://localhost:5000${blog.image}`} 
+                      src={`${API_URL}${blog.image}`} 
                       alt={blog.title}
                       className="w-16 h-16 object-cover rounded-lg"
                     />
@@ -400,7 +401,7 @@ export default function BlogsPage() {
                   <div className="mb-3">
                     <p className="text-sm text-gray-600 mb-2">Ảnh hiện tại:</p>
                     <img 
-                      src={`http://localhost:5000${editingBlog.image}`} 
+                      src={`${API_URL}${editingBlog.image}`} 
                       alt={editingBlog.title}
                       className="w-full h-64 object-cover rounded-lg border-2 border-gray-200"
                     />

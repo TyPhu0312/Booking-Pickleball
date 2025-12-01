@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { XCircle } from "lucide-react";
 import { format, parseISO } from "date-fns";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { API_URL } from '@/lib/config';
 
 type BookingStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "COMPLETED" | "CANCELLED";
 type CourtType = "INDOOR" | "OUTDOOR";

@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { XCircle } from "lucide-react";
 import { format } from "date-fns";
 import moment from "moment-timezone";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { API_URL } from '@/lib/config';
 
 type BookingStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "COMPLETED" | "CANCELLED";
 type CourtType = "INDOOR" | "OUTDOOR";

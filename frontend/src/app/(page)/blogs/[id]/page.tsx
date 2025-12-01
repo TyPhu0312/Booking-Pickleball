@@ -119,7 +119,7 @@ export default function BlogDetailPage() {
               <div className="mt-8 mb-8">
                 <div className="rounded-2xl overflow-hidden shadow-lg">
                   <img 
-                    src={`http://localhost:5000${blog.image}`} 
+                    src={`${API_URL}${blog.image}`} 
                     alt={blog.title}
                     className="w-full h-auto object-cover"
                   />

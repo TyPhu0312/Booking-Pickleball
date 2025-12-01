@@ -5,8 +5,7 @@ import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import Link from "next/link";
 import { Trophy, Calendar, Users, ChevronRight, Star } from "lucide-react";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { API_URL } from '@/lib/config';
 
 interface Tournament {
   tournamentID: string;

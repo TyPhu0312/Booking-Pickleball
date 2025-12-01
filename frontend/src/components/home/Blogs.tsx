@@ -5,8 +5,7 @@ import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import Link from "next/link";
 import { BookOpen, Calendar, User, ChevronRight, ArrowRight } from "lucide-react";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { API_URL } from "@/lib/config";
 
 interface Blog {
   blogID: string;
@@ -84,7 +83,7 @@ export default function Blogs() {
                 {blogs[0].image ? (
                   <div className="relative h-96 overflow-hidden">
                     <img 
-                      src={`http://localhost:5000${blogs[0].image}`} 
+                      src={`${API_URL}${blogs[0].image}`} 
                       alt={blogs[0].title}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
@@ -156,7 +155,7 @@ export default function Blogs() {
                 {blog.image ? (
                   <div className="relative h-48 overflow-hidden">
                     <img 
-                      src={`http://localhost:5000${blog.image}`} 
+                      src={`${API_URL}${blog.image}`} 
                       alt={blog.title}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />

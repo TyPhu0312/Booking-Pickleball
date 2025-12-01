@@ -3,6 +3,7 @@
 "use client";
 import { User, Mail, Phone, Lock, Trash2, MapPinHouse } from "lucide-react";
 import { useState, useEffect } from "react";
+import { API_URL } from "@/lib/config";
 
 interface User {
   userID: string;
@@ -43,7 +44,7 @@ export default function UsersPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Bạn có chắc muốn xóa người dùng này không?")) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/users/delete/${id}`, { method: "DELETE" });
+      const res = await fetch(`${API_URL}/api/users/delete/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Xóa thất bại");
       alert("Xóa người dùng thành công");
       fetchUsers();

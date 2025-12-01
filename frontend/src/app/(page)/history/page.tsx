@@ -5,7 +5,7 @@ import { format, set } from "date-fns";
 import { Edit, Trash2 } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import PaymentModal from "@/components/payment/PaymentModal";
-import RemainingPaymentModal from "@/components/payment/RemainingPaymentModal";
+import { API_URL } from '@/lib/config';
 
 interface Booking {
   bookingID: string;
@@ -67,7 +67,6 @@ export default function HistoryPage() {
   const [showModal, setShowModal] = useState(false);
   const [viewMode, setViewMode] = useState<"group" | "detail">("group");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [showRemainingModal, setShowRemainingModal] = useState(false);
   const [paymentBookingId, setPaymentBookingId] = useState<string | null>(null);
   const [bookingPayments, setBookingPayments] = useState<Record<string, any>>({});
 
@@ -88,7 +87,7 @@ export default function HistoryPage() {
     try {
       setLoading(true);
       const response = await fetch(
-        `http://localhost:5000/api/bookings/getBookingByUserIdOrPhone/${user.userID}`,
+        `${API_URL}/api/bookings/getBookingByUserIdOrPhone/${user.userID}`,
         {
           method: "GET",
           headers: {
@@ -124,7 +123,7 @@ export default function HistoryPage() {
       const paymentsData: Record<string, any> = {};
       for (const booking of bookings) {
         try {
-          const res = await fetch(`http://localhost:5000/api/payos/booking/${booking.bookingID}`);
+          const res = await fetch(`${API_URL}/api/payos/booking/${booking.bookingID}`);
           if (res.ok) {
             const data = await res.json();
             paymentsData[booking.bookingID] = data;
@@ -153,7 +152,7 @@ export default function HistoryPage() {
   const handleCancelBooking = async (bookingID: string) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/bookings/delete/${bookingID}`,
+        `${API_URL}/api/bookings/delete/${bookingID}`,
         {
           method: "PUT",
           headers: {
@@ -299,26 +298,6 @@ export default function HistoryPage() {
                         </button>
                       </>
                     )}
-
-                    {booking.status === "CONFIRMED" && (() => {
-                      const paymentInfo = bookingPayments[booking.bookingID];
-                      if (!paymentInfo) return null;
-                      
-                      const remaining = paymentInfo.remainingAmount || 0;
-                      if (remaining > 0) {
-                        return (
-                          <button
-                            onClick={() => {
-                              setPaymentBookingId(booking.bookingID);
-                              setShowRemainingModal(true);
-                            }}
-                            className="text-blue-600 hover:text-blue-800 text-xs font-medium"
-                          >
-                            Thanh toán phần còn lại
-                          </button>
-                        );
-                      }
-                    })()}
                   </div>
                 </td>
 
@@ -337,22 +316,6 @@ export default function HistoryPage() {
           }}
           onPaymentSuccess={() => {
             setShowPaymentModal(false);
-            setPaymentBookingId(null);
-            fetchBookings();
-          }}
-        />
-      )}
-
-      {showRemainingModal && paymentBookingId && (
-        <RemainingPaymentModal
-          bookingId={paymentBookingId}
-          remainingAmount={bookingPayments[paymentBookingId]?.remainingAmount || 0}
-          onClose={() => {
-            setShowRemainingModal(false);
-            setPaymentBookingId(null);
-          }}
-          onPaymentSuccess={() => {
-            setShowRemainingModal(false);
             setPaymentBookingId(null);
             fetchBookings();
           }}

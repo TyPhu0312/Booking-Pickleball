@@ -7,8 +7,7 @@ import { vi } from "date-fns/locale";
 import BookingCard from "@/components/admin/BookingCard";
 import CreateBookingModal from "@/components/admin/CreateBookingModal";
 import EditBookingModal from "@/components/admin/EditBookingModal";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { API_URL } from '@/lib/config';
 
 type BookingStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "COMPLETED" | "CANCELLED";
 type CourtType = "INDOOR" | "OUTDOOR";

@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { Plus, Edit, Trash2, Search } from "lucide-react";
+import { API_URL } from '@/lib/config';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,10 +40,10 @@ export default function CourtsPage() {
 
   const fetchCourts = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/courts");
+      const res = await fetch(`${API_URL}/api/courts`);
       const data = await res.json();
       setCourts(data);
-      console.log(`http://localhost:5000${data[0]?.image}`)
+      console.log(`${API_URL}${data[0]?.image}`)
 
     } catch (error) {
       console.error("Lỗi khi tải sân:", error);
@@ -96,7 +97,7 @@ export default function CourtsPage() {
         formDataToSend.append("image", imageFile);
       }
 
-      const res = await fetch("http://localhost:5000/api/courts/create", {
+      const res = await fetch(`${API_URL}/api/courts/create`, {
         method: "POST",
         body: formDataToSend,
       });
@@ -137,7 +138,7 @@ export default function CourtsPage() {
         formDataToSend.append("image", editImageFile);
       }
 
-      const res = await fetch(`http://localhost:5000/api/courts/update/${editingCourt.courtID}`, {
+      const res = await fetch(`${API_URL}/api/courts/update/${editingCourt.courtID}`, {
         method: "PUT",
         body: formDataToSend,
       });
@@ -163,7 +164,7 @@ export default function CourtsPage() {
     if (!confirm(`Bạn có chắc chắn muốn xóa sân "${name}"?`)) return;
     
     try {
-      const res = await fetch(`http://localhost:5000/api/courts/delete/${id}`, {
+      const res = await fetch(`${API_URL}/api/courts/delete/${id}`, {
         method: "DELETE",
       });
       
@@ -233,7 +234,7 @@ export default function CourtsPage() {
                 <td className="px-6 py-4 whitespace-nowrap">
                   {court.image ? (
                     <img 
-                      src={`http://localhost:5000${court.image}`} 
+                      src={`${API_URL}${court.image}`} 
                       alt={court.name}
                       className="w-16 h-16 object-cover rounded-lg"
                     />
@@ -455,7 +456,7 @@ export default function CourtsPage() {
                   <div className="mb-3">
                     <p className="text-sm text-gray-600 mb-2">Ảnh hiện tại:</p>
                     <img 
-                      src={`http://localhost:5000${editingCourt.image}`} 
+                      src={`${API_URL}${editingCourt.image}`} 
                       alt={editingCourt.name}
                       className="w-full h-48 object-cover rounded-lg border-2 border-gray-200"
                     />
