@@ -168,8 +168,13 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
   const basePrice = selectedSlots.reduce((sum, slot) => sum + slot.price, 0);
   const priceWithMultiplier = basePrice * courtMultiplier;
   const priceWithWeeks = formData.is_recurring ? priceWithMultiplier * formData.num_weeks : priceWithMultiplier;
-  const vatAmount = priceWithWeeks * VAT;
-  const total = Math.round(priceWithWeeks + vatAmount);
+  
+  const discount = bookingType === "TOURNAMENT" ? 10 : bookingType === "WEEKLY" ? 5 : 0;
+  const discountAmount = priceWithWeeks * (discount / 100);
+  const priceAfterDiscount = priceWithWeeks - discountAmount;
+  
+  const vatAmount = priceAfterDiscount * VAT;
+  const total = Math.round(priceAfterDiscount + vatAmount);
   const depositPercent = bookingType === "TOURNAMENT" ? 0.5 : bookingType === "WEEKLY" ? 0.5 : 0.2;
   const deposit = Math.round(total * depositPercent);
 
@@ -739,9 +744,19 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
                     <span className="font-semibold text-gray-800">{priceWithWeeks.toLocaleString()}đ</span>
                   </div>
                 )}
+                {discount > 0 && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Giảm giá ({discount}%):</span>
+                    <span className="font-semibold text-red-600">-{discountAmount.toLocaleString()}đ</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">Giá sau giảm (chưa VAT):</span>
+                  <span className="font-semibold text-gray-800">{priceAfterDiscount.toLocaleString()}đ</span>
+                </div>
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-600">VAT ({(VAT * 100).toFixed(0)}%):</span>
-                  <span className="font-semibold text-gray-800">+{vatAmount.toLocaleString()}đ</span>
+                  <span className="font-semibold text-amber-600">+{vatAmount.toLocaleString()}đ</span>
                 </div>
                 <div className="h-px bg-emerald-300 my-2"></div>
                 <div className="flex justify-between items-center">

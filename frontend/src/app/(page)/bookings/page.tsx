@@ -224,13 +224,38 @@ export default function BookingPage() {
 
   const getPricePerWeek = () => {
     let total = 0;
-    Object.entries(selectedSlotsByDate).forEach(([date, slotIds]) => {
-      const dateSlots = slotDataByDate[date] || [];
-      slotIds.forEach(id => {
-        const slot = dateSlots.find((s) => s.slot_id === id);
-        total += (slot ? slot.price : 0) * multiplier;
+    
+    if (bookingType === "weekly") {
+      const uniqueWeekdays = new Set<number>();
+      Object.keys(selectedSlotsByDate).forEach(date => {
+        uniqueWeekdays.add(new Date(date).getDay());
       });
-    });
+      
+      uniqueWeekdays.forEach(weekday => {
+        const dateWithWeekday = Object.keys(selectedSlotsByDate).find(
+          date => new Date(date).getDay() === weekday
+        );
+        
+        if (dateWithWeekday) {
+          const slotIds = selectedSlotsByDate[dateWithWeekday];
+          const dateSlots = slotDataByDate[dateWithWeekday] || [];
+          
+          slotIds.forEach(id => {
+            const slot = dateSlots.find((s) => s.slot_id === id);
+            total += (slot ? slot.price : 0) * multiplier;
+          });
+        }
+      });
+    } else {
+      Object.entries(selectedSlotsByDate).forEach(([date, slotIds]) => {
+        const dateSlots = slotDataByDate[date] || [];
+        slotIds.forEach(id => {
+          const slot = dateSlots.find((s) => s.slot_id === id);
+          total += (slot ? slot.price : 0) * multiplier;
+        });
+      });
+    }
+    
     return total;
   };
 
@@ -238,10 +263,27 @@ export default function BookingPage() {
 
   const getTotalPrice = () => {
     const pricePerWeek = getPricePerWeek();
-    const sum = pricePerWeek * (bookingType === "weekly" ? numberWeeks : 1) * (1.0 - discount / 100);
-    const vatAmount = sum * VAT;
-    const totalprice = Math.round((sum + vatAmount));
+    const totalBeforeDiscount = pricePerWeek * (bookingType === "weekly" ? numberWeeks : 1);
+    const discountAmount = totalBeforeDiscount * (discount / 100);
+    const priceAfterDiscount = totalBeforeDiscount - discountAmount;
+    const vatAmount = priceAfterDiscount * VAT;
+    const totalprice = Math.round(priceAfterDiscount + vatAmount);
     return totalprice;
+  };
+  
+  const getVATAmount = () => {
+    const pricePerWeek = getPricePerWeek();
+    const totalBeforeDiscount = pricePerWeek * (bookingType === "weekly" ? numberWeeks : 1);
+    const discountAmount = totalBeforeDiscount * (discount / 100);
+    const priceAfterDiscount = totalBeforeDiscount - discountAmount;
+    return Math.round(priceAfterDiscount * VAT);
+  };
+  
+  const getPriceBeforeVAT = () => {
+    const pricePerWeek = getPricePerWeek();
+    const totalBeforeDiscount = pricePerWeek * (bookingType === "weekly" ? numberWeeks : 1);
+    const discountAmount = totalBeforeDiscount * (discount / 100);
+    return Math.round(totalBeforeDiscount - discountAmount);
   };
   const fetchSlots = async () => {
     setLoading(true);
@@ -616,8 +658,14 @@ export default function BookingPage() {
               </div>
               <div>
                 <div className="flex justify-between">
+                  <span className="font-medium">Giá sau giảm (chưa VAT):</span>
+                  <span className="font-bold">{getPriceBeforeVAT().toLocaleString()} VNĐ</span>
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between">
                   <span className="font-medium">VAT ({(VAT * 100)}%):</span>
-                  <span className="font-bold ">{(VAT * getPricePerWeek()).toLocaleString()} VNĐ</span>
+                  <span className="font-bold text-amber-600">+{getVATAmount().toLocaleString()} VNĐ</span>
                 </div>
               </div>
               {bookingType === "weekly" && (

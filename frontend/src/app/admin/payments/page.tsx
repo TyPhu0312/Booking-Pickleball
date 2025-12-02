@@ -10,6 +10,7 @@ import { vi } from 'date-fns/locale';
 import RemainingPaymentModal from '@/components/payment/RemainingPaymentModal';
 import CashPaymentModal from '@/components/payment/CashPaymentModal';
 import PaymentModal from '@/components/payment/PaymentModal';
+import ViewInforPaymentModal from '@/components/payment/ViewInforPaymentModal';
 
 interface Booking {
   bookingID: string;
@@ -59,6 +60,7 @@ export default function PaymentsPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showCashPaymentModal, setShowCashPaymentModal] = useState(false);
   const [showDepositModal, setShowDepositModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -184,6 +186,11 @@ export default function PaymentsPage() {
   const handleDepositPayment = (booking: Booking) => {
     setSelectedBookingId(booking.bookingID);
     setShowDepositModal(true);
+  };
+
+  const handleViewDetails = (booking: Booking) => {
+    setSelectedBookingId(booking.bookingID);
+    setShowViewModal(true);
   };
 
   if (loading) {
@@ -449,8 +456,7 @@ export default function PaymentsPage() {
                             </>
                           )}
                           <button
-                            onClick={() => {
-                            }}
+                            onClick={() => handleViewDetails(booking)}
                             className='p-1.5 text-gray-600 hover:text-blue-600 transition-colors'
                             title='Xem chi tiết'
                           >
@@ -513,6 +519,16 @@ export default function PaymentsPage() {
             setShowDepositModal(false);
             setSelectedBookingId(null);
             fetchBookings();
+          }}
+        />
+      )}
+
+      {showViewModal && selectedBookingId && (
+        <ViewInforPaymentModal
+          bookingId={selectedBookingId}
+          onClose={() => {
+            setShowViewModal(false);
+            setSelectedBookingId(null);
           }}
         />
       )}

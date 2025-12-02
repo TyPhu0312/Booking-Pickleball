@@ -26,7 +26,7 @@ export default function HeroSection() {
             </h2>
             
             <p className="text-2xl text-emerald-50 leading-relaxed">
-              Đặt sân ngay hôm nay – Miễn phí hủy trước 2 giờ!
+              Đặt sân ngay hôm nay – Miễn phí hủy trước 12 giờ!
             </p>
             
             <div className="flex flex-wrap items-center justify-center gap-4">
@@ -50,7 +50,7 @@ export default function HeroSection() {
             
             <div className="pt-8 flex flex-wrap items-center justify-center gap-8 text-emerald-50">
               {[
-                "✓ Miễn phí hủy trước 2h",
+                "✓ Miễn phí hủy trước 12h",
                 "✓ Thanh toán linh hoạt",
                 "✓ Sân chuẩn quốc tế",
               ].map((item, i) => (

@@ -98,7 +98,7 @@ export const createPayOSPayment = async (req: Request, res: Response) => {
         payment_url: paymentLink.checkoutUrl,
         qr_code_url: paymentLink.qrCode,
         payment_link_id: paymentLink.paymentLinkId,
-        payment_deadline: new Date(Date.now() + 2 * 60 * 60 * 1000),
+        payment_deadline: new Date(Date.now() +  30 * 60 * 1000),
       }
     });
     res.json({
