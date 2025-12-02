@@ -116,6 +116,9 @@ export default function EditBookingModal({ booking, onClose, onUpdate }: EditBoo
     e.preventDefault();
     
     try {
+      const hasRecurring = booking.bookingSlots.some(bs => bs.is_recurring);
+      const bookingType = hasRecurring ? "WEEKLY" : "CASUAL";
+      
       const response = await fetch(`${API_URL}/api/bookings/update/${booking.bookingID}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -125,15 +128,15 @@ export default function EditBookingModal({ booking, onClose, onUpdate }: EditBoo
           status: booking.status,
           total_price: booking.total_price,
           deposit_amount: booking.deposit_amount,
-          booking_type: "CASUAL",
+          booking_type: bookingType,
           court_id: selectedCourtId,
           note: note,
           slots: booking.bookingSlots.map(bs => ({
             slot_id: bs.slot.slotID,
-            date: booking.booking_date,
-            is_recurring: false,
-            recurring_day: null,
-            num_weeks: null
+            date: bs.date, 
+            is_recurring: bs.is_recurring, 
+            recurring_day: bs.recurring_day, 
+            num_weeks: bs.num_weeks 
           }))
         })
       });
