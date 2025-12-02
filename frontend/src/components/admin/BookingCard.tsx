@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Clock, Phone, User, MapPin, Edit, CheckCircle, XCircle } from "lucide-react";
+import { Clock, Phone, User, MapPin, Edit, CheckCircle, XCircle, Calendar } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { vi } from "date-fns/locale";
 
 type BookingStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "COMPLETED" | "CANCELLED";
 type CourtType = "INDOOR" | "OUTDOOR";
@@ -45,28 +47,31 @@ interface BookingCardProps {
 export default function BookingCard({ booking, onStatusChange, onEdit }: BookingCardProps) {
   const [showActions, setShowActions] = useState(false);
 
-  const getTimeRange = () => {
-    if (!booking.bookingSlots || booking.bookingSlots.length === 0) {
-      return { start: "--:--", end: "--:--" };
-    }
+  // Nhóm slots theo ngày
+  const getSlotsByDate = () => {
+    const grouped: { [date: string]: typeof booking.bookingSlots } = {};
+    
+    booking.bookingSlots.forEach(bs => {
+      const dateKey = bs.date;
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
+      }
+      grouped[dateKey].push(bs);
+    });
 
-    const times = booking.bookingSlots.map(bs => ({
-      start: bs.slot.start_time,
-      end: bs.slot.end_time
-    }));
+    // Sắp xếp slots trong mỗi ngày theo thời gian bắt đầu
+    Object.keys(grouped).forEach(date => {
+      grouped[date].sort((a, b) => 
+        a.slot.start_time.localeCompare(b.slot.start_time)
+      );
+    });
 
-    const startTime = times.reduce((earliest, current) => 
-      current.start < earliest ? current.start : earliest
-    , times[0].start);
-
-    const endTime = times.reduce((latest, current) => 
-      current.end > latest ? current.end : latest
-    , times[0].end);
-
-    return { start: startTime, end: endTime };
+    return grouped;
   };
 
-  const timeRange = getTimeRange();
+  const slotsByDate = getSlotsByDate();
+  const uniqueDates = Object.keys(slotsByDate).sort();
+  const isMultipleDates = uniqueDates.length > 1;
 
   const isRecurring = booking.bookingSlots.some(bs => bs.is_recurring);
   const recurringInfo = isRecurring ? booking.bookingSlots.find(bs => bs.is_recurring) : null;
@@ -113,16 +118,28 @@ export default function BookingCard({ booking, onStatusChange, onEdit }: Booking
             <span className="font-bold text-gray-800">{booking.court.name}</span>
           </div>
           
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Clock className="w-3.5 h-3.5" />
-            <span>
-              {timeRange.start} - {timeRange.end}
-            </span>
-           
+          <div className="space-y-1.5 mt-2">
+            {uniqueDates.map(dateKey => {
+              const slots = slotsByDate[dateKey];
+              const dateObj = parseISO(dateKey);
+              const timeRanges = slots.map(bs => `${bs.slot.start_time}-${bs.slot.end_time}`);
+              
+              return (
+                <div key={dateKey} className="text-xs">
+                  <div className="flex items-center gap-1.5 text-gray-600">
+                    <Calendar className="w-3 h-3" />
+                    <span className="font-semibold">{format(dateObj, "dd/MM", { locale: vi })}</span>
+                    <span>•</span>
+                    <Clock className="w-3 h-3" />
+                    <span>{timeRanges.join(", ")}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
           
           {isRecurring && recurringInfo && (
-            <div className="flex items-center gap-1 text-xs mt-1">
+            <div className="flex items-center gap-1 text-xs mt-2">
               <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
                 🔄 {getDayName(recurringInfo.recurring_day)} × {recurringInfo.num_weeks} tuần
               </span>

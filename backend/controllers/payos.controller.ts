@@ -109,8 +109,10 @@ export const createPayOSPayment = async (req: Request, res: Response) => {
       qrCode: paymentLink.qrCode,
       deadline: payment.payment_deadline,
       amount: amountToPay,
+      paymentType: paymentType || "DEPOSIT",
       totalPaid,
       totalPrice: booking.total_price,
+      depositAmount: booking.deposit_amount,
       remainingAmount: booking.total_price - totalPaid - amountToPay,
     });
   } catch (error: any) {
@@ -255,7 +257,7 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
         bookingID: payment.booking.bookingID,
         courtName: payment.booking.court.name,
         totalPrice: payment.booking.total_price,
-        depostitAmount: payment.booking.deposit_amount,
+        depositAmount: payment.booking.deposit_amount,
         status: payment.booking.status,
       }
     });

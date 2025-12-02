@@ -3,6 +3,7 @@ import { XCircle } from "lucide-react";
 import { format } from "date-fns";
 import moment from "moment-timezone";
 import { API_URL } from '@/lib/config';
+import PaymentModal from "@/components/payment/PaymentModal";
 
 type BookingStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "COMPLETED" | "CANCELLED";
 type CourtType = "INDOOR" | "OUTDOOR";
@@ -62,6 +63,7 @@ interface CreateBookingModalProps {
 
 const VAT = 0.08;
 type BookingType = "CASUAL" | "WEEKLY" | "TOURNAMENT";
+type PaymentMethod = "CASH" | "PAYOS" | "BANK_TRANSFER" | "MOMO" | "CREDIT_CARD" | "ZALO_PAY" | "VNPAY";
 
 export default function CreateBookingModal({ courts, slots, onClose, onSubmit }: CreateBookingModalProps) {
   const [formData, setFormData] = useState({
@@ -75,10 +77,13 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
     num_weeks: 1,
   });
   const [bookingType, setBookingType] = useState<BookingType>("CASUAL");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [availableCourts, setAvailableCourts] = useState<Court[]>([]);
   const [selectedCourtId, setSelectedCourtId] = useState("");
   const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [courtMultiplier, setCourtMultiplier] = useState(1);
+  const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   useEffect(() => {
     const fetchMultiplier = async () => {
@@ -108,23 +113,23 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
       setCheckingAvailability(true);
       try {
         const courtsOfType = courts.filter(c => c.type === formData.court_type);
-        
+
         const availabilityChecks = await Promise.all(
           courtsOfType.map(async (court) => {
             try {
               const response = await fetch(`${API_URL}/api/bookings`);
               if (!response.ok) return { court, available: false };
-              
+
               const allBookings = await response.json();
-              
-              const courtBookings = allBookings.filter((b: Booking) => 
-                b.court.courtID === court.courtID && 
+
+              const courtBookings = allBookings.filter((b: Booking) =>
+                b.court.courtID === court.courtID &&
                 b.booking_date.startsWith(formData.booking_date) &&
                 b.status !== "CANCELLED"
               );
 
               const isAvailable = formData.slot_ids.every(slotId => {
-                return !courtBookings.some((booking: Booking) => 
+                return !courtBookings.some((booking: Booking) =>
                   booking.bookingSlots.some(bs => bs.slot.slotID === slotId)
                 );
               });
@@ -139,9 +144,9 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
         const available = availabilityChecks
           .filter(result => result.available)
           .map(result => result.court);
-        
+
         setAvailableCourts(available);
-        
+
         if (available.length > 0 && !selectedCourtId) {
           setSelectedCourtId(available[0].courtID);
         } else if (available.length === 0) {
@@ -167,18 +172,18 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
   const total = Math.round(priceWithWeeks + vatAmount);
   const depositPercent = bookingType === "TOURNAMENT" ? 0.5 : bookingType === "WEEKLY" ? 0.5 : 0.2;
   const deposit = Math.round(total * depositPercent);
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedCourtId) {
       alert("Không có sân trống cho các slot đã chọn");
       return;
     }
-    
+
     const selectedCourt = courts.find(c => c.courtID === selectedCourtId);
     const selectedSlots = slots.filter(s => formData.slot_ids.includes(s.slotID));
-    
+
     if (!selectedCourt || selectedSlots.length === 0) {
       alert("Vui lòng chọn loại sân và ít nhất 1 slot");
       return;
@@ -186,7 +191,7 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
 
     try {
       const bookingDate = new Date(formData.booking_date);
-      
+
       let slotsToCreate: Array<{
         slot_id: string;
         date: string;
@@ -197,7 +202,7 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
 
       if (formData.is_recurring) {
         const recurringDay = bookingDate.getDay();
-        
+
         formData.slot_ids.forEach((slotId) => {
           for (let i = 0; i < formData.num_weeks; i++) {
             const bookingDateVN = moment.tz(formData.booking_date, "Asia/Ho_Chi_Minh");
@@ -251,13 +256,56 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
       if (response.ok) {
         const newBooking = await response.json();
         console.log('New booking created:', newBooking);
-        
+
         const detailResponse = await fetch(`${API_URL}/api/bookings/getBookingById/${newBooking.bookingID}`);
         if (detailResponse.ok) {
           const fullBooking = await detailResponse.json();
           console.log('Full booking details:', fullBooking);
-          alert("Đã tạo booking thành công!");
-          onSubmit(fullBooking);
+
+          if (paymentMethod === "PAYOS") {
+            setCreatedBookingId(fullBooking.bookingID);
+            setShowPaymentModal(true);
+          } else if (paymentMethod === "CASH") {
+            try {
+              const cashPaymentResponse = await fetch(`${API_URL}/api/cash/create`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  bookingId: fullBooking.bookingID,
+                  amount: fullBooking.deposit_amount,
+                  paidAmount: 0
+                })
+              });
+
+              if (cashPaymentResponse.ok) {
+                alert("✅ Đã tạo booking thành công!\n💵 Khách hàng sẽ thanh toán tiền mặt khi đến sân.\n +💰 Tiền cọc cần thu: " + deposit.toLocaleString() + "đ");
+                onSubmit(fullBooking);
+              } else {
+                alert("⚠️ Đã tạo booking nhưng lỗi khi tạo payment record.\nVui lòng kiểm tra lại.");
+                onSubmit(fullBooking);
+              }
+            } catch (error) {
+              console.error("Error creating cash payment:", error);
+              alert("✅ Đã tạo booking thành công!\n💵 Thanh toán tiền mặt khi đến sân.");
+              onSubmit(fullBooking);
+            }
+          }
+          // else if (paymentMethod === "BANK_TRANSFER") {
+          //   alert("✅ Đã tạo booking thành công!\n🏦 Vui lòng chuyển khoản đến:\nSTK: 0123456789\nNgân hàng: Vietcombank\nNội dung: " + fullBooking.bookingID);
+          //   onSubmit(fullBooking);
+          // } else if (paymentMethod === "MOMO") {
+          //   alert("✅ Đã tạo booking thành công!\n🟣 Vui lòng thanh toán qua MoMo:\nSố điện thoại: 0123456789\nNội dung: " + fullBooking.bookingID);
+          //   onSubmit(fullBooking);
+          // } else if (paymentMethod === "ZALO_PAY") {
+          //   alert("✅ Đã tạo booking thành công!\n💙 Vui lòng thanh toán qua ZaloPay:\nSố điện thoại: 0123456789\nNội dung: " + fullBooking.bookingID);
+          //   onSubmit(fullBooking);
+          // } else if (paymentMethod === "VNPAY") {
+          //   alert("✅ Đã tạo booking thành công!\n🔴 Đang chuyển hướng đến cổng thanh toán VNPay...");
+          //   onSubmit(fullBooking);
+          // } else if (paymentMethod === "CREDIT_CARD") {
+          //   alert("✅ Đã tạo booking thành công!\n💳 Đang chuyển hướng đến trang thanh toán thẻ...");
+          //   onSubmit(fullBooking);
+          // }
         } else {
           console.error('Failed to fetch booking details');
           alert("Đã tạo booking nhưng không lấy được chi tiết");
@@ -278,7 +326,7 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
           <h2 className="text-2xl font-black text-gray-800">Tạo Booking Mới</h2>
-          <button 
+          <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
           >
@@ -453,11 +501,10 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
                   {availableCourts.map(court => (
                     <label
                       key={court.courtID}
-                      className={`flex items-center gap-3 p-4 rounded-xl cursor-pointer transition-all border-2 ${
-                        selectedCourtId === court.courtID
+                      className={`flex items-center gap-3 p-4 rounded-xl cursor-pointer transition-all border-2 ${selectedCourtId === court.courtID
                           ? 'bg-emerald-50 border-emerald-500'
                           : 'bg-gray-50 border-gray-200 hover:border-emerald-300'
-                      }`}
+                        }`}
                     >
                       <input
                         type="radio"
@@ -511,6 +558,158 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
 
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">
+              Phương thức thanh toán *
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label
+                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border-2 ${paymentMethod === "CASH"
+                    ? 'bg-emerald-50 border-emerald-500'
+                    : 'bg-gray-50 border-gray-200 hover:border-emerald-300'
+                  }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="CASH"
+                  checked={paymentMethod === "CASH"}
+                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                  className="w-4 h-4 text-emerald-600 border-gray-300 focus:ring-emerald-500"
+                />
+                <div>
+                  <span className="font-bold text-gray-800">💵 Tiền mặt</span>
+                  <p className="text-xs text-gray-600 mt-1">Thanh toán khi đến sân</p>
+                </div>
+              </label>
+
+              <label
+                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border-2 ${paymentMethod === "PAYOS"
+                    ? 'bg-blue-50 border-blue-500'
+                    : 'bg-gray-50 border-gray-200 hover:border-blue-300'
+                  }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="PAYOS"
+                  checked={paymentMethod === "PAYOS"}
+                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                />
+                <div>
+                  <span className="font-bold text-gray-800">💳 PayOS</span>
+                  <p className="text-xs text-gray-600 mt-1">QR Code thanh toán</p>
+                </div>
+              </label>
+
+              {/* <label
+                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border-2 ${
+                  paymentMethod === "BANK_TRANSFER"
+                    ? 'bg-purple-50 border-purple-500'
+                    : 'bg-gray-50 border-gray-200 hover:border-purple-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="BANK_TRANSFER"
+                  checked={paymentMethod === "BANK_TRANSFER"}
+                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                  className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
+                />
+                <div>
+                  <span className="font-bold text-gray-800">🏦 Chuyển khoản</span>
+                  <p className="text-xs text-gray-600 mt-1">Chuyển khoản ngân hàng</p>
+                </div>
+              </label> */}
+
+              {/* <label
+                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border-2 ${
+                  paymentMethod === "MOMO"
+                    ? 'bg-pink-50 border-pink-500'
+                    : 'bg-gray-50 border-gray-200 hover:border-pink-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="MOMO"
+                  checked={paymentMethod === "MOMO"}
+                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                  className="w-4 h-4 text-pink-600 border-gray-300 focus:ring-pink-500"
+                />
+                <div>
+                  <span className="font-bold text-gray-800">🟣 MoMo</span>
+                  <p className="text-xs text-gray-600 mt-1">Ví điện tử MoMo</p>
+                </div>
+              </label> */}
+
+              {/* <label
+                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border-2 ${
+                  paymentMethod === "ZALO_PAY"
+                    ? 'bg-sky-50 border-sky-500'
+                    : 'bg-gray-50 border-gray-200 hover:border-sky-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="ZALO_PAY"
+                  checked={paymentMethod === "ZALO_PAY"}
+                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                  className="w-4 h-4 text-sky-600 border-gray-300 focus:ring-sky-500"
+                />
+                <div>
+                  <span className="font-bold text-gray-800">💙 ZaloPay</span>
+                  <p className="text-xs text-gray-600 mt-1">Ví điện tử ZaloPay</p>
+                </div>
+              </label> */}
+
+              {/* <label
+                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border-2 ${
+                  paymentMethod === "VNPAY"
+                    ? 'bg-orange-50 border-orange-500'
+                    : 'bg-gray-50 border-gray-200 hover:border-orange-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="VNPAY"
+                  checked={paymentMethod === "VNPAY"}
+                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                  className="w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500"
+                />
+                <div>
+                  <span className="font-bold text-gray-800">🔴 VNPay</span>
+                  <p className="text-xs text-gray-600 mt-1">Cổng thanh toán VNPay</p>
+                </div>
+              </label> */}
+
+              {/* <label
+                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border-2 ${
+                  paymentMethod === "CREDIT_CARD"
+                    ? 'bg-indigo-50 border-indigo-500'
+                    : 'bg-gray-50 border-gray-200 hover:border-indigo-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="CREDIT_CARD"
+                  checked={paymentMethod === "CREDIT_CARD"}
+                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                  className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                />
+                <div>
+                  <span className="font-bold text-gray-800">💳 Thẻ tín dụng</span>
+                  <p className="text-xs text-gray-600 mt-1">Visa, Mastercard, JCB</p>
+                </div>
+              </label> */}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">
               Ghi chú
             </label>
             <textarea
@@ -549,10 +748,12 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
                   <span className="font-bold text-gray-800">💵 Tổng cộng:</span>
                   <span className="font-black text-emerald-600 text-xl">{total.toLocaleString()}đ</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-orange-700">💳 Tiền cọc ({(depositPercent * 100).toFixed(0)}%):</span>
-                  <span className="font-black text-orange-600 text-xl">{deposit.toLocaleString()}đ</span>
-                </div>
+                {paymentMethod !== "CASH" && (
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-orange-700">💳 Tiền cọc ({(depositPercent * 100).toFixed(0)}%):</span>
+                    <span className="font-black text-orange-600 text-xl">{deposit.toLocaleString()}đ</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -569,11 +770,38 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
               type="submit"
               className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors shadow-lg"
             >
-              Tạo Booking
+              {paymentMethod === "CASH" ? "Tạo Booking" :
+                paymentMethod === "PAYOS" ? "Tạo & Thanh toán QR" :
+                  //  paymentMethod === "BANK_TRANSFER" ? "Tạo & Chuyển khoản" :
+                  //  paymentMethod === "MOMO" ? "Tạo & Thanh toán MoMo" :
+                  //  paymentMethod === "ZALO_PAY" ? "Tạo & Thanh toán ZaloPay" :
+                  //  paymentMethod === "VNPAY" ? "Tạo & Thanh toán VNPay" :
+                  //  paymentMethod === "CREDIT_CARD" ? "Tạo & Thanh toán thẻ" :
+                  "Tạo Booking"}
             </button>
           </div>
         </form>
       </div>
+
+      {showPaymentModal && createdBookingId && paymentMethod == "PAYOS" && (
+        <PaymentModal
+          bookingId={createdBookingId}
+          onClose={() => {
+            setShowPaymentModal(false);
+            setCreatedBookingId(null);
+            onClose();
+          }}
+          onPaymentSuccess={async () => {
+            setShowPaymentModal(false);
+            const detailResponse = await fetch(`${API_URL}/api/bookings/getBookingById/${createdBookingId}`);
+            if (detailResponse.ok) {
+              const fullBooking = await detailResponse.json();
+              onSubmit(fullBooking);
+            }
+            setCreatedBookingId(null);
+          }}
+        />
+      )}
     </div>
   );
 }

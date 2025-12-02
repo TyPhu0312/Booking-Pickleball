@@ -2,12 +2,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { Search, DollarSign, CheckCircle2, AlertCircle, Clock, Eye, Calendar, RefreshCw, NotebookPen } from 'lucide-react';
+import { Search, DollarSign, CheckCircle2, AlertCircle, Clock, Eye, Calendar, RefreshCw, NotebookPen, Banknote, QrCode } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { API_URL } from '@/lib/config';
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, isWithinInterval, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import RemainingPaymentModal from '@/components/payment/RemainingPaymentModal';
+import CashPaymentModal from '@/components/payment/CashPaymentModal';
+import PaymentModal from '@/components/payment/PaymentModal';
 
 interface Booking {
   bookingID: string;
@@ -55,6 +57,8 @@ export default function PaymentsPage() {
   const [filter, setFilter] = useState<FilterType>('all');
   const [dateFilter, setDateFilter] = useState<DateFilterType>('all');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showCashPaymentModal, setShowCashPaymentModal] = useState(false);
+  const [showDepositModal, setShowDepositModal] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -170,6 +174,16 @@ export default function PaymentsPage() {
   const handleCollectPayment = (booking: Booking) => {
     setSelectedBookingId(booking.bookingID);
     setShowPaymentModal(true);
+  };
+
+  const handleCashPayment = (booking: Booking) => {
+    setSelectedBookingId(booking.bookingID);
+    setShowCashPaymentModal(true);
+  };
+
+  const handleDepositPayment = (booking: Booking) => {
+    setSelectedBookingId(booking.bookingID);
+    setShowDepositModal(true);
   };
 
   if (loading) {
@@ -316,6 +330,7 @@ export default function PaymentsPage() {
                 <th className='px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase'>Sân</th>
                 <th className='px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase'>Ngày & Giờ</th>
                 <th className='px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase'>Tổng Tiền</th>
+                <th className='px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase'>Tiền Cọc</th>
                 <th className='px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase'>Đã Trả</th>
                 <th className='px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase'>Còn Lại</th>
                 <th className='px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase'>Trạng Thái</th>
@@ -325,7 +340,7 @@ export default function PaymentsPage() {
             <tbody className='divide-y divide-gray-200'>
               {filteredBookings.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className='px-4 py-8 text-center text-gray-500'>
+                  <td colSpan={10} className='px-4 py-8 text-center text-gray-500'>
                     Không tìm thấy booking nào
                   </td>
                 </tr>
@@ -365,6 +380,11 @@ export default function PaymentsPage() {
                         {booking.total_price.toLocaleString()}đ
                       </td>
                       <td className='px-4 py-4 whitespace-nowrap text-sm'>
+                        <span className='font-semibold text-purple-600'>
+                          {booking.deposit_amount.toLocaleString()}đ
+                        </span>
+                      </td>
+                      <td className='px-4 py-4 whitespace-nowrap text-sm'>
                         <span className='font-semibold text-green-600'>
                           {(paymentInfo?.totalPaid ?? 0).toLocaleString()}đ
                         </span>
@@ -397,12 +417,36 @@ export default function PaymentsPage() {
                       <td className='px-4 py-4 whitespace-nowrap text-sm'>
                         <div className='flex items-center gap-2'>
                           {status !== 'paid' && (
-                            <button
-                              onClick={() => handleCollectPayment(booking)}
-                              className='px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-xs font-medium'
-                            >
-                              Thu Tiền
-                            </button>
+                            <>
+                              {(paymentInfo?.totalPaid ?? 0) === 0 && (
+                                <button
+                                  onClick={() => handleDepositPayment(booking)}
+                                  className='px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-xs font-medium flex items-center gap-1'
+                                  title='Tạo QR cọc - Thanh toán tiền cọc qua PayOS'
+                                >
+                                  <QrCode className='w-3 h-3' />
+                                  QR Cọc
+                                </button>
+                              )}
+                              {(paymentInfo?.totalPaid ?? 0) > 0 && (
+                                <button
+                                  onClick={() => handleCollectPayment(booking)}
+                                  className='px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-xs font-medium flex items-center gap-1'
+                                  title='Thu phần còn lại qua PayOS'
+                                >
+                                  <DollarSign className='w-3 h-3' />
+                                  PayOS
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleCashPayment(booking)}
+                                className='px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs font-medium flex items-center gap-1'
+                                title='Thu tiền mặt'
+                              >
+                                <Banknote className='w-3 h-3' />
+                                Tiền mặt
+                              </button>
+                            </>
                           )}
                           <button
                             onClick={() => {
@@ -433,6 +477,40 @@ export default function PaymentsPage() {
           }}
           onPaymentSuccess={() => {
             setShowPaymentModal(false);
+            setSelectedBookingId(null);
+            fetchBookings();
+          }}
+        />
+      )}
+
+      {showCashPaymentModal && selectedBookingId && (
+        <CashPaymentModal
+          bookingId={selectedBookingId}
+          totalPrice={bookings.find(b => b.bookingID === selectedBookingId)?.total_price || 0}
+          depositAmount={bookings.find(b => b.bookingID === selectedBookingId)?.deposit_amount || 0}
+          totalPaid={bookingPayments[selectedBookingId]?.totalPaid || 0}
+          remainingAmount={bookingPayments[selectedBookingId]?.remainingAmount || 0}
+          onClose={() => {
+            setShowCashPaymentModal(false);
+            setSelectedBookingId(null);
+          }}
+          onPaymentSuccess={() => {
+            setShowCashPaymentModal(false);
+            setSelectedBookingId(null);
+            fetchBookings();
+          }}
+        />
+      )}
+
+      {showDepositModal && selectedBookingId && (
+        <PaymentModal
+          bookingId={selectedBookingId}
+          onClose={() => {
+            setShowDepositModal(false);
+            setSelectedBookingId(null);
+          }}
+          onPaymentSuccess={() => {
+            setShowDepositModal(false);
             setSelectedBookingId(null);
             fetchBookings();
           }}
