@@ -190,6 +190,8 @@ export default function EditBookingModal({ booking, onClose, onUpdate }: EditBoo
             </div>
           </div>
 
+
+          {(booking.status === "PENDING" || booking.status === "CONFIRMED") && (
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">
               Chọn sân *
@@ -244,6 +246,7 @@ export default function EditBookingModal({ booking, onClose, onUpdate }: EditBoo
               </div>
             )}
           </div>
+          )}
 
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">

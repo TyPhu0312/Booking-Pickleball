@@ -77,7 +77,7 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
           
           if (existingRes.ok) {
             const existingData = await existingRes.json();
-            const depositAmount = existingData.booking?.deposit_amount || 0;
+            const depositAmount = existingData.booking?.depositAmount || 0;
             
             const paymentData: PaymentData = {
               success: true,
