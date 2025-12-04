@@ -166,6 +166,28 @@ export default function BookingPage() {
     const slot = dateSlots.find((s) => s.slot_id === slotId);
     if (!slot) return;
 
+    const now = new Date();
+    const selectedDate = new Date(date);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const slotDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+    
+    if (slotDate.getTime() === today.getTime() && slot.start_time) {
+      const [slotHour, slotMinute] = slot.start_time.split(':').map(Number);
+      const slotStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), slotHour, slotMinute);
+      
+      const slotDeadline = new Date(slotStartTime.getTime() + 10 * 60 * 1000);
+      
+      if (now >= slotDeadline) {
+        alert(`Slot này đã qua! Không thể đặt slot bắt đầu lúc ${slot.start_time}`);
+        return;
+      }
+    }
+    
+    if (slotDate < today) {
+      alert("Không thể đặt slot cho ngày đã qua!");
+      return;
+    }
+
     const availableCourts = selectedCourtType
       ? slot.availableCourts[selectedCourtType] ?? 0
       : Math.max(...Object.values(slot.availableCourts));
@@ -605,14 +627,31 @@ export default function BookingPage() {
 
                       const isBooked = availableCourts <= 0;
 
+                      const now = new Date();
+                      const selectedDate = new Date(date);
+                      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                      const slotDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+                      
+                      let isPastSlot = false;
+                      if (slotDate.getTime() === today.getTime() && slot.start_time) {
+                        const [slotHour, slotMinute] = slot.start_time.split(':').map(Number);
+                        const slotStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), slotHour, slotMinute);
+                        const slotDeadline = new Date(slotStartTime.getTime() + 10 * 60 * 1000);
+                        isPastSlot = now >= slotDeadline;
+                      } else if (slotDate < today) {
+                        isPastSlot = true;
+                      }
+
+                      const isDisabled = isBooked || isPastSlot;
+
                       return (
                         <button
                           key={slot.slot_id}
-                          onClick={() => !isBooked && handleSlotToggle(slot.slot_id, date, slots)}
-                          disabled={isBooked}
+                          onClick={() => !isDisabled && handleSlotToggle(slot.slot_id, date, slots)}
+                          disabled={isDisabled}
                           className={`
                     py-3 px-4 rounded-lg font-medium text-sm transition-all relative
-                    ${isBooked
+                    ${isDisabled
                               ? "bg-gray-300 text-gray-600 cursor-not-allowed"
                               : isSelected
                                 ? "bg-yellow-400 text-blue-900 ring-2 ring-yellow-500 shadow-lg"
@@ -622,7 +661,7 @@ export default function BookingPage() {
                         >
                           <div>{slot.start_time} - {slot.end_time}</div>
                           <div className="text-xs mt-1 font-medium">
-                            {isBooked ? "Hết" : `Còn ${availableCourts} sân`}
+                            {isPastSlot ? "Đã qua" : isBooked ? "Hết" : `Còn ${availableCourts} sân`}
                           </div>
                         </button>
                       );

@@ -131,7 +131,6 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
         if (data.status === "PARTIALLY_PAID" || data.status === "PAID") {
           clearInterval(interval);
           setPolling(false);
-          alert("Thanh toán thành công!");
           onPaymentSuccess();
         }
       } catch (error) {

@@ -13,7 +13,7 @@ interface Booking {
   phone_user?: string | null;
   booking_date: string;
   slot: string;
-  status: "PENDING" | "CONFIRMED" | "CHECKED_IN" | "COMPLETED" | "CANCELLED";
+  status: "PENDING" | "CONFIRMED" | "CHECKED_IN" | "COMPLETED" | "CANCELLED" | "CANCEL_REQUESTED";
   total_price: number;
   deposit_amount: number;
   booking_type: string;
@@ -69,6 +69,14 @@ export default function HistoryPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentBookingId, setPaymentBookingId] = useState<string | null>(null);
   const [bookingPayments, setBookingPayments] = useState<Record<string, any>>({});
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [refundBookingId, setRefundBookingId] = useState<string | null>(null);
+  const [refundForm, setRefundForm] = useState({
+    cancel_reason: "",
+    bank_name: "",
+    bank_account_number: "",
+    bank_account_owner: ""
+  });
 
 
   useEffect(() => {
@@ -172,6 +180,52 @@ export default function HistoryPage() {
     }
   };
 
+  const handleRequestRefund = async () => {
+    if (!refundBookingId) return;
+
+    if (!refundForm.cancel_reason || !refundForm.bank_name || 
+        !refundForm.bank_account_number || !refundForm.bank_account_owner) {
+      alert("Vui lòng điền đầy đủ thông tin!");
+      return;
+    }
+
+    try {
+      console.log("Gửi yêu cầu hoàn tiền với dữ liệu:", refundForm);
+      const response = await fetch(
+        `${API_URL}/api/refunds/request-cancel/${refundBookingId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(refundForm),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const refundAmount = data.refundAmount || data.refund_amount || 0;
+        const refundPercentage = data.refundPercentage || data.refund_percentage || 0;
+        alert(`Yêu cầu hoàn tiền thành công!\nSố tiền hoàn: ${refundAmount.toLocaleString()}đ (${refundPercentage}%)`);
+        setShowRefundModal(false);
+        setRefundBookingId(null);
+        setRefundForm({
+          cancel_reason: "",
+          bank_name: "",
+          bank_account_number: "",
+          bank_account_owner: ""
+        });
+        fetchBookings();
+      } else {
+        alert(data.message || "Yêu cầu hoàn tiền thất bại");
+      }
+    } catch (error) {
+      console.error("Lỗi khi yêu cầu hoàn tiền:", error);
+      alert("Có lỗi xảy ra khi gửi yêu cầu");
+    }
+  };
+
 
   if (loading) {
     return <div>Đang tải...</div>;
@@ -220,12 +274,15 @@ export default function HistoryPage() {
                     booking.status === "CANCELLED" ? "bg-red-100 text-red-800" :
                       booking.status === "COMPLETED" ? "bg-blue-100 text-blue-800" :
                         booking.status === "CHECKED_IN" ? "bg-purple-100 text-purple-800" :
+                          booking.status === "CANCEL_REQUESTED" ? "bg-orange-100 text-orange-800" :
                           "bg-yellow-100 text-yellow-800"
                     }`}>
                     {booking.status === "CONFIRMED" ? "Đã xác nhận" :
                       booking.status === "COMPLETED" ? "Hoàn thành" :
                         booking.status === "CHECKED_IN" ? "Đã check-in" :
-                          booking.status === "CANCELLED" ? "Đã hủy" : "Chờ xác nhận"}
+                          booking.status === "CANCELLED" ? "Đã hủy" : 
+                          booking.status === "CANCEL_REQUESTED" ? "Yêu cầu hủy và hoàn tiền" :
+                          "Chờ xác nhận"}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-sm">
@@ -297,6 +354,18 @@ export default function HistoryPage() {
                           Hủy
                         </button>
                       </>
+                    )}
+
+                    {booking.status === "CONFIRMED" && (
+                      <button
+                        onClick={() => {
+                          setRefundBookingId(booking.bookingID);
+                          setShowRefundModal(true);
+                        }}
+                        className="text-orange-600 hover:text-orange-800 text-xs font-medium"
+                      >
+                        Yêu cầu hoàn tiền
+                      </button>
                     )}
                   </div>
                 </td>
@@ -567,6 +636,118 @@ export default function HistoryPage() {
                   );
                 }
               })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRefundModal && refundBookingId && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
+            <button
+              className="absolute top-3 right-3 text-gray-600 hover:text-gray-900"
+              onClick={() => {
+                setShowRefundModal(false);
+                setRefundBookingId(null);
+                setRefundForm({
+                  cancel_reason: "",
+                  bank_name: "",
+                  bank_account_number: "",
+                  bank_account_owner: ""
+                });
+              }}
+            >
+              ✕
+            </button>
+
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Yêu cầu hoàn tiền</h2>
+            
+            <div className="space-y-4">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm">
+                <p className="font-semibold text-yellow-800">Lưu ý chính sách hoàn tiền:</p>
+                <ul className="list-disc ml-5 mt-2 text-yellow-700">
+                  <li>Trên 2 giờ: Hoàn 100%</li>
+                  <li>Từ 1-2 giờ: Hoàn 80%</li>
+                  <li>Từ 30 phút - 1 giờ: Hoàn 50%</li>
+                  <li>Dưới 30 phút: Không hoàn tiền</li>
+                </ul>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Lý do hủy <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={refundForm.cancel_reason}
+                  onChange={(e) => setRefundForm({ ...refundForm, cancel_reason: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                  placeholder="Nhập lý do hủy đặt sân..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tên ngân hàng <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={refundForm.bank_name}
+                  onChange={(e) => setRefundForm({ ...refundForm, bank_name: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="VD: Vietcombank, Techcombank..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Số tài khoản <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={refundForm.bank_account_number}
+                  onChange={(e) => setRefundForm({ ...refundForm, bank_account_number: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Nhập số tài khoản..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Chủ tài khoản <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={refundForm.bank_account_owner}
+                  onChange={(e) => setRefundForm({ ...refundForm, bank_account_owner: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Tên chủ tài khoản..."
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={handleRequestRefund}
+                  className="flex-1 bg-orange-600 text-white py-2 px-4 rounded-lg hover:bg-orange-700 transition-colors font-medium"
+                >
+                  Gửi yêu cầu
+                </button>
+                <button
+                  onClick={() => {
+                    setShowRefundModal(false);
+                    setRefundBookingId(null);
+                    setRefundForm({
+                      cancel_reason: "",
+                      bank_name: "",
+                      bank_account_number: "",
+                      bank_account_owner: ""
+                    });
+                  }}
+                  className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                >
+                  Hủy
+                </button>
+              </div>
             </div>
           </div>
         </div>

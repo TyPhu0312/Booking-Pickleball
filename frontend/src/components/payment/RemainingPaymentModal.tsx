@@ -107,7 +107,6 @@ export default function RemainingPaymentModal({
         if (data.status === "PAID") {
           clearInterval(interval);
           setPolling(false);
-          alert("Thanh toán thành công!");
           onPaymentSuccess();
         }
       } catch (error) {
