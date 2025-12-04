@@ -15,6 +15,7 @@ enum BookingStatus {
   CHECKED_IN
   COMPLETED
   CANCELLED
+  CANCEL_REQUESTED  
 }
 
 enum BookingType {
@@ -44,6 +45,13 @@ enum PaymentStatus {
   REFUNDED 
   CANCELLED
   EXPIRED
+}
+
+enum REFUNDSTATUS {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
 }
 
 enum PaymentMethod {
@@ -162,6 +170,13 @@ model Payments {
   refund_amount    Float         @default(0)
   refund_reason    String?
   refund_date      DateTime?
+  refund_percentage Int?         
+  refund_status    REFUNDSTATUS? 
+  bank_name        String?
+  bank_account_number String?
+  bank_account_owner  String?
+  admin_note       String?       
+  processed_by     String?       
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 

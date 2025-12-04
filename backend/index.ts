@@ -15,6 +15,7 @@ import tournaments from "./routes/tournaments.routes";
 import blogs from "./routes/blogs.routes";
 import payos from "./routes/payos.routes";
 import cash from "./routes/cash.routes";
+import refunds from "./routes/refund.routes";
 import { startAutoCancelScheduler } from "./services/scheduler.service";
 
 dotenv.config();
@@ -44,6 +45,7 @@ app.use("/api/tournaments", tournaments);
 app.use("/api/blogs", blogs);
 app.use("/api/payos", payos);
 app.use("/api/cash", cash);
+app.use("/api/refunds", refunds);
 
 app.listen(port, async () => {
   console.log(`🚀 Server đang chạy tại cổng ${port}`);

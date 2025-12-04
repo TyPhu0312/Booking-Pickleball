@@ -12,8 +12,9 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  CircleDollarSign ,
+  CircleDollarSign,
   PenLine,
+  DollarSign,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -30,14 +31,15 @@ export default function Sidebar() {
     { href: "/admin/users", label: "Người Dùng", icon: Users },
     { href: "/admin/blogs", label: "Bài viết", icon: PenLine },
     { href: "/admin/payments", label: "Thanh toán", icon: CircleDollarSign },
+    { href: "/admin/refunds", label: "Hoàn tiền", icon: DollarSign },
     { href: "/admin/stats", label: "Báo cáo", icon: BarChart3 },
+
   ];
 
   return (
     <div
-      className={`fixed top-0 left-0 h-screen transition-all duration-300 shadow-xl border-r border-slate-800 bg-linear-to-b from-slate-900 to-slate-800 ${
-        collapsed ? "w-20" : "w-64"
-      }`}
+      className={`fixed top-0 left-0 h-screen transition-all duration-300 shadow-xl border-r border-slate-800 bg-linear-to-b from-slate-900 to-slate-800 ${collapsed ? "w-20" : "w-64"
+        }`}
     >
       <div className="flex items-center justify-between px-5 py-5 border-b border-slate-700">
         {!collapsed && (
@@ -62,11 +64,10 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center mx-3 rounded-lg px-4 py-3 transition-all duration-200 ${
-                active
+              className={`flex items-center mx-3 rounded-lg px-4 py-3 transition-all duration-200 ${active
                   ? "bg-cyan-600/20 text-cyan-400 border border-cyan-500/40 shadow-sm"
                   : "text-slate-300 hover:text-cyan-300 hover:bg-slate-700/50"
-              }`}
+                }`}
             >
               <Icon className="w-5 h-5 mr-3 shrink-0" />
               {!collapsed && (
