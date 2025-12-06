@@ -60,11 +60,22 @@ interface SlotInput {
 }
 export const createBooking = async (req: Request, res: Response) => {
     try {
-        const { user_id, phone_user, booking_date, status, total_price, deposit_amount, booking_type, discount, court_id, note, slots } = req.body;
-
+        const { user_id, phone_user, booking_date, status, total_price, deposit_amount, booking_type, discount, court_type, court_id, note, slots } = req.body;
 
         const newBooking = await prisma.bookings.create({
-            data: { user_id, phone_user, booking_date, status, total_price, deposit_amount, booking_type, discount, note, court_id },
+            data: { 
+                user_id, 
+                phone_user, 
+                booking_date, 
+                status, 
+                total_price, 
+                deposit_amount, 
+                booking_type, 
+                discount, 
+                note, 
+                court_id: court_id || null,
+                court_type: court_type || null,
+            },
         });
         const newBookingSlots = slots.map((slot: SlotInput) => ({
             booking_id: newBooking.bookingID,
@@ -146,7 +157,7 @@ export const updateBookingStatus = async (req: Request, res: Response) => {
         }
         else if (status === "CHECKED_IN") {
             await prisma.courts.update({
-                where: { courtID: booking.court_id },
+                where: { courtID: courtID },
                 data: { status: "OCCUPIED" },
             });
         }

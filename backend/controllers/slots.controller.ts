@@ -242,7 +242,11 @@ export const getSlotStatusByDate = async (req: Request, res: Response) => {
                     }
                 },
                 include: {
-                    booking: true,
+                    booking: {
+                        include: {
+                            court: true
+                        }
+                    },
                 },
             });
 
@@ -251,9 +255,23 @@ export const getSlotStatusByDate = async (req: Request, res: Response) => {
 
                 const bookedCourts = slotBookings.length;
 
+                const bookedCourtsByType: Record<string, number> = {};
+                Object.keys(courtCountMap).forEach((type) => {
+                    bookedCourtsByType[type] = 0;
+                });
+
+                slotBookings.forEach((booking) => {
+                    const courtType = booking.booking.court_type || booking.booking.court?.type;
+                    if (courtType && bookedCourtsByType[courtType] !== undefined) {
+                        bookedCourtsByType[courtType]++;
+                    }
+                });
+
                 const availableCourtsByType: Record<string, number> = {};
                 Object.keys(courtCountMap).forEach((type) => {
-                    availableCourtsByType[type] = Math.max(courtCountMap[type] - bookedCourts, 0);
+                    const total = courtCountMap[type];
+                    const booked = bookedCourtsByType[type] || 0;
+                    availableCourtsByType[type] = Math.max(total - booked, 0);
                 });
 
                 return {

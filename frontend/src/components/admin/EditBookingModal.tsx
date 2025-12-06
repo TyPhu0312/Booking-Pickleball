@@ -12,11 +12,13 @@ interface Booking {
   status: BookingStatus;
   total_price: number;
   deposit_amount: number;
-  court: {
+  court_type?: CourtType;
+  booking_type?: "CASUAL" | "TOURNAMENT" | "WEEKLY";
+  court?: {
     courtID: string;
     name: string;
     type: CourtType;
-  };
+  } | null;
   user?: {
     userID: string;
     full_name: string;
@@ -52,7 +54,7 @@ interface EditBookingModalProps {
 
 export default function EditBookingModal({ booking, onClose, onUpdate }: EditBookingModalProps) {
   const [note, setNote] = useState(booking.note || "");
-  const [selectedCourtId, setSelectedCourtId] = useState(booking.court.courtID);
+  const [selectedCourtId, setSelectedCourtId] = useState(booking.court?.courtID || "");
   const [availableCourts, setAvailableCourts] = useState<Court[]>([]);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
 
@@ -71,30 +73,76 @@ export default function EditBookingModal({ booking, onClose, onUpdate }: EditBoo
         const allBookings: Booking[] = await bookingsResponse.json();
 
        
-        const courtsOfSameType = allCourts.filter(c => c.type === booking.court.type);
+        const courtType = booking.court?.type || booking.court_type;
+        const courtsOfSameType = allCourts.filter(c => c.type === courtType);
+        
+        const uniqueDates = [...new Set(booking.bookingSlots.map(bs => {
+          const slotDate = new Date(bs.date);
+          return slotDate.toISOString().split('T')[0];
+        }))];
 
-        const slotIds = booking.bookingSlots.map(bs => bs.slot.slotID);
-        const bookingDate = booking.booking_date.split('T')[0];
+        const totalCourtsOfType = courtsOfSameType.length;
 
         const availabilityChecks = courtsOfSameType.map(court => {
-          if (court.courtID === booking.court.courtID) {
+          if (booking.court && court.courtID === booking.court.courtID) {
             return { court, available: true };
           }
 
-          const courtBookings = allBookings.filter((b: Booking) => 
-            b.court.courtID === court.courtID && 
-            b.booking_date.startsWith(bookingDate) &&
-            b.status !== "CANCELLED" &&
-            b.bookingID !== booking.bookingID 
-          );
+          const isAvailableForAllDates = uniqueDates.every(dateStr => {
+            const slotsForDate = booking.bookingSlots
+              .filter(bs => new Date(bs.date).toISOString().split('T')[0] === dateStr)
+              .map(bs => bs.slot.slotID);
 
-          const isAvailable = slotIds.every(slotId => {
-            return !courtBookings.some((b: Booking) => 
-              b.bookingSlots.some(bs => bs.slot.slotID === slotId)
-            );
+            const courtBookingsForDate = allBookings.filter((b: Booking) => {
+              if (b.bookingID === booking.bookingID) return false;
+              if (b.status === "CANCELLED") return false;
+              if (b.court?.courtID !== court.courtID) return false;
+              
+              return b.bookingSlots.some(bs => {
+                const bsDate = new Date(bs.date).toISOString().split('T')[0];
+                return bsDate === dateStr && slotsForDate.includes(bs.slot.slotID);
+              });
+            });
+
+            if (courtBookingsForDate.length > 0) {
+              return false; 
+            }
+
+            return slotsForDate.every(slotId => {
+              const assignedCourts = allBookings.filter((b: Booking) => {
+                if (b.bookingID === booking.bookingID) return false;
+                if (b.status === "CANCELLED") return false;
+                if (!b.court) return false;
+                
+                const bookingCourtType = b.court.type;
+                if (bookingCourtType !== courtType) return false;
+                
+                return b.bookingSlots.some(bs => {
+                  const bsDate = new Date(bs.date).toISOString().split('T')[0];
+                  return bsDate === dateStr && bs.slot.slotID === slotId;
+                });
+              }).length;
+              
+              const pendingCount = allBookings.filter((b: Booking) => {
+                if (b.bookingID === booking.bookingID) return false;
+                if (b.status === "CANCELLED") return false;
+                if (b.court) return false;
+                
+                const bookingCourtType = b.court_type;
+                if (bookingCourtType !== courtType) return false;
+                
+                return b.bookingSlots.some(bs => {
+                  const bsDate = new Date(bs.date).toISOString().split('T')[0];
+                  return bsDate === dateStr && bs.slot.slotID === slotId;
+                });
+              }).length;
+              
+              const totalBooked = assignedCourts + pendingCount;
+              return totalBooked < totalCourtsOfType;
+            });
           });
 
-          return { court, available: isAvailable };
+          return { court, available: isAvailableForAllDates };
         });
 
         const available = availabilityChecks
@@ -129,7 +177,8 @@ export default function EditBookingModal({ booking, onClose, onUpdate }: EditBoo
           total_price: booking.total_price,
           deposit_amount: booking.deposit_amount,
           booking_type: bookingType,
-          court_id: selectedCourtId,
+          court_id: selectedCourtId || null,
+          court_type: booking.court?.type || booking.court_type,
           note: note,
           slots: booking.bookingSlots.map(bs => ({
             slot_id: bs.slot.slotID,
@@ -145,7 +194,8 @@ export default function EditBookingModal({ booking, onClose, onUpdate }: EditBoo
         const detailResponse = await fetch(`${API_URL}/api/bookings/getBookingById/${booking.bookingID}`);
         if (detailResponse.ok) {
           const fullBooking = await detailResponse.json();
-          alert("Cập nhật booking thành công!");
+          const wasAssigning = !booking.court && selectedCourtId;
+          alert(wasAssigning ? "✅ Đã phân bổ sân thành công!" : "✅ Cập nhật booking thành công!");
           onUpdate(fullBooking);
         }
       } else {
@@ -191,6 +241,34 @@ export default function EditBookingModal({ booking, onClose, onUpdate }: EditBoo
                 {booking.user?.full_name || booking.phone_user}
               </span>
             </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Loại sân:</span>
+              <span className="font-bold">
+                {(booking.court?.type || booking.court_type) === "INDOOR" ? "🏠 Trong nhà" : "🌤️ Ngoài trời"}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Loại đặt sân:</span>
+              <span className="font-bold">
+                {booking.booking_type === "CASUAL" ? "Khách thường" : 
+                 booking.booking_type === "TOURNAMENT" ? "Giải đấu" : "Đặt sân theo tuần"}
+              </span>
+            </div>
+            {booking.court && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Sân hiện tại:</span>
+                <span className="font-bold text-green-600">
+                  {booking.court.name}
+                </span>
+              </div>
+            )}
+            {!booking.court && (
+              <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-3 mt-2">
+                <p className="text-sm font-bold text-amber-800 text-center">
+                  ⚠️ Booking này chưa được phân bổ sân
+                </p>
+              </div>
+            )}
           </div>
 
 
@@ -227,7 +305,7 @@ export default function EditBookingModal({ booking, onClose, onUpdate }: EditBoo
                       <span className="text-sm text-gray-600 ml-2">
                         ({court.type === "INDOOR" ? "Trong nhà" : "Ngoài trời"})
                       </span>
-                      {court.courtID === booking.court.courtID && (
+                      {booking.court && court.courtID === booking.court.courtID && (
                         <span className="text-xs font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded ml-2">
                           Sân hiện tại
                         </span>
@@ -274,9 +352,14 @@ export default function EditBookingModal({ booking, onClose, onUpdate }: EditBoo
             </button>
             <button
               type="submit"
-              className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors"
+              disabled={!selectedCourtId && (booking.status === "PENDING" || booking.status === "CONFIRMED")}
+              className={`flex-1 px-6 py-3 rounded-xl font-bold transition-colors ${
+                !selectedCourtId && (booking.status === "PENDING" || booking.status === "CONFIRMED")
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-emerald-600 text-white hover:bg-emerald-700'
+              }`}
             >
-              Cập nhật
+              {!booking.court ? '🎯 Phân bổ sân' : 'Cập nhật'}
             </button>
           </div>
         </form>

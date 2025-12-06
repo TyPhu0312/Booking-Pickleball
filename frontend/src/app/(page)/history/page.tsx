@@ -158,6 +158,7 @@ export default function HistoryPage() {
   };
 
   const handleCancelBooking = async (bookingID: string) => {
+     if (!confirm("Bạn có chắc muốn hủy đặt sân này không?")) return;
     try {
       const response = await fetch(
         `${API_URL}/api/bookings/delete/${bookingID}`,

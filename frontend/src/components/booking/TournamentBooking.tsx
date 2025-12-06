@@ -7,15 +7,6 @@ import { API_URL } from "@/lib/config";
 
 type CourtType = "INDOOR" | "OUTDOOR";
 
-interface Courts {
-  courtID?: string;
-  name?: string;
-  image: string;
-  status?: string;
-  type: CourtType;
-  multiplier: number;
-}
-
 interface CourtsMultiplier {
   type: CourtType;
   multiplier: number;
@@ -34,14 +25,11 @@ interface TournamentBookingProps {
   StartDate: string;
   EndDate: string;
   selectedCourtType: string;
-  selectedCourt: Courts | null;
   selectedTournament: string | null;
   courtsMultiplier: CourtsMultiplier[];
-  courts: Courts[] | null;
   onStartDateChange: (date: string) => void;
   onEndDateChange: (date: string) => void;
   onCourtTypeChange: (type: string) => void;
-  onCourtChange: (court: Courts | null) => void;
   onTournamentChange: (tournament: string | null) => void;
 }
 
@@ -51,14 +39,11 @@ export default function TournamentBooking({
   StartDate,
   EndDate,
   selectedCourtType,
-  selectedCourt,
   selectedTournament,
   courtsMultiplier,
-  courts,
   onStartDateChange,
   onEndDateChange,
   onCourtTypeChange,
-  onCourtChange,
   onTournamentChange,
 }: TournamentBookingProps) {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -91,6 +76,23 @@ export default function TournamentBooking({
   return (
     <>
       <div className="flex justify-center">
+        <div className="mb-6 max-w-lg w-full">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-xl border-2 border-blue-200">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-2xl">ℹ️</span>
+              <h3 className="font-bold text-blue-900">Lưu ý về sân</h3>
+            </div>
+            <p className="text-sm text-blue-700 leading-relaxed">
+              Bạn chỉ cần chọn <strong>loại sân</strong> (Trong nhà/Ngoài trời).
+              <br />
+              🎯 <strong>Sân cụ thể</strong> sẽ được <strong>Admin phân bổ</strong> sau khi xác nhận booking.
+              <br />
+              📞 Bạn sẽ nhận được thông báo khi Admin chọn sân cho bạn.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div className="flex justify-center">
         <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg w-full">
           <div className="bg-linear-to-r from-blue-50 to-blue-100 p-4 rounded-xl shadow-sm border border-blue-200 flex flex-col">
             <label className="text-md font-medium mb-2 text-blue-800 flex items-center gap-1">
@@ -108,7 +110,8 @@ export default function TournamentBooking({
               }}
               dateFormat="dd/MM/yyyy"
               minDate={new Date()}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 shadow-sm text-sm"
+              disabled={!selectedTournament}
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 shadow-sm text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -128,7 +131,8 @@ export default function TournamentBooking({
               }}
               dateFormat="dd/MM/yyyy"
               minDate={new Date()}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-green-400 shadow-sm text-sm"
+              disabled={!selectedTournament}
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-green-400 shadow-sm text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
           </div>
         </div>
@@ -143,7 +147,8 @@ export default function TournamentBooking({
             <select
               value={selectedCourtType}
               onChange={(e) => onCourtTypeChange(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-400 focus:border-purple-400 text-sm shadow-sm"
+              disabled={!selectedTournament}
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-400 focus:border-purple-400 text-sm shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
               <option value="">-- Chọn loại sân --</option>
               {courtsMultiplier.length > 0 ? (
@@ -157,39 +162,16 @@ export default function TournamentBooking({
               )}
             </select>
           </div>
-
-          <div className="bg-linear-to-r from-pink-50 to-pink-100 p-4 rounded-xl shadow-sm border border-pink-200 flex flex-col">
-            <label className="text-md font-medium mb-2 text-pink-800 flex items-center gap-1">
-              🎾 Chọn sân
-            </label>
-            <select
-              value={selectedCourt?.courtID || ""}
-              onChange={(e) => {
-                const court = courts?.find((c) => c.courtID === e.target.value) || null;
-                onCourtChange(court);
-              }}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-pink-400 text-sm shadow-sm"
-            >
-              <option value="">-- Chọn sân --</option>
-              {courts && courts.length > 0 ? (
-                courts.map((court) => (
-                  <option key={court.courtID} value={court.courtID}>
-                    {court.name}
-                  </option>
-                ))
-              ) : (
-                <option disabled>Đã hết sân</option>
-              )}
-            </select>
-          </div>
         </div>
+
+
       </div>
 
       <div className="flex justify-center">
         <div className="mb-8 max-w-lg w-full">
           <div className="bg-linear-to-r from-yellow-50 to-orange-100 p-4 rounded-xl shadow-sm border border-yellow-200">
-            <label className="block text-md font-medium mb-2 text-yellow-800 flex items-center gap-1">
-              🏆 Chọn Giải Đấu
+            <label className="text-md font-medium mb-2 text-yellow-800 flex items-center gap-1">
+              🏆 Chọn Giải Đấu *
             </label>
             <select
               value={selectedTournament || ""}
@@ -207,8 +189,13 @@ export default function TournamentBooking({
               ))}
             </select>
             {tournaments.length === 0 && !loading && (
-              <p className="text-xs text-gray-600 mt-2">
-                Bạn chưa tạo giải đấu nào. Hãy tạo giải đấu trong trang Admin.
+              <p className="text-xs text-red-600 font-semibold mt-2">
+                ⚠️ Bạn chưa tạo giải đấu nào. Vui lòng tạo giải đấu trước khi đặt sân.
+              </p>
+            )}
+            {selectedTournament && (
+              <p className="text-xs text-green-600 font-semibold mt-2">
+                ✅ Đã chọn giải đấu. Bạn có thể chọn ngày và loại sân.
               </p>
             )}
           </div>

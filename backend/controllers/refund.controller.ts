@@ -191,7 +191,7 @@ export const exportRefundExcel = async (req: Request, res: Response) => {
         "Mã Booking": payment.booking_id,
         "Khách hàng": payment.booking.user?.full_name || "Khách lẻ",
         "SĐT": payment.booking.user?.phone || payment.booking.phone_user,
-        "Sân": payment.booking.court.name,
+        "Sân": payment.booking.court?.name || "Chưa phân bổ",
         "Tiền cọc": payment.booking.deposit_amount,
         "% Hoàn": payment.refund_percentage + "%",
         "Số tiền hoàn": payment.refund_amount,

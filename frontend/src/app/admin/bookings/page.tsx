@@ -18,11 +18,12 @@ interface Booking {
   status: BookingStatus;
   total_price: number;
   deposit_amount: number;
-  court: {
+  court_type?: CourtType;
+  court?: {
     courtID: string;
     name: string;
     type: CourtType;
-  };
+  } | null;
   user?: {
     userID: string;
     full_name: string;
