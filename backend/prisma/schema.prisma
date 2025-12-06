@@ -27,6 +27,7 @@ enum BookingType {
 enum CourtStatus {
   AVAILABLE 
   OCCUPIED 
+  ALMOST_DONE 
   MAINTENANCE 
   CLOSED 
 }
