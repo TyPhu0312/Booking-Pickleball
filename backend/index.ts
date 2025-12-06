@@ -16,7 +16,7 @@ import blogs from "./routes/blogs.routes";
 import payos from "./routes/payos.routes";
 import cash from "./routes/cash.routes";
 import refunds from "./routes/refund.routes";
-import { startAutoCancelScheduler } from "./services/scheduler.service";
+import { startAutoCancelScheduler, startAutoUpdateCourtStatus } from "./services/scheduler.service";
 
 dotenv.config();
 
@@ -54,6 +54,7 @@ app.listen(port, async () => {
     console.log("✅ Database connected");
     
     startAutoCancelScheduler();
+    startAutoUpdateCourtStatus();
   } catch (err) {
     console.error("❌ Error connecting to database:", err);
   }
