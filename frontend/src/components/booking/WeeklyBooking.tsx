@@ -5,15 +5,6 @@ import DatePicker from "react-datepicker";
 
 type CourtType = "INDOOR" | "OUTDOOR";
 
-interface Courts {
-  courtID?: string;
-  name?: string;
-  image: string;
-  status?: string;
-  type: CourtType;
-  multiplier: number;
-}
-
 interface CourtsMultiplier {
   type: CourtType;
   multiplier: number;
@@ -25,16 +16,13 @@ interface WeeklyBookingProps {
   numberWeeks: number;
   selectedWeekdays: number[];
   selectedCourtType: string;
-  selectedCourt: Courts | null;
   courtsMultiplier: CourtsMultiplier[];
-  courts: Courts[] | null;
   maxWeeks: number;
   onStartDateChange: (date: string) => void;
   onEndDateChange: (date: string) => void;
   onNumberWeeksChange: (weeks: number) => void;
   onWeekdaysChange: (weekdays: number[]) => void;
   onCourtTypeChange: (type: string) => void;
-  onCourtChange: (court: Courts | null) => void;
 }
 
 export default function WeeklyBooking({
@@ -43,20 +31,30 @@ export default function WeeklyBooking({
   numberWeeks,
   selectedWeekdays,
   selectedCourtType,
-  selectedCourt,
   courtsMultiplier,
-  courts,
   maxWeeks,
   onStartDateChange,
   onEndDateChange,
   onNumberWeeksChange,
   onWeekdaysChange,
   onCourtTypeChange,
-  onCourtChange,
 }: WeeklyBookingProps) {
   return (
     <div className="flex justify-center">
       <div className="w-full max-w-lg p-6 bg-white rounded-2xl shadow-lg border border-gray-200">
+        <div className="bg-linear-to-r from-blue-50 to-indigo-50 p-5 rounded-xl border-2 border-blue-200 mb-3 ">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-2xl">ℹ️</span>
+            <h3 className="font-bold text-blue-900">Lưu ý về sân</h3>
+          </div>
+          <p className="text-sm text-blue-700 leading-relaxed">
+            Bạn chỉ cần chọn <strong>loại sân</strong> (Trong nhà/Ngoài trời). 
+            <br />
+            🎯 <strong>Sân cụ thể</strong> sẽ được <strong>Admin phân bổ</strong> sau khi xác nhận booking.
+            <br />
+            📞 Bạn sẽ nhận được thông báo khi Admin chọn sân cho bạn.
+          </p>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           <div className="flex flex-col">
             <label className="text-sm font-semibold mb-2 text-blue-700 flex items-center gap-1">
@@ -164,30 +162,7 @@ export default function WeeklyBooking({
           </select>
         </div>
 
-        <div className="bg-linear-to-r from-pink-50 to-pink-100 p-4 rounded-xl shadow-sm border border-pink-200 flex flex-col mt-3">
-          <label className="text-md font-medium mb-2 text-pink-800 flex items-center gap-1">
-            🎾 Chọn sân
-          </label>
-          <select
-            value={selectedCourt?.courtID || ""}
-            onChange={(e) => {
-              const court = courts?.find((c) => c.courtID === e.target.value) || null;
-              onCourtChange(court);
-            }}
-            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-pink-400 text-sm shadow-sm"
-          >
-            <option value="">-- Chọn sân --</option>
-            {courts && courts.length > 0 ? (
-              courts.map((court) => (
-                <option key={court.courtID} value={court.courtID}>
-                  {court.name}
-                </option>
-              ))
-            ) : (
-              <option disabled>Đã hết sân</option>
-            )}
-          </select>
-        </div>
+        
       </div>
     </div>
   );

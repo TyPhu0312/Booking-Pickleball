@@ -94,7 +94,6 @@ export default function BookingPage() {
   const [courts, setCourts] = useState<Courts[] | null>(null);
   const [numberWeeks, setNumberWeeks] = useState(1);
   const [selectedCourtType, setSelectedCourtType] = useState<string>("");
-  const [selectedCourt, setSelectedCourt] = useState<Courts | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [createdBookingId, setCreatedBookingId] = useState<string | null>(null); 
 
@@ -188,11 +187,13 @@ export default function BookingPage() {
       return;
     }
 
-    const availableCourts = selectedCourtType
-      ? slot.availableCourts[selectedCourtType] ?? 0
-      : Math.max(...Object.values(slot.availableCourts));
-
-    if (availableCourts === 0) return;
+    if (selectedCourtType) {
+      const availableCourtsForType = slot.availableCourts[selectedCourtType] ?? 0;
+      if (availableCourtsForType === 0) {
+        alert(`Slot này đã hết sân ${selectedCourtType === 'INDOOR' ? 'trong nhà' : 'ngoài trời'}!`);
+        return;
+      }
+    }
 
     const currentDateSlots = selectedSlotsByDate[date] || [];
     const newSlots = currentDateSlots.includes(slotId)
@@ -434,10 +435,6 @@ export default function BookingPage() {
       return alert("Vui lòng chọn loại sân!");
     }
 
-    if (!selectedCourt) {
-      return alert("Vui lòng chọn sân!");
-    }
-
     if (!user) {
       return alert("Vui lòng đăng nhập!");
     }
@@ -453,7 +450,7 @@ export default function BookingPage() {
       deposit_amount: deposit,
       booking_type: bookingType.toUpperCase(),
       discount: discount,
-      court_id: selectedCourt.courtID,
+      court_type: selectedCourtType,
       slots,
     };
 
@@ -532,13 +529,10 @@ export default function BookingPage() {
           StartDate={StartDate}
           EndDate={EndDate}
           selectedCourtType={selectedCourtType}
-          selectedCourt={selectedCourt}
           courtsMultiplier={courtsMultiplier}
-          courts={courts}
           onStartDateChange={(date) => setStartDate(date)}
           onEndDateChange={(date) => setEndDate(date)}
           onCourtTypeChange={(type) => setSelectedCourtType(type)}
-          onCourtChange={(court) => setSelectedCourt(court)}
         />
       )}
 
@@ -549,9 +543,7 @@ export default function BookingPage() {
           numberWeeks={numberWeeks}
           selectedWeekdays={selectedWeekdays}
           selectedCourtType={selectedCourtType}
-          selectedCourt={selectedCourt}
           courtsMultiplier={courtsMultiplier}
-          courts={courts}
           maxWeeks={MAX_WEEKS}
           onStartDateChange={(date) => {
             setStartDate(date);
@@ -567,7 +559,6 @@ export default function BookingPage() {
           }}
           onWeekdaysChange={(weekdays) => setSelectedWeekdays(weekdays)}
           onCourtTypeChange={(type) => setSelectedCourtType(type)}
-          onCourtChange={(court) => setSelectedCourt(court)}
         />
       )}
 
@@ -576,14 +567,11 @@ export default function BookingPage() {
           StartDate={StartDate}
           EndDate={EndDate}
           selectedCourtType={selectedCourtType}
-          selectedCourt={selectedCourt}
           selectedTournament={selectedTournament}
           courtsMultiplier={courtsMultiplier}
-          courts={courts}
           onStartDateChange={(date) => setStartDate(date)}
           onEndDateChange={(date) => setEndDate(date)}
           onCourtTypeChange={(type) => setSelectedCourtType(type)}
-          onCourtChange={(court) => setSelectedCourt(court)}
           onTournamentChange={(tournament) => setSelectedTournament(tournament)}
         />
       )}
@@ -625,7 +613,7 @@ export default function BookingPage() {
                         ? slot.availableCourts?.[selectedCourtType] ?? 0
                         : Math.max(...Object.values(slot.availableCourts ?? {}));
 
-                      const isBooked = availableCourts <= 0;
+                      const isBooked = selectedCourtType ? availableCourts <= 0 : false;
 
                       const now = new Date();
                       const selectedDate = new Date(date);
@@ -661,7 +649,7 @@ export default function BookingPage() {
                         >
                           <div>{slot.start_time} - {slot.end_time}</div>
                           <div className="text-xs mt-1 font-medium">
-                            {isPastSlot ? "Đã qua" : isBooked ? "Hết" : `Còn ${availableCourts} sân`}
+                            {isPastSlot ? "Đã qua" : isBooked ? "Hết sân" : selectedCourtType ? `Còn ${availableCourts} sân` : "Chọn loại sân"}
                           </div>
                         </button>
                       );

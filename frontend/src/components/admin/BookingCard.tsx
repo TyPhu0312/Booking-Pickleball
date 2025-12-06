@@ -12,11 +12,12 @@ interface Booking {
   status: BookingStatus;
   total_price: number;
   deposit_amount: number;
-  court: {
+  court_type?: CourtType;
+  court?: {
     courtID: string;
     name: string;
     type: CourtType;
-  };
+  } | null;
   user?: {
     userID: string;
     full_name: string;
@@ -115,7 +116,7 @@ export default function BookingCard({ booking, onStatusChange, onEdit }: Booking
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <MapPin className="w-4 h-4 text-emerald-600" />
-            <span className="font-bold text-gray-800">{booking.court.name}</span>
+            <span className="font-bold text-gray-800">{booking.court?.name || "Chưa phân bổ"}</span>
           </div>
           
           <div className="space-y-1.5 mt-2">
