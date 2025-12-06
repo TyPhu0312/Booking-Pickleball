@@ -127,7 +127,8 @@ model Bookings {
   total_price    Float
   deposit_amount Float
   booking_type   BookingType   @default(CASUAL)
-  court_id       String
+  court_id       String?
+  court_type     CourtType?
   user_id        String?
   phone_user     String?
   discount       Decimal?      @db.Decimal(4, 2)
@@ -135,7 +136,7 @@ model Bookings {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  court       Courts       @relation(fields: [court_id], references: [courtID])
+  court       Courts?        @relation(fields: [court_id], references: [courtID])
   user        Users?         @relation(fields: [user_id], references: [userID])
   payments    Payments[]
   bookingSlots BookingSlots[]

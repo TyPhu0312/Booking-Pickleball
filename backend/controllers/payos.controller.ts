@@ -255,7 +255,7 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
       remainingAmount,
       booking: {
         bookingID: payment.booking.bookingID,
-        courtName: payment.booking.court.name,
+        courtName: payment.booking.court?.name || "Chưa phân bổ",
         totalPrice: payment.booking.total_price,
         depositAmount: payment.booking.deposit_amount,
         status: payment.booking.status,
