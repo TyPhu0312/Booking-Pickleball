@@ -37,6 +37,8 @@ export default function BlogsPage() {
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [editImagePreview, setEditImagePreview] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   const fetchBlogs = async () => {
     try {
@@ -186,6 +188,15 @@ export default function BlogsPage() {
     );
   });
 
+  const totalPages = Math.ceil(filteredBlogs.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentBlogs = filteredBlogs.slice(startIndex, endIndex);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchInput]);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("vi-VN", {
       year: "numeric",
@@ -239,7 +250,7 @@ export default function BlogsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {filteredBlogs.map((blog) => (
+            {currentBlogs.map((blog) => (
               <tr key={blog.blogID} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   {blog.image ? (
@@ -280,6 +291,48 @@ export default function BlogsPage() {
             ))}
           </tbody>
         </table>
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-4 border-t">
+            <div className="text-sm text-gray-700">
+              <span className="font-medium"></span>Tổng số bài viết{" "}
+              <span className="font-medium">{filteredBlogs.length}</span> 
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="disabled:opacity-50"
+              >
+                Trước
+              </Button>
+              <div className="flex gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(page)}
+                    className={currentPage === page ? "bg-blue-600 hover:bg-blue-700" : ""}
+                  >
+                    {page}
+                  </Button>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="disabled:opacity-50"
+              >
+                Sau
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <Dialog open={showForm} onOpenChange={setShowForm}>
@@ -291,7 +344,7 @@ export default function BlogsPage() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
+          <div className="space-y-8 mt-2">
             <div>
               <Label htmlFor="title">Tiêu đề *</Label>
               <Input
@@ -314,10 +367,12 @@ export default function BlogsPage() {
 
             <div>
               <Label htmlFor="content">Nội dung *</Label>
-              <TextEditor
-                value={formData.content}
-                onChange={(data: string) => setFormData({ ...formData, content: data })}
-              />
+              <div className="min-h-[200px]">
+                <TextEditor
+                  value={formData.content}
+                  onChange={(data: string) => setFormData({ ...formData, content: data })}
+                />
+              </div>
             </div>
 
             <div>
@@ -366,7 +421,7 @@ export default function BlogsPage() {
           </DialogHeader>
           
           {editingBlog && (
-            <div className="space-y-4">
+            <div className="space-y-4 ">
               <div>
                 <Label htmlFor="edit-title">Tiêu đề *</Label>
                 <Input
@@ -389,10 +444,12 @@ export default function BlogsPage() {
 
               <div>
                 <Label htmlFor="edit-content">Nội dung *</Label>
-                <TextEditor
-                  value={editingBlog.content}
-                  onChange={(data: string) => setEditingBlog({ ...editingBlog, content: data })}
-                />
+                <div className="min-h-[400px]">
+                  <TextEditor
+                    value={editingBlog.content}
+                    onChange={(data: string) => setEditingBlog({ ...editingBlog, content: data })}
+                  />
+                </div>
               </div>
 
               <div>

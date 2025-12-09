@@ -12,15 +12,29 @@ const CKEditor = dynamic(
 
 export default function TextEditor({ value, onChange }: any) {
   return (
-    <div>
+    <div className="min-h-[200px]" >
       <CKEditor
         editor={ClassicEditor as any}
         data={value}
+        config={{
+          toolbar: [
+            'heading', '|',
+            'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|',
+            'blockQuote', 'insertTable', '|',
+            'undo', 'redo'
+          ],
+        }}
         onChange={(event: any, editor: any) => {
           const data = editor.getData();
           onChange(data);
         }}
       />
+      <style jsx global>{`
+        .ck-editor__editable {
+          min-height: 200px !important;
+          max-height: 400px !important;
+        }
+      `}</style>
     </div>
   );
 }
