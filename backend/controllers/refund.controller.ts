@@ -41,13 +41,6 @@ export const requestCancelBooking = async (req: Request, res: Response) => {
     const refundPercentage = calculateRefundPercentage(new Date(earliestSlot.date));
     const refundAmount = (booking.deposit_amount * refundPercentage) / 100;
 
-    if (refundPercentage === 0) {
-      return res.status(400).json({ 
-        message: "Không thể hoàn tiền khi hủy sân trong vòng 30 phút trước giờ đặt",
-        refundPercentage: 0 
-      });
-    }
-
     await prisma.bookings.update({
       where: { bookingID },
       data: { status: "CANCEL_REQUESTED" },
@@ -69,7 +62,9 @@ export const requestCancelBooking = async (req: Request, res: Response) => {
     });
 
     res.json({
-      message: "Yêu cầu hủy sân thành công",
+      message: refundPercentage === 0 
+        ? "Yêu cầu hủy sân thành công. Không được hoàn tiền do hủy dưới 30 phút."
+        : "Yêu cầu hủy sân thành công",
       refundPercentage,
       refundAmount,
       bookingID,

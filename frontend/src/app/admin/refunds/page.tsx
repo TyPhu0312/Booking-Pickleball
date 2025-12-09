@@ -48,9 +48,9 @@ interface RefundRequest {
       phone: string;
     };
     phone_user?: string;
-    court: {
+    court?: {
       name: string;
-    };
+    } | null;
   };
 }
 
@@ -290,7 +290,7 @@ export default function RefundManagementPage() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{refund.booking.court.name}</TableCell>
+                    <TableCell>{refund.booking.court?.name || "Chưa phân bổ"}</TableCell>
                     <TableCell>
                       {refund.booking.deposit_amount.toLocaleString()}đ
                     </TableCell>

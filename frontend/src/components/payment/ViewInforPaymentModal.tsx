@@ -188,7 +188,6 @@ export default function ViewInforPaymentModal({ bookingId, onClose }: ViewInforP
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
           <div>
             <h2 className="text-2xl font-black text-gray-800">Chi Tiết Booking & Thanh Toán</h2>
-            <p className="text-sm text-gray-600 mt-1">Mã booking: <span className="font-mono font-semibold">{booking.bookingID}</span></p>
           </div>
           <button
             onClick={onClose}
@@ -236,10 +235,10 @@ export default function ViewInforPaymentModal({ bookingId, onClose }: ViewInforP
                 <p className="text-xs text-gray-600 mb-1">Sân</p>
                 <p className="font-semibold text-gray-900 flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-green-600" />
-                  {booking.court.name}
+                  {booking.court?.name || "N/A"}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  ({booking.court.type === "INDOOR" ? "Trong nhà" : "Ngoài trời"})
+                  ({booking.court?.type === "INDOOR" ? "Trong nhà" : "Ngoài trời"})
                 </p>
               </div>
               <div>

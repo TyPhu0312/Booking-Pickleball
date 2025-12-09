@@ -72,10 +72,7 @@ export default function HistoryPage() {
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [refundBookingId, setRefundBookingId] = useState<string | null>(null);
   const [refundForm, setRefundForm] = useState({
-    cancel_reason: "",
-    bank_name: "",
-    bank_account_number: "",
-    bank_account_owner: ""
+    cancel_reason: ""
   });
 
 
@@ -184,14 +181,25 @@ export default function HistoryPage() {
   const handleRequestRefund = async () => {
     if (!refundBookingId) return;
 
-    if (!refundForm.cancel_reason || !refundForm.bank_name || 
-        !refundForm.bank_account_number || !refundForm.bank_account_owner) {
-      alert("Vui lòng điền đầy đủ thông tin!");
+    if (!refundForm.cancel_reason) {
+      alert("Vui lòng nhập lý do hủy!");
+      return;
+    }
+
+    if (!user?.bank_name || !user?.bank_account_number || !user?.bank_account_owner) {
+      alert("Vui lòng cập nhật thông tin ngân hàng ở trang Profile trước khi yêu cầu hoàn tiền!");
       return;
     }
 
     try {
-      console.log("Gửi yêu cầu hoàn tiền với dữ liệu:", refundForm);
+      const requestData = {
+        cancel_reason: refundForm.cancel_reason,
+        bank_name: user.bank_name,
+        bank_account_number: user.bank_account_number,
+        bank_account_owner: user.bank_account_owner
+      };
+      
+      console.log("Gửi yêu cầu hoàn tiền với dữ liệu:", requestData);
       const response = await fetch(
         `${API_URL}/api/refunds/request-cancel/${refundBookingId}`,
         {
@@ -199,7 +207,7 @@ export default function HistoryPage() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(refundForm),
+          body: JSON.stringify(requestData),
         }
       );
 
@@ -212,10 +220,7 @@ export default function HistoryPage() {
         setShowRefundModal(false);
         setRefundBookingId(null);
         setRefundForm({
-          cancel_reason: "",
-          bank_name: "",
-          bank_account_number: "",
-          bank_account_owner: ""
+          cancel_reason: ""
         });
         fetchBookings();
       } else {
@@ -651,10 +656,7 @@ export default function HistoryPage() {
                 setShowRefundModal(false);
                 setRefundBookingId(null);
                 setRefundForm({
-                  cancel_reason: "",
-                  bank_name: "",
-                  bank_account_number: "",
-                  bank_account_owner: ""
+                  cancel_reason: ""
                 });
               }}
             >
@@ -687,43 +689,33 @@ export default function HistoryPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tên ngân hàng <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={refundForm.bank_name}
-                  onChange={(e) => setRefundForm({ ...refundForm, bank_name: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="VD: Vietcombank, Techcombank..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Số tài khoản <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={refundForm.bank_account_number}
-                  onChange={(e) => setRefundForm({ ...refundForm, bank_account_number: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nhập số tài khoản..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Chủ tài khoản <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={refundForm.bank_account_owner}
-                  onChange={(e) => setRefundForm({ ...refundForm, bank_account_owner: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Tên chủ tài khoản..."
-                />
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="font-semibold text-blue-800 mb-3">Thông tin ngân hàng (từ hồ sơ)</p>
+                
+                {user?.bank_name && user?.bank_account_number && user?.bank_account_owner ? (
+                  <>
+                    <div className="flex justify-between mb-2">
+                      <span className="text-sm text-gray-600">Ngân hàng:</span>
+                      <span className="text-sm font-medium text-gray-800">{user.bank_name}</span>
+                    </div>
+                    <div className="flex justify-between mb-2">
+                      <span className="text-sm text-gray-600">Số tài khoản:</span>
+                      <span className="text-sm font-medium text-gray-800">{user.bank_account_number}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Chủ tài khoản:</span>
+                      <span className="text-sm font-medium text-gray-800">{user.bank_account_owner}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <p className="text-yellow-800 text-sm">
+                      <span className="font-semibold">⚠️ Chưa có thông tin ngân hàng!</span>
+                      <br />
+                      Vui lòng cập nhật thông tin ngân hàng ở trang <a href="/profile" className="text-blue-600 underline">Profile</a> trước khi yêu cầu hoàn tiền.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-4">
@@ -738,10 +730,7 @@ export default function HistoryPage() {
                     setShowRefundModal(false);
                     setRefundBookingId(null);
                     setRefundForm({
-                      cancel_reason: "",
-                      bank_name: "",
-                      bank_account_number: "",
-                      bank_account_owner: ""
+                      cancel_reason: ""
                     });
                   }}
                   className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-medium"
