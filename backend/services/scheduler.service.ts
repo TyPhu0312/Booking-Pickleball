@@ -4,7 +4,7 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 export const startAutoCancelScheduler = () => {
-  cron.schedule("*/10 * * * *", async () => {
+  cron.schedule("*/1 * * * *", async () => {
     try {
       console.log("🕐 Đang kiểm tra các thanh toán hết hạn...");
 
@@ -23,7 +23,36 @@ export const startAutoCancelScheduler = () => {
       });
 
       for (const payment of expiredPayments) {
+        const allPayments = await prisma.payments.findMany({
+          where: { booking_id: payment.booking.bookingID }
+        });
+
+        const hasPaidOrPartiallyPaid = allPayments.some(
+          p => p.status === "PAID" || p.status === "PARTIALLY_PAID"
+        );
+
+        if (hasPaidOrPartiallyPaid) {
+          console.log(`⚠️ Bỏ qua booking ${payment.booking.bookingID} - Đã có thanh toán, không hủy`);
+          continue;
+        }
+
         console.log(`⏰ Hủy booking hết hạn: ${payment.booking.bookingID}`);
+
+        if (payment.order_code) {
+          try {
+            const PayOS = require("@payos/node");
+            const payOS = new PayOS(
+              process.env.PAYOS_CLIENT_ID!,
+              process.env.PAYOS_API_KEY!,
+              process.env.PAYOS_CHECKSUM_KEY!
+            );
+            
+            await payOS.cancelPaymentLink(payment.order_code);
+            console.log(`✅ Đã hủy payment link ${payment.order_code} trên PayOS`);
+          } catch (error) {
+            console.warn(`⚠️ Không thể hủy payment link ${payment.order_code}:`, error);
+          }
+        }
 
         await prisma.payments.update({
           where: { paymentID: payment.paymentID },

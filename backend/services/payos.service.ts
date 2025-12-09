@@ -33,7 +33,7 @@ export const createPaymentLink = async (params: CreatePaymentLinkParams) => {
     buyerName: params.buyerName || "Khách hàng",
     buyerPhone: params.buyerPhone || "0000000000",
     buyerAddress: "TP.HCM",
-    expiredAt: Math.floor(Date.now() / 1000) + 30 * 60, 
+    expiredAt: Math.floor(Date.now() / 1000) + 3 * 60, 
   };
   const paymentLinkResponse = await payos.paymentRequests.create(paymentData);
   return {

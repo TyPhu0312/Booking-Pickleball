@@ -141,7 +141,7 @@ export default function RemainingPaymentModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 relative">
+      <div className="bg-white rounded-2xl max-w-md w-full max-h-auto p-6 relative">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
@@ -164,7 +164,7 @@ export default function RemainingPaymentModal({
           </div>
         )}
 
-        <div className="bg-gray-50 rounded-lg p-4 mb-4">
+        <div className="bg-gray-50 rounded-lg p-2 mb-2">
           <div className="flex justify-between mb-2">
             <span className="text-gray-600">Mã đơn hàng:</span>
             <span className="font-mono font-bold">{paymentData.orderCode}</span>
@@ -183,14 +183,14 @@ export default function RemainingPaymentModal({
           </div>
         </div>
 
-        <div className="bg-white border-2 border-gray-200 rounded-lg p-4 mb-4">
+        <div className="bg-white border-2 border-gray-200 rounded-lg p-4 mb-2">
           <div className="flex items-center gap-2 mb-3">
             <QrCode className="w-5 h-5 text-blue-600" />
             <span className="font-medium">Quét mã QR để thanh toán</span>
           </div>
           <div className="flex justify-center">
             {paymentData.qrCode ? (
-              <div className="p-4 bg-white rounded-lg">
+              <div className="p-2 bg-white rounded-lg">
                 <QRCodeSVG 
                   value={paymentData.qrCode} 
                   size={256}
