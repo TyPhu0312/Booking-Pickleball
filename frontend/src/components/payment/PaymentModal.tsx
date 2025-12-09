@@ -32,10 +32,15 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [polling, setPolling] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    createPayment();
-  }, []);
+    if (!initialized) {
+      setInitialized(true);
+      createPayment();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialized]);
 
   const handleTimeExpired = useCallback(async () => {
     try {
