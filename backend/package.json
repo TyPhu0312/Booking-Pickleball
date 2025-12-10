@@ -26,7 +26,8 @@
     "moment-timezone": "^0.6.0",
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
-    "node-cron": "^4.2.1"
+    "node-cron": "^4.2.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
