@@ -373,14 +373,22 @@ export default function PaymentsPage() {
                       <td className='px-4 py-4 whitespace-nowrap text-sm text-gray-900'>
                         {booking.court?.name || booking.phone_user || 'N/A'}
                       </td>
-                      <td className='px-4 py-4 whitespace-nowrap'>
-                        <div className='text-sm'>
-                          <div className='text-gray-900'>
-                            {firstSlot ? format(new Date(firstSlot.date), 'dd/MM/yyyy') : 'N/A'}
-                          </div>
-                          <div className='text-gray-500'>
-                            {firstSlot ? `${firstSlot.slot.start_time} - ${firstSlot.slot.end_time}` : ''}
-                          </div>
+                      <td className='px-4 py-4'>
+                        <div className='text-sm space-y-1'>
+                          {booking.bookingSlots && booking.bookingSlots.length > 0 ? (
+                            booking.bookingSlots.map((slot, idx) => (
+                              <div key={idx} className='flex items-center gap-2'>
+                                <span className='text-gray-900 font-medium'>
+                                  {format(new Date(slot.date), 'dd/MM/yyyy')}
+                                </span>
+                                <span className='text-gray-500'>
+                                  {slot.slot.start_time.slice(0, 5)} - {slot.slot.end_time.slice(0, 5)}
+                                </span>
+                              </div>
+                            ))
+                          ) : (
+                            <span className='text-gray-500'>N/A</span>
+                          )}
                         </div>
                       </td>
                       <td className='px-4 py-4 whitespace-nowrap text-sm font-semibold text-gray-900'>

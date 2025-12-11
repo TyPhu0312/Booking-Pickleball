@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { X, Clock, QrCode, CreditCard } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { API_URL } from "@/lib/config";
@@ -32,10 +32,72 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [polling, setPolling] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    createPayment();
-  }, []);
+    if (!initialized) {
+      setInitialized(true);
+      createPayment();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialized]);
+
+  const handleTimeExpired = useCallback(async () => {
+    try {
+      console.log("⏰ Hết thời gian thanh toán, đang kiểm tra...");
+      
+      if (!paymentData?.paymentId) {
+        console.warn("⚠️ Không có paymentId");
+        return;
+      }
+
+      const statusRes = await fetch(`${API_URL}/api/payos/${paymentData.paymentId}/status`);
+      
+      if (statusRes.ok) {
+        const statusData = await statusRes.json();
+        console.log("📊 Status check:", statusData.status);
+        
+        if (statusData.status === "PARTIALLY_PAID" || statusData.status === "PAID") {
+          console.log("✅ Đã thanh toán, không hủy");
+          onPaymentSuccess();
+          return;
+        }
+      }
+
+      console.log("❌ Chưa thanh toán, đang hủy booking...");
+      
+      try {
+        const cancelPaymentRes = await fetch(`${API_URL}/api/payos/${paymentData.paymentId}/cancel`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" }
+        });
+        
+        if (cancelPaymentRes.ok) {
+          console.log("✅ Đã hủy payment link trên PayOS");
+        } else {
+          console.warn("⚠️ Không thể hủy payment link, tiếp tục hủy booking");
+        }
+      } catch (error) {
+        console.error("❌ Lỗi khi hủy payment link:", error);
+      }
+      
+      const cancelRes = await fetch(`${API_URL}/api/bookings/updateBookingStatus/${bookingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CANCELLED" })
+      });
+
+      if (cancelRes.ok) {
+        console.log("✅ Đã hủy booking thành công");
+        alert("Hết thời gian thanh toán. Booking và mã QR đã bị hủy.");
+        onClose();
+      } else {
+        console.error("❌ Lỗi khi hủy booking:", await cancelRes.text());
+      }
+    } catch (error) {
+      console.error("❌ Error handling time expired:", error);
+    }
+  }, [paymentData, bookingId, onPaymentSuccess, onClose]);
 
   useEffect(() => {
     if (!paymentData) return;
@@ -50,13 +112,17 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
       if (newDiff <= 0) {
         clearInterval(timer);
         setTimeLeft(0);
+        handleTimeExpired();
       } else {
         setTimeLeft(newDiff);
       }
     }, 1000);
 
-    return () => clearInterval(timer);
-  }, [paymentData]);
+    return () => {
+      console.log("🧹 Cleanup timer");
+      clearInterval(timer);
+    };
+  }, [paymentData, handleTimeExpired]);
 
   const createPayment = async () => {
     setLoading(true);
@@ -165,8 +231,8 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
   if (!paymentData) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 h-auto relative">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl max-w-md w-full p-6 relative my-8">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
@@ -189,7 +255,7 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
           </div>
         )}
 
-        <div className="bg-gray-50 rounded-lg p-4 mb-4">
+        <div className="bg-gray-50 rounded-lg p-4 mb-2">
           <div className="flex justify-between mb-2">
             <span className="text-gray-600">Mã đơn hàng:</span>
             <span className="font-mono font-bold">{paymentData.orderCode}</span>
@@ -208,14 +274,14 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
           </div>
         </div>
 
-        <div className="bg-white border-2 border-gray-200 rounded-lg p-4 mb-4">
-          <div className="flex items-center gap-2 mb-3">
+        <div className="bg-white border-2 border-gray-200 rounded-lg p-4 mb-2">
+          <div className="flex items-center gap-2 mb-2">
             <QrCode className="w-5 h-5 text-blue-600" />
             <span className="font-medium">Quét mã QR để thanh toán</span>
           </div>
           <div className="flex justify-center">
             {paymentData.qrCode ? (
-              <div className="p-4 bg-white rounded-lg">
+              <div className="p-2 bg-white rounded-lg">
                 <QRCodeSVG 
                   value={paymentData.qrCode} 
                   size={256}

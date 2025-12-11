@@ -7,52 +7,114 @@ const prisma = new PrismaClient();
 export const createPayOSPayment = async (req: Request, res: Response) => {
   const { bookingId, paymentType } = req.body;
   try {
-    const booking = await prisma.bookings.findUnique({
-      where: { bookingID: bookingId },
-      include: { user: true, court: true, payments: true },
-    });
-    if (!booking) {
-      return res.status(404).json({ message: "Booking không tồn tại" });
-    }
-
-    const totalPaid = booking.payments.reduce((sum: number, p: any) => {
-      if (p.status === "PARTIALLY_PAID" || p.status === "PAID") {
-        return sum + (p.paid_amount || 0);
+    const result = await prisma.$transaction(async (tx) => {
+      const booking = await tx.bookings.findUnique({
+        where: { bookingID: bookingId },
+        include: { user: true, court: true, payments: true },
+      });
+      
+      if (!booking) {
+        throw new Error("Booking không tồn tại");
       }
-      return sum;
-    }, 0);
 
-    if (!paymentType || paymentType === "DEPOSIT") {
-      const pendingPayment = booking.payments.find((p: any) => p.status === "PENDING");
-      if (pendingPayment) {
-        const now = new Date();
-        const deadline = pendingPayment.payment_deadline ? new Date(pendingPayment.payment_deadline) : now;
-        
-        if (deadline < now) {
+      const totalPaid = booking.payments.reduce((sum: number, p: any) => {
+        if (p.status === "PARTIALLY_PAID" || p.status === "PAID") {
+          return sum + (p.paid_amount || 0);
+        }
+        return sum;
+      }, 0);
+
+      if (!paymentType || paymentType === "DEPOSIT") {
+        const pendingPayment = booking.payments.find((p: any) => p.status === "PENDING");
+        if (pendingPayment) {
+          const now = new Date();
+          const deadline = pendingPayment.payment_deadline ? new Date(pendingPayment.payment_deadline) : now;
           
-          if (pendingPayment.order_code) {
-            try {
-              await cancelPaymentLink(pendingPayment.order_code, "Hết hạn thanh toán");
-            } catch (error) {
-              console.warn("⚠️ Không thể cancel payment trên PayOS:", error);
+          if (deadline < now) {
+            if (pendingPayment.order_code) {
+              try {
+                await cancelPaymentLink(pendingPayment.order_code, "Hết hạn thanh toán");
+              } catch (error) {
+                console.warn("⚠️ Không thể cancel payment trên PayOS:", error);
+              }
             }
+            
+            await tx.payments.update({
+              where: { paymentID: pendingPayment.paymentID },
+              data: { status: "EXPIRED" }
+            });
+            
+          } else {
+            console.log("✅ Tái sử dụng payment PENDING:", pendingPayment.paymentID);
+            return {
+              success: true,
+              paymentId: pendingPayment.paymentID,
+              orderCode: pendingPayment.order_code,
+              checkoutUrl: pendingPayment.payment_url,
+              qrCode: pendingPayment.qr_code_url,
+              deadline: pendingPayment.payment_deadline,
+              amount: booking.deposit_amount,
+              paymentType: "DEPOSIT",
+              totalPaid,
+              totalPrice: booking.total_price,
+              depositAmount: booking.deposit_amount,
+              remainingAmount: booking.total_price - totalPaid - booking.deposit_amount,
+            };
           }
+        }
+      } else if (paymentType === "REMAINING") {
+        const pendingRemainingPayment = booking.payments.find(
+          (p: any) => p.status === "PENDING" && p.paid_amount === 0
+        );
+        
+        if (pendingRemainingPayment) {
+          const now = new Date();
+          const deadline = pendingRemainingPayment.payment_deadline 
+            ? new Date(pendingRemainingPayment.payment_deadline) 
+            : now;
           
-          await prisma.payments.update({
-            where: { paymentID: pendingPayment.paymentID },
-            data: { status: "EXPIRED" }
-          });
-          
-        } else {
-          const minutesLeft = Math.floor((deadline.getTime() - now.getTime()) / 60000);
-          return res.status(400).json({ 
-            message: `Đã có liên kết thanh toán đang chờ xử lý (còn ${minutesLeft} phút)`,
-            existingPaymentId: pendingPayment.paymentID,
-            deadline: pendingPayment.payment_deadline
-          });
+          if (deadline >= now) {
+            console.log("✅ Tái sử dụng payment REMAINING:", pendingRemainingPayment.paymentID);
+            const remainingAmount = booking.total_price - totalPaid;
+            return {
+              success: true,
+              paymentId: pendingRemainingPayment.paymentID,
+              orderCode: pendingRemainingPayment.order_code,
+              checkoutUrl: pendingRemainingPayment.payment_url,
+              qrCode: pendingRemainingPayment.qr_code_url,
+              deadline: pendingRemainingPayment.payment_deadline,
+              amount: remainingAmount,
+              paymentType: "REMAINING",
+              totalPaid,
+              totalPrice: booking.total_price,
+              depositAmount: booking.deposit_amount,
+              remainingAmount: 0,
+            };
+          } else {
+            if (pendingRemainingPayment.order_code) {
+              try {
+                await cancelPaymentLink(pendingRemainingPayment.order_code, "Hết hạn thanh toán");
+              } catch (error) {
+                console.warn("⚠️ Không thể cancel payment trên PayOS:", error);
+              }
+            }
+            
+            await tx.payments.update({
+              where: { paymentID: pendingRemainingPayment.paymentID },
+              data: { status: "EXPIRED" }
+            });
+          }
         }
       }
+      
+      return { booking, totalPaid, needsNewPayment: true };
+    });
+
+    if (result.success) {
+      return res.json(result);
     }
+
+    const { booking, totalPaid }: any = result;
     
     let amountToPay = 0;
     let description = "";
@@ -73,13 +135,6 @@ export const createPayOSPayment = async (req: Request, res: Response) => {
       amountToPay = booking.total_price - totalPaid;
       description = "Thanh toan con lai";
     }
-    console.log("📝 Đang tạo payment link với data:", {
-      amount: amountToPay,
-      description,
-      bookingId: booking.bookingID,
-      buyerName: booking.user ? booking.user.full_name : "Khách hàng",
-      buyerPhone: booking.user ? booking.user.phone : "0000000000",
-    });
 
     const paymentLink = await createPaymentLink({
       amount: amountToPay,
@@ -98,7 +153,7 @@ export const createPayOSPayment = async (req: Request, res: Response) => {
         payment_url: paymentLink.checkoutUrl,
         qr_code_url: paymentLink.qrCode,
         payment_link_id: paymentLink.paymentLinkId,
-        payment_deadline: new Date(Date.now() +  30 * 60 * 1000),
+        payment_deadline: new Date(Date.now() +  3 * 60 * 1000),
       }
     });
     res.json({
@@ -136,6 +191,37 @@ export const handlePayOSWebhook = async (req: Request, res: Response) => {
 
     if (!payment) {
       return res.status(404).json({ message: "Thanh toán không tồn tại" });
+    }
+
+    if (payment.status === "EXPIRED" || payment.status === "CANCELLED") {
+      console.log(`⚠️ Từ chối webhook: Payment ${payment.paymentID} đã ${payment.status}`);
+      return res.status(400).json({ 
+        success: false,
+        message: "Payment đã hết hạn hoặc bị hủy" 
+      });
+    }
+
+    if (payment.booking.status === "CANCELLED") {
+      console.log(`⚠️ Từ chối webhook: Booking ${payment.booking_id} đã bị hủy`);
+      return res.status(400).json({ 
+        success: false,
+        message: "Booking đã bị hủy" 
+      });
+    }
+
+    const now = new Date();
+    if (payment.payment_deadline && new Date(payment.payment_deadline) < now) {
+      console.log(`⚠️ Từ chối webhook: Payment ${payment.paymentID} đã quá hạn`);
+      
+      await prisma.payments.update({
+        where: { paymentID: payment.paymentID },
+        data: { status: "EXPIRED" }
+      });
+      
+      return res.status(400).json({ 
+        success: false,
+        message: "Payment đã quá hạn thanh toán" 
+      });
     }
 
     const currentTotalPaid = (payment.paid_amount || 0) + amount;
@@ -183,6 +269,30 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
         const paymentInfo = await getPaymentInfo(payment.order_code);
         
         if (paymentInfo.status === "PAID") {
+          const now = new Date();
+          
+          if (payment.payment_deadline && new Date(payment.payment_deadline) < now) {
+            console.log(`⚠️ Từ chối thanh toán: Payment ${id} đã quá hạn`);
+            await prisma.payments.update({
+              where: { paymentID: id },
+              data: { status: "EXPIRED" }
+            });
+            return res.status(400).json({ 
+              success: false,
+              message: "Payment đã quá hạn thanh toán",
+              status: "EXPIRED"
+            });
+          }
+
+          if (payment.booking.status === "CANCELLED") {
+            console.log(`⚠️ Từ chối thanh toán: Booking ${payment.booking_id} đã bị hủy`);
+            return res.status(400).json({ 
+              success: false,
+              message: "Booking đã bị hủy",
+              status: "CANCELLED"
+            });
+          }
+
           const otherPayments = await prisma.payments.findMany({
             where: { 
               booking_id: payment.booking_id,

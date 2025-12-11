@@ -2,7 +2,7 @@
 "use client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, set } from "date-fns";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, Star } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import PaymentModal from "@/components/payment/PaymentModal";
 import { API_URL } from '@/lib/config';
@@ -59,8 +59,19 @@ interface Courts {
   image?: string | null;
 }
 
+interface BookingWithReview extends Booking {
+  canReview?: boolean;
+  hasReviewed?: boolean;
+  existingFeedback?: {
+    feedbackID: string;
+    rating: number;
+    comment: string;
+    is_anonymous: boolean;
+  } | null;
+}
+
 export default function HistoryPage() {
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<BookingWithReview[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
@@ -72,10 +83,14 @@ export default function HistoryPage() {
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [refundBookingId, setRefundBookingId] = useState<string | null>(null);
   const [refundForm, setRefundForm] = useState({
-    cancel_reason: "",
-    bank_name: "",
-    bank_account_number: "",
-    bank_account_owner: ""
+    cancel_reason: ""
+  });
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewBooking, setReviewBooking] = useState<BookingWithReview | null>(null);
+  const [reviewForm, setReviewForm] = useState({
+    rating: 5,
+    comment: "",
+    is_anonymous: false
   });
 
 
@@ -107,7 +122,26 @@ export default function HistoryPage() {
       if (response.ok) {
         const data = await response.json();
         console.log("Bookings data:", data);
-        setBookings(data);
+        
+        const reviewResponse = await fetch(
+          `${API_URL}/api/feedbacks/user/${user.userID}/bookings`
+        );
+        
+        if (reviewResponse.ok) {
+          const reviewData = await reviewResponse.json();
+          const bookingsWithReview = data.map((booking: Booking) => {
+            const reviewInfo = reviewData.find((r: any) => r.bookingID === booking.bookingID);
+            return {
+              ...booking,
+              canReview: reviewInfo?.canReview || false,
+              hasReviewed: reviewInfo?.hasReviewed || false,
+              existingFeedback: reviewInfo?.existingFeedback || null
+            };
+          });
+          setBookings(bookingsWithReview);
+        } else {
+          setBookings(data);
+        }
       } else {
         console.error("API response not OK:", response.status);
       }
@@ -184,14 +218,25 @@ export default function HistoryPage() {
   const handleRequestRefund = async () => {
     if (!refundBookingId) return;
 
-    if (!refundForm.cancel_reason || !refundForm.bank_name || 
-        !refundForm.bank_account_number || !refundForm.bank_account_owner) {
-      alert("Vui lòng điền đầy đủ thông tin!");
+    if (!refundForm.cancel_reason) {
+      alert("Vui lòng nhập lý do hủy!");
+      return;
+    }
+
+    if (!user?.bank_name || !user?.bank_account_number || !user?.bank_account_owner) {
+      alert("Vui lòng cập nhật thông tin ngân hàng ở trang Profile trước khi yêu cầu hoàn tiền!");
       return;
     }
 
     try {
-      console.log("Gửi yêu cầu hoàn tiền với dữ liệu:", refundForm);
+      const requestData = {
+        cancel_reason: refundForm.cancel_reason,
+        bank_name: user.bank_name,
+        bank_account_number: user.bank_account_number,
+        bank_account_owner: user.bank_account_owner
+      };
+      
+      console.log("Gửi yêu cầu hoàn tiền với dữ liệu:", requestData);
       const response = await fetch(
         `${API_URL}/api/refunds/request-cancel/${refundBookingId}`,
         {
@@ -199,7 +244,7 @@ export default function HistoryPage() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(refundForm),
+          body: JSON.stringify(requestData),
         }
       );
 
@@ -212,10 +257,7 @@ export default function HistoryPage() {
         setShowRefundModal(false);
         setRefundBookingId(null);
         setRefundForm({
-          cancel_reason: "",
-          bank_name: "",
-          bank_account_number: "",
-          bank_account_owner: ""
+          cancel_reason: ""
         });
         fetchBookings();
       } else {
@@ -224,6 +266,67 @@ export default function HistoryPage() {
     } catch (error) {
       console.error("Lỗi khi yêu cầu hoàn tiền:", error);
       alert("Có lỗi xảy ra khi gửi yêu cầu");
+    }
+  };
+
+  const handleOpenReview = (booking: BookingWithReview) => {
+    setReviewBooking(booking);
+    if (booking.existingFeedback) {
+      setReviewForm({
+        rating: booking.existingFeedback.rating,
+        comment: booking.existingFeedback.comment || "",
+        is_anonymous: booking.existingFeedback.is_anonymous
+      });
+    } else {
+      setReviewForm({
+        rating: 5,
+        comment: "",
+        is_anonymous: false
+      });
+    }
+    setShowReviewModal(true);
+  };
+
+  const handleSubmitReview = async () => {
+    if (!reviewBooking || !user?.userID || !reviewBooking.court?.courtID) return;
+
+    // if (!reviewForm.comment.trim()) {
+    //   alert("Vui lòng nhập nhận xét!");
+    //   return;
+    // }
+
+    try {
+      const response = await fetch(`${API_URL}/api/feedbacks`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: user.userID,
+          court_id: reviewBooking.court.courtID,
+          rating: reviewForm.rating,
+          comment: reviewForm.comment,
+          is_anonymous: reviewForm.is_anonymous
+        }),
+      });
+
+      if (response.ok) {
+        alert(reviewBooking.hasReviewed ? "Cập nhật đánh giá thành công!" : "Gửi đánh giá thành công!");
+        setShowReviewModal(false);
+        setReviewBooking(null);
+        setReviewForm({
+          rating: 5,
+          comment: "",
+          is_anonymous: false
+        });
+        fetchBookings();
+      } else {
+        const error = await response.json();
+        alert(error.message || "Gửi đánh giá thất bại");
+      }
+    } catch (error) {
+      console.error("Lỗi khi gửi đánh giá:", error);
+      alert("Có lỗi xảy ra khi gửi đánh giá");
     }
   };
 
@@ -366,6 +469,16 @@ export default function HistoryPage() {
                         className="text-orange-600 hover:text-orange-800 text-xs font-medium"
                       >
                         Yêu cầu hoàn tiền
+                      </button>
+                    )}
+
+                    {booking.status === "COMPLETED" && booking.canReview && (
+                      <button
+                        onClick={() => handleOpenReview(booking)}
+                        className="flex items-center gap-1 text-yellow-600 hover:text-yellow-800 text-xs font-medium"
+                      >
+                        <Star className="w-4 h-4" />
+                        {booking.hasReviewed ? "Sửa đánh giá" : "Đánh giá"}
                       </button>
                     )}
                   </div>
@@ -651,10 +764,7 @@ export default function HistoryPage() {
                 setShowRefundModal(false);
                 setRefundBookingId(null);
                 setRefundForm({
-                  cancel_reason: "",
-                  bank_name: "",
-                  bank_account_number: "",
-                  bank_account_owner: ""
+                  cancel_reason: ""
                 });
               }}
             >
@@ -687,43 +797,33 @@ export default function HistoryPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tên ngân hàng <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={refundForm.bank_name}
-                  onChange={(e) => setRefundForm({ ...refundForm, bank_name: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="VD: Vietcombank, Techcombank..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Số tài khoản <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={refundForm.bank_account_number}
-                  onChange={(e) => setRefundForm({ ...refundForm, bank_account_number: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nhập số tài khoản..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Chủ tài khoản <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={refundForm.bank_account_owner}
-                  onChange={(e) => setRefundForm({ ...refundForm, bank_account_owner: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Tên chủ tài khoản..."
-                />
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="font-semibold text-blue-800 mb-3">Thông tin ngân hàng (từ hồ sơ)</p>
+                
+                {user?.bank_name && user?.bank_account_number && user?.bank_account_owner ? (
+                  <>
+                    <div className="flex justify-between mb-2">
+                      <span className="text-sm text-gray-600">Ngân hàng:</span>
+                      <span className="text-sm font-medium text-gray-800">{user.bank_name}</span>
+                    </div>
+                    <div className="flex justify-between mb-2">
+                      <span className="text-sm text-gray-600">Số tài khoản:</span>
+                      <span className="text-sm font-medium text-gray-800">{user.bank_account_number}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Chủ tài khoản:</span>
+                      <span className="text-sm font-medium text-gray-800">{user.bank_account_owner}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <p className="text-yellow-800 text-sm">
+                      <span className="font-semibold">⚠️ Chưa có thông tin ngân hàng!</span>
+                      <br />
+                      Vui lòng cập nhật thông tin ngân hàng ở trang <a href="/profile" className="text-blue-600 underline">Profile</a> trước khi yêu cầu hoàn tiền.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-4">
@@ -738,10 +838,122 @@ export default function HistoryPage() {
                     setShowRefundModal(false);
                     setRefundBookingId(null);
                     setRefundForm({
-                      cancel_reason: "",
-                      bank_name: "",
-                      bank_account_number: "",
-                      bank_account_owner: ""
+                      cancel_reason: ""
+                    });
+                  }}
+                  className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                >
+                  Hủy
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showReviewModal && reviewBooking && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative max-h-[90vh] overflow-y-auto my-8">
+            <button
+              className="absolute top-3 right-3 text-gray-600 hover:text-gray-900"
+              onClick={() => {
+                setShowReviewModal(false);
+                setReviewBooking(null);
+                setReviewForm({
+                  rating: 5,
+                  comment: "",
+                  is_anonymous: false
+                });
+              }}
+            >
+              ✕
+            </button>
+
+            <h2 className="text-xl font-bold text-gray-800 mb-4">
+              {reviewBooking.hasReviewed ? "Sửa đánh giá" : "Đánh giá sân"}
+            </h2>
+
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-semibold text-blue-900 mb-2">{reviewBooking.court?.name}</h3>
+                <p className="text-sm text-blue-700">
+                  Loại sân: {reviewBooking.court?.type === "INDOOR" ? "Trong nhà" : "Ngoài trời"}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Đánh giá <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewForm({ ...reviewForm, rating: star })}
+                      className="focus:outline-none transition-transform hover:scale-110"
+                    >
+                      <Star
+                        className={`w-10 h-10 ${
+                          star <= reviewForm.rating
+                            ? "fill-yellow-400 text-yellow-400"
+                            : "text-gray-300"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+                <p className="text-sm text-gray-500 mt-1">
+                  {reviewForm.rating === 5 && "Tuyệt vời!"}
+                  {reviewForm.rating === 4 && "Rất tốt"}
+                  {reviewForm.rating === 3 && "Tốt"}
+                  {reviewForm.rating === 2 && "Bình thường"}
+                  {reviewForm.rating === 1 && "Cần cải thiện"}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nhận xét <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={reviewForm.comment}
+                  onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={4}
+                  placeholder="Chia sẻ trải nghiệm của bạn về sân này..."
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="anonymous"
+                  checked={reviewForm.is_anonymous}
+                  onChange={(e) => setReviewForm({ ...reviewForm, is_anonymous: e.target.checked })}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="anonymous" className="text-sm text-gray-700">
+                  Đánh giá ẩn danh
+                </label>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={handleSubmitReview}
+                  className="flex-1 bg-yellow-500 text-white py-2 px-4 rounded-lg hover:bg-yellow-600 transition-colors font-medium flex items-center justify-center gap-2"
+                >
+                  <Star className="w-4 h-4" />
+                  {reviewBooking.hasReviewed ? "Cập nhật đánh giá" : "Gửi đánh giá"}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowReviewModal(false);
+                    setReviewBooking(null);
+                    setReviewForm({
+                      rating: 5,
+                      comment: "",
+                      is_anonymous: false
                     });
                   }}
                   className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-medium"

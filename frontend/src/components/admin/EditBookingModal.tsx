@@ -209,9 +209,9 @@ export default function EditBookingModal({ booking, onClose, onUpdate }: EditBoo
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full">
-        <div className="bg-emerald-600 text-white px-6 py-4 rounded-t-2xl flex items-center justify-between">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full my-8">
+        <div className="bg-emerald-600 text-white px-6 py-4 rounded-t-2xl flex items-center justify-between sticky top-0 z-10">
           <h2 className="text-xl font-black">Chỉnh Sửa Booking</h2>
           <button 
             onClick={onClose}
@@ -221,7 +221,7 @@ export default function EditBookingModal({ booking, onClose, onUpdate }: EditBoo
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[calc(100vh-8rem)] overflow-y-auto">
           <div className="bg-gray-50 rounded-xl p-4 space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-600">Ngày:</span>
