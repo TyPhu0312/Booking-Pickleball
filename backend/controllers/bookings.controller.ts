@@ -62,34 +62,103 @@ export const createBooking = async (req: Request, res: Response) => {
     try {
         const { user_id, phone_user, booking_date, status, total_price, deposit_amount, booking_type, discount, court_type, court_id, note, slots } = req.body;
 
-        const newBooking = await prisma.bookings.create({
-            data: { 
-                user_id, 
-                phone_user, 
-                booking_date, 
-                status, 
-                total_price, 
-                deposit_amount, 
-                booking_type, 
-                discount, 
-                note, 
-                court_id: court_id || null,
-                court_type: court_type || null,
-            },
-        });
-        const newBookingSlots = slots.map((slot: SlotInput) => ({
-            booking_id: newBooking.bookingID,
-            slot_id: slot.slot_id,
-            date: new Date(slot.date),
-            is_recurring: slot.is_recurring,
-            recurring_day: slot.recurring_day,
-            num_weeks: slot.num_weeks,
+        const isWeeklyBooking = booking_type === 'WEEKLY';
+        const uniqueDates = new Set(slots.map((slot: SlotInput) => slot.date));
+        const hasMultipleDates = uniqueDates.size > 1;
 
-        }));
-        await prisma.bookingSlots.createMany({
-            data: newBookingSlots,
-        });
-        res.status(201).json(newBooking);
+        if (!isWeeklyBooking && !hasMultipleDates) {
+            const newBooking = await prisma.bookings.create({
+                data: { 
+                    user_id, 
+                    phone_user, 
+                    booking_date, 
+                    status, 
+                    total_price, 
+                    deposit_amount, 
+                    booking_type, 
+                    discount, 
+                    note, 
+                    court_id: court_id || null,
+                    court_type: court_type || null,
+                },
+            });
+            const newBookingSlots = slots.map((slot: SlotInput) => ({
+                booking_id: newBooking.bookingID,
+                slot_id: slot.slot_id,
+                date: new Date(slot.date),
+                is_recurring: slot.is_recurring,
+                recurring_day: slot.recurring_day,
+                num_weeks: slot.num_weeks,
+            }));
+            await prisma.bookingSlots.createMany({
+                data: newBookingSlots,
+            });
+            return res.status(201).json(newBooking);
+        }
+
+        const slotsByDate = slots.reduce((acc: any, slot: SlotInput) => {
+            const dateKey = slot.date;
+            if (!acc[dateKey]) {
+                acc[dateKey] = [];
+            }
+            acc[dateKey].push(slot);
+            return acc;
+        }, {});
+
+        const dateKeys = Object.keys(slotsByDate);
+        const parentBookingId = `parent-${Date.now()}`;
+        const createdBookings = [];
+
+        const pricePerDate = total_price / dateKeys.length;
+        const depositPerDate = deposit_amount / dateKeys.length;
+
+        for (const dateKey of dateKeys) {
+            const slotsForDate = slotsByDate[dateKey];
+            
+            const booking = await prisma.bookings.create({
+                data: { 
+                    parent_booking_id: dateKeys.length > 1 ? parentBookingId : null,
+                    user_id, 
+                    phone_user, 
+                    booking_date: new Date(dateKey), 
+                    status, 
+                    total_price: pricePerDate, 
+                    deposit_amount: depositPerDate, 
+                    booking_type, 
+                    discount, 
+                    note, 
+                    court_id: court_id || null,
+                    court_type: court_type || null,
+                },
+            });
+
+            const bookingSlotsForDate = slotsForDate.map((slot: SlotInput) => ({
+                booking_id: booking.bookingID,
+                slot_id: slot.slot_id,
+                date: new Date(slot.date),
+                is_recurring: slot.is_recurring,
+                recurring_day: slot.recurring_day,
+                num_weeks: slot.num_weeks,
+            }));
+
+            await prisma.bookingSlots.createMany({
+                data: bookingSlotsForDate,
+            });
+
+            createdBookings.push(booking);
+        }
+
+        if (createdBookings.length === 1) {
+            res.status(201).json(createdBookings[0]);
+        } else {
+            res.status(201).json({
+                parent_booking_id: parentBookingId,
+                bookings: createdBookings,
+                total_deposit: deposit_amount, 
+                total_price: total_price, 
+                message: `Đã tạo ${createdBookings.length} booking cho ${createdBookings.length} ngày`,
+            });
+        }
     } catch (error: unknown) {
         const err = error as { message?: string; meta?: unknown };
         res.status(500).json({
@@ -257,3 +326,39 @@ export const deleteBooking = async (req: Request, res: Response) => {
     }
 }
 
+// Lấy danh sách bookings được group theo parent_booking_id
+export const getGroupedBookings = async (req: Request, res: Response) => {
+    try {
+        // Lấy tất cả parent bookings (booking gốc không có parent)
+        const parentBookings = await prisma.bookings.findMany({
+            where: {
+                parent_booking_id: null,
+            },
+            include: {
+                user: true,
+                court: true,
+                bookingSlots: {
+                    include: {
+                        slot: true,
+                    },
+                },
+                payments: true,
+                childBookings: {
+                    include: {
+                        bookingSlots: {
+                            include: {
+                                slot: true,
+                            },
+                        },
+                    },
+                },
+            },
+            orderBy: { createdAt: "desc" },
+        });
+
+        res.json(parentBookings);
+    } catch (error) {
+        console.error("Lỗi khi lấy grouped bookings:", error);
+        res.status(500).json({ error: "Lỗi khi lấy grouped bookings" });
+    }
+};
