@@ -142,7 +142,7 @@ export const getSlotStatusByOneDate = async (req: Request, res: Response) => {
                     lte: endOfDay,
                 },
                 booking: {
-                    status: { notIn: ["CANCELLED"] }
+                    status: { notIn: ["CANCELLED", "CANCEL_REQUESTED"] }
                 }
             },
             include: {
@@ -238,7 +238,7 @@ export const getSlotStatusByDate = async (req: Request, res: Response) => {
                         lte: endOfDay,
                     },
                     booking: {
-                        status: { notIn: ["CANCELLED"] }
+                        status: { notIn: ["CANCELLED", "CANCEL_REQUESTED"] }
                     }
                 },
                 include: {
