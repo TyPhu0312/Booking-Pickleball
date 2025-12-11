@@ -259,10 +259,22 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
       console.log('Response ok:', response.ok);
 
       if (response.ok) {
-        const newBooking = await response.json();
-        console.log('New booking created:', newBooking);
+        const responseData = await response.json();
+        console.log('Response data:', responseData);
 
-        const detailResponse = await fetch(`${API_URL}/api/bookings/getBookingById/${newBooking.bookingID}`);
+        let bookingId: string;
+        let bookingCount = 1;
+        
+        if (responseData.bookings && Array.isArray(responseData.bookings)) {
+          bookingId = responseData.bookings[0].bookingID;
+          bookingCount = responseData.bookings.length;
+          console.log(`Created ${bookingCount} bookings with parent_id: ${responseData.parent_booking_id}`);
+        } else {
+          bookingId = responseData.bookingID;
+          console.log('Created single booking:', bookingId);
+        }
+
+        const detailResponse = await fetch(`${API_URL}/api/bookings/getBookingById/${bookingId}`);
         if (detailResponse.ok) {
           const fullBooking = await detailResponse.json();
           console.log('Full booking details:', fullBooking);
@@ -283,7 +295,10 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
               });
 
               if (cashPaymentResponse.ok) {
-                alert("✅ Đã tạo booking thành công!\n💵 Khách hàng sẽ thanh toán tiền mặt khi đến sân.\n +💰 Tiền cọc cần thu: " + deposit.toLocaleString() + "đ");
+                const successMsg = bookingCount > 1 
+                  ? `✅ Đã tạo thành công ${bookingCount} bookings (${bookingCount} ngày)!\n💵 Khách hàng sẽ thanh toán tiền mặt khi đến sân.\n💰 Tổng tiền cọc: ${deposit.toLocaleString()}đ`
+                  : `✅ Đã tạo booking thành công!\n💵 Khách hàng sẽ thanh toán tiền mặt khi đến sân.\n💰 Tiền cọc cần thu: ${deposit.toLocaleString()}đ`;
+                alert(successMsg);
                 onSubmit(fullBooking);
               } else {
                 alert("⚠️ Đã tạo booking nhưng lỗi khi tạo payment record.\nVui lòng kiểm tra lại.");
@@ -291,7 +306,10 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
               }
             } catch (error) {
               console.error("Error creating cash payment:", error);
-              alert("✅ Đã tạo booking thành công!\n💵 Thanh toán tiền mặt khi đến sân.");
+              const successMsg = bookingCount > 1
+                ? `✅ Đã tạo thành công ${bookingCount} bookings!\n💵 Thanh toán tiền mặt khi đến sân.`
+                : "✅ Đã tạo booking thành công!\n💵 Thanh toán tiền mặt khi đến sân.";
+              alert(successMsg);
               onSubmit(fullBooking);
             }
           }

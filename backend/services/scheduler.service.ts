@@ -17,14 +17,31 @@ export const startAutoCancelScheduler = () => {
             lte: now,
           },
         },
-        include: {
-          booking: true,
-        },
       });
 
       for (const payment of expiredPayments) {
+        const booking = await prisma.bookings.findUnique({
+          where: { bookingID: payment.booking_id }
+        });
+
+        let bookingsToCancel: string[] = [];
+        
+        if (booking) {
+          bookingsToCancel = [booking.bookingID];
+        } else {
+          const childBookings = await prisma.bookings.findMany({
+            where: { parent_booking_id: payment.booking_id }
+          });
+          
+          if (childBookings.length > 0) {
+            bookingsToCancel = childBookings.map(b => b.bookingID);
+          } else {
+            continue;
+          }
+        }
+
         const allPayments = await prisma.payments.findMany({
-          where: { booking_id: payment.booking.bookingID }
+          where: { booking_id: payment.booking_id }
         });
 
         const hasPaidOrPartiallyPaid = allPayments.some(
@@ -32,11 +49,8 @@ export const startAutoCancelScheduler = () => {
         );
 
         if (hasPaidOrPartiallyPaid) {
-          console.log(`⚠️ Bỏ qua booking ${payment.booking.bookingID} - Đã có thanh toán, không hủy`);
           continue;
         }
-
-        console.log(`⏰ Hủy booking hết hạn: ${payment.booking.bookingID}`);
 
         if (payment.order_code) {
           try {
@@ -59,12 +73,17 @@ export const startAutoCancelScheduler = () => {
           data: { status: "EXPIRED" },
         });
 
-        await prisma.bookings.update({
-          where: { bookingID: payment.booking.bookingID },
-          data: { status: "CANCELLED" },
-        });
-
-        console.log(`✅ Đã hủy booking ${payment.booking.bookingID} do hết thời gian thanh toán`);
+        if (booking) {
+          await prisma.bookings.update({
+            where: { bookingID: booking.bookingID },
+            data: { status: "CANCELLED" },
+          });
+        } else {
+          await prisma.bookings.updateMany({
+            where: { parent_booking_id: payment.booking_id },
+            data: { status: "CANCELLED" }
+          });
+        }
       }
 
       if (expiredPayments.length > 0) {

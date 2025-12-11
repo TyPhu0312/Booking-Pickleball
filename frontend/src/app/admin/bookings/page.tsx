@@ -14,6 +14,7 @@ type CourtType = "INDOOR" | "OUTDOOR";
 
 interface Booking {
   bookingID: string;
+  parent_booking_id?: string | null;
   booking_date: string;
   status: BookingStatus;
   total_price: number;
@@ -153,10 +154,20 @@ export default function AdminBookingsPage() {
 
   const updateBookingStatus = async (bookingID: string, newStatus: BookingStatus) => {
     try {
+      const booking = bookings.find(b => b.bookingID === bookingID);
+      
+      const requestBody: { status: BookingStatus; courtID?: string } = { 
+        status: newStatus 
+      };
+      
+      if ((newStatus === "CHECKED_IN" || newStatus === "CONFIRMED") && booking?.court?.courtID) {
+        requestBody.courtID = booking.court.courtID;
+      }
+      
       const response = await fetch(`${API_URL}/api/bookings/updateBookingStatus/${bookingID}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify(requestBody)
       });
 
       if (response.ok) {
@@ -164,13 +175,15 @@ export default function AdminBookingsPage() {
         setBookings(prev => 
           prev.map(b => b.bookingID === bookingID ? updatedBooking : b)
         );
+        alert("Cập nhật trạng thái thành công!");
       } else {
         const error = await response.json();
-        alert(`Không thể cập nhật trạng thái: ${error.message || 'Lỗi không xác định'}`);
+        alert("Chưa phân bổ sân!! Vui lòng phân bổ sân trước khi xác nhận hoặc check-in.");
+        console.error("Error response:", error);
       }
     } catch (error) {
       console.error("Error updating booking status:", error);
-      alert("Lỗi khi cập nhật trạng thái");
+      alert("Lỗi khi cập nhật trạng thái. Vui lòng kiểm tra console để biết thêm chi tiết.");
     }
   };
 
@@ -322,10 +335,9 @@ export default function AdminBookingsPage() {
           courts={courts}
           slots={slots}
           onClose={() => setShowCreateModal(false)}
-          onSubmit={async (newBooking) => {
-            setBookings(prev => [...prev, newBooking]);
-            setShowCreateModal(false);
+          onSubmit={async () => {
             await fetchBookings();
+            setShowCreateModal(false);
           }}
         />
       )}

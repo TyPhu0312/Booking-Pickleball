@@ -122,25 +122,28 @@ model Slots {
 }
 
 model Bookings {
-  bookingID      String        @id @default(uuid())
-  booking_date   DateTime
-  status         BookingStatus @default(PENDING)
-  total_price    Float
-  deposit_amount Float
-  booking_type   BookingType   @default(CASUAL)
-  court_id       String?
-  court_type     CourtType?
-  user_id        String?
-  phone_user     String?
-  discount       Decimal?      @db.Decimal(4, 2)
-  note           String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  bookingID         String        @id @default(uuid())
+  parent_booking_id String?
+  booking_date      DateTime
+  status            BookingStatus @default(PENDING)
+  total_price       Float
+  deposit_amount    Float
+  booking_type      BookingType   @default(CASUAL)
+  court_id          String?
+  court_type        CourtType?
+  user_id           String?
+  phone_user        String?
+  discount          Decimal?      @db.Decimal(4, 2)
+  note              String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 
-  court       Courts?        @relation(fields: [court_id], references: [courtID])
-  user        Users?         @relation(fields: [user_id], references: [userID])
-  payments    Payments[]
-  bookingSlots BookingSlots[]
+  court         Courts?        @relation(fields: [court_id], references: [courtID])
+  user          Users?         @relation(fields: [user_id], references: [userID])
+  payments      Payments[]
+  bookingSlots  BookingSlots[]
+  parentBooking Bookings?      @relation("BookingGroup", fields: [parent_booking_id], references: [bookingID], onDelete: NoAction, onUpdate: NoAction)
+  childBookings Bookings[]     @relation("BookingGroup")
 }
 
 model BookingSlots {

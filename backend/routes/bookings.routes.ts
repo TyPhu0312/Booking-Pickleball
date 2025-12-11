@@ -7,6 +7,7 @@ import {
     updateBookingStatus,
     getBookingByUserIdOrPhone,
     deleteBooking,
+    getGroupedBookings,
 } from "../controllers/bookings.controller";
 import { verifyToken } from "../middlewares/auth.middleware";
 
@@ -15,6 +16,7 @@ const router = express.Router();
 
 // app.get("/bookings", verifyToken, getBookings);
 router.get("/", getBookings);
+router.get("/grouped", getGroupedBookings);
 router.get("/getBookingById/:id", getBookingById);
 router.post("/create", createBooking);
 router.put("/update/:id", updateBooking);

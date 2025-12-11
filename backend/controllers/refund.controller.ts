@@ -48,21 +48,45 @@ export const requestCancelBooking = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Booking đã bị hủy hoặc đang chờ xử lý" });
     }
 
+    let paymentBookingId = bookingID;
+    let totalDeposit = booking.deposit_amount;
+    let bookingsToUpdate: string[] = [bookingID];
+
+    if (booking.parent_booking_id) {
+      paymentBookingId = booking.parent_booking_id;
+      
+      const allChildBookings = await prisma.bookings.findMany({
+        where: { parent_booking_id: booking.parent_booking_id },
+        include: { bookingSlots: true }
+      });
+      
+      totalDeposit = allChildBookings.reduce((sum, b) => sum + b.deposit_amount, 0);
+      bookingsToUpdate = allChildBookings.map(b => b.bookingID);
+    }
+
     const earliestSlot = booking.bookingSlots.sort((a, b) => 
       new Date(a.date).getTime() - new Date(b.date).getTime()
     )[0];
 
     const refundPercentage = calculateRefundPercentage(new Date(earliestSlot.date));
-    const refundAmount = (booking.deposit_amount * refundPercentage) / 100;
+    const refundAmount = (totalDeposit * refundPercentage) / 100;
 
-    await prisma.bookings.update({
-      where: { bookingID },
+    await prisma.bookings.updateMany({
+      where: { bookingID: { in: bookingsToUpdate } },
       data: { status: "CANCEL_REQUESTED" },
     });
 
-    const payment = booking.payments[0];
+    const existingPayment = await prisma.payments.findFirst({
+      where: { booking_id: paymentBookingId },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (!existingPayment) {
+      return res.status(404).json({ message: "Không tìm thấy payment" });
+    }
+
     await prisma.payments.update({
-      where: { paymentID: payment.paymentID },
+      where: { paymentID: existingPayment.paymentID },
       data: {
         refund_amount: refundAmount,
         refund_reason: cancel_reason,
@@ -81,10 +105,10 @@ export const requestCancelBooking = async (req: Request, res: Response) => {
         : "Yêu cầu hủy sân thành công",
       refundPercentage,
       refundAmount,
-      bookingID,
+      bookingID: paymentBookingId,
+      affectedBookings: bookingsToUpdate.length
     });
   } catch (error) {
-    console.error("Error requesting cancel:", error);
     res.status(500).json({ message: "Lỗi server" });
   }
 };
@@ -103,25 +127,55 @@ export const getRefundRequests = async (req: Request, res: Response) => {
       if (endDate) whereClause.refund_date.lte = new Date(endDate as string);
     }
 
-    const refunds = await prisma.payments.findMany({
+    const payments = await prisma.payments.findMany({
       where: whereClause,
-      include: {
-        booking: {
-          include: {
-            user: true,
-            court: true,
-            bookingSlots: {
-              include: { slot: true },
-            },
-          },
-        },
-      },
       orderBy: { refund_date: "desc" },
     });
 
-    res.json(refunds);
+    const refundsWithDetails = await Promise.all(
+      payments.map(async (payment) => {
+        let booking = await prisma.bookings.findUnique({
+          where: { bookingID: payment.booking_id },
+          include: {
+            user: true,
+            court: true,
+            bookingSlots: { include: { slot: true } },
+          },
+        });
+
+        if (!booking) {
+          const childBookings = await prisma.bookings.findMany({
+            where: { parent_booking_id: payment.booking_id },
+            include: {
+              user: true,
+              court: true,
+              bookingSlots: { include: { slot: true } },
+            },
+          });
+
+          if (childBookings.length > 0) {
+            const firstBooking = childBookings[0];
+            const totalDeposit = childBookings.reduce((sum, b) => sum + b.deposit_amount, 0);
+            const totalPrice = childBookings.reduce((sum, b) => sum + b.total_price, 0);
+
+            booking = {
+              ...firstBooking,
+              bookingID: payment.booking_id,
+              deposit_amount: totalDeposit,
+              total_price: totalPrice,
+            } as any;
+          }
+        }
+
+        return {
+          ...payment,
+          booking,
+        };
+      })
+    );
+
+    res.json(refundsWithDetails);
   } catch (error) {
-    console.error("Error getting refund requests:", error);
     res.status(500).json({ message: "Lỗi server" });
   }
 };
@@ -141,16 +195,40 @@ export const updateRefundStatus = async (req: Request, res: Response) => {
       },
     });
 
-    if (refund_status === "APPROVED" || refund_status === "COMPLETED" || refund_status === "REJECTED") {
-      await prisma.bookings.update({
-        where: { bookingID: payment.booking_id },
-        data: { status: "CANCELLED" },
-      });
+    const booking = await prisma.bookings.findUnique({
+      where: { bookingID: payment.booking_id }
+    });
+
+    const isParentBooking = !booking;
+
+    if (refund_status === "APPROVED" || refund_status === "COMPLETED") {
+      if (isParentBooking) {
+        await prisma.bookings.updateMany({
+          where: { parent_booking_id: payment.booking_id },
+          data: { status: "CANCELLED" },
+        });
+      } else {
+        await prisma.bookings.update({
+          where: { bookingID: payment.booking_id },
+          data: { status: "CANCELLED" },
+        });
+      }
+    } else if (refund_status === "REJECTED") {
+      if (isParentBooking) {
+        await prisma.bookings.updateMany({
+          where: { parent_booking_id: payment.booking_id },
+          data: { status: "CANCELLED" },
+        });
+      } else {
+        await prisma.bookings.update({
+          where: { bookingID: payment.booking_id },
+          data: { status: "CANCELLED" },
+        });
+      }
     }
 
     res.json({ message: "Cập nhật trạng thái refund thành công", payment });
   } catch (error) {
-    console.error("Error updating refund status:", error);
     res.status(500).json({ message: "Lỗi server" });
   }
 };
@@ -179,20 +257,50 @@ export const exportRefundExcel = async (req: Request, res: Response) => {
       };
     }
 
-    const refunds = await prisma.payments.findMany({
+    const payments = await prisma.payments.findMany({
       where: whereClause,
-      include: {
-        booking: {
+      orderBy: { refund_date: "desc" },
+    });
+
+    const refundsWithDetails = await Promise.all(
+      payments.map(async (payment) => {
+        let booking = await prisma.bookings.findUnique({
+          where: { bookingID: payment.booking_id },
           include: {
             user: true,
             court: true,
           },
-        },
-      },
-      orderBy: { refund_date: "desc" },
-    });
+        });
 
-    const excelData = refunds.map((payment) => {
+        if (!booking) {
+          const childBookings = await prisma.bookings.findMany({
+            where: { parent_booking_id: payment.booking_id },
+            include: {
+              user: true,
+              court: true,
+            },
+          });
+
+          if (childBookings.length > 0) {
+            const firstBooking = childBookings[0];
+            const totalDeposit = childBookings.reduce((sum, b) => sum + b.deposit_amount, 0);
+
+            booking = {
+              ...firstBooking,
+              bookingID: payment.booking_id,
+              deposit_amount: totalDeposit,
+            } as any;
+          }
+        }
+
+        return {
+          ...payment,
+          booking,
+        };
+      })
+    );
+
+    const excelData = refundsWithDetails.map((payment) => {
       const refundDate = payment.refund_date 
         ? new Date(payment.refund_date).toLocaleString('vi-VN', { 
             timeZone: 'Asia/Ho_Chi_Minh',
@@ -208,11 +316,11 @@ export const exportRefundExcel = async (req: Request, res: Response) => {
       return {
         "Mã Payment": payment.paymentID,
         "Mã Booking": payment.booking_id,
-        "Khách hàng": payment.booking.user?.full_name || "Khách lẻ",
-        "SĐT": payment.booking.user?.phone || payment.booking.phone_user,
-        "Sân": payment.booking.court?.name || "Chưa phân bổ",
-        "Loại sân": payment.booking.court?.type || payment.booking.court_type || "N/A",
-        "Tiền cọc": payment.booking.deposit_amount,
+        "Khách hàng": payment.booking?.user?.full_name || "Khách lẻ",
+        "SĐT": payment.booking?.user?.phone || payment.booking?.phone_user || "",
+        "Sân": payment.booking?.court?.name || "Chưa phân bổ",
+        "Loại sân": payment.booking?.court?.type || payment.booking?.court_type || "N/A",
+        "Tiền cọc": payment.booking?.deposit_amount || 0,
         "% Hoàn": payment.refund_percentage + "%",
         "Số tiền hoàn": payment.refund_amount,
         "Ngân hàng": payment.bank_name,
@@ -317,10 +425,21 @@ export const importRefundExcel = async (req: Request, res: Response) => {
         });
 
         if (mappedStatus === "APPROVED" || mappedStatus === "COMPLETED" || mappedStatus === "REJECTED") {
-          await prisma.bookings.update({
-            where: { bookingID: payment.booking_id },
-            data: { status: "CANCELLED" },
+          const booking = await prisma.bookings.findUnique({
+            where: { bookingID: payment.booking_id }
           });
+
+          if (booking) {
+            await prisma.bookings.update({
+              where: { bookingID: payment.booking_id },
+              data: { status: "CANCELLED" },
+            });
+          } else {
+            await prisma.bookings.updateMany({
+              where: { parent_booking_id: payment.booking_id },
+              data: { status: "CANCELLED" },
+            });
+          }
         }
 
         results.success++;

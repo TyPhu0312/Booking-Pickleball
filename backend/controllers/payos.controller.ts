@@ -8,10 +8,46 @@ export const createPayOSPayment = async (req: Request, res: Response) => {
   const { bookingId, paymentType } = req.body;
   try {
     const result = await prisma.$transaction(async (tx) => {
-      const booking = await tx.bookings.findUnique({
+      let booking = await tx.bookings.findUnique({
         where: { bookingID: bookingId },
-        include: { user: true, court: true, payments: true },
+        include: { user: true, court: true, payments: true, childBookings: true },
       });
+      
+      if (!booking) {
+        const childBooking = await tx.bookings.findFirst({
+          where: { parent_booking_id: bookingId },
+          include: { user: true, court: true, payments: true },
+        });
+        
+        if (childBooking) {
+          const allChildBookings = await tx.bookings.findMany({
+            where: { parent_booking_id: bookingId },
+            include: { payments: true },
+          });
+          
+          const totalDeposit = allChildBookings.reduce((sum, b) => sum + b.deposit_amount, 0);
+          const totalPrice = allChildBookings.reduce((sum, b) => sum + b.total_price, 0);
+          
+          const totalPaid = allChildBookings.reduce((sum, b) => {
+            return sum + b.payments.reduce((pSum: number, p: any) => {
+              if (p.status === "PARTIALLY_PAID" || p.status === "PAID") {
+                return pSum + (p.paid_amount || 0);
+              }
+              return pSum;
+            }, 0);
+          }, 0);
+          
+          booking = {
+            ...childBooking,
+            bookingID: bookingId, 
+            deposit_amount: totalDeposit,
+            total_price: totalPrice,
+            payments: allChildBookings.flatMap(b => b.payments),
+          } as any;
+        } else {
+          throw new Error("Booking không tồn tại");
+        }
+      }
       
       if (!booking) {
         throw new Error("Booking không tồn tại");
@@ -239,10 +275,28 @@ export const handlePayOSWebhook = async (req: Request, res: Response) => {
     });
 
     if (newStatus === "PAID") {
-      await prisma.bookings.update({
-        where: { bookingID: payment.booking_id },
-        data: { status: "CONFIRMED" },
+      const booking = await prisma.bookings.findUnique({
+        where: { bookingID: payment.booking_id }
       });
+      
+      if (booking) {
+        await prisma.bookings.update({
+          where: { bookingID: payment.booking_id },
+          data: { status: "CONFIRMED" },
+        });
+      } else {
+        const childBookings = await prisma.bookings.findMany({
+          where: { parent_booking_id: payment.booking_id }
+        });
+        
+        if (childBookings.length > 0) {
+          console.log(`📝 Webhook: Cập nhật ${childBookings.length} child bookings sang CONFIRMED`);
+          await prisma.bookings.updateMany({
+            where: { parent_booking_id: payment.booking_id },
+            data: { status: "CONFIRMED" }
+          });
+        }
+      }
     }
 
     res.json({ success: true });
@@ -257,11 +311,30 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
   try {
     const payment = await prisma.payments.findUnique({
       where: { paymentID: id },
-      include: { booking: { include: { court: true } } },
     });
-
+    
     if (!payment) {
       return res.status(404).json({ message: "Thanh toán không tồn tại" });
+    }
+
+    let isParentBooking = false;
+    let childBookings: any[] = [];
+    let booking = null;
+    
+    booking = await prisma.bookings.findUnique({
+      where: { bookingID: payment.booking_id },
+      include: { court: true }
+    });
+    
+    if (!booking) {
+      childBookings = await prisma.bookings.findMany({
+        where: { parent_booking_id: payment.booking_id },
+        include: { court: true }
+      });
+      
+      if (childBookings.length > 0) {
+        isParentBooking = true;
+      }
     }
 
     if (payment.status === "PENDING" && payment.order_code) {
@@ -284,7 +357,17 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
             });
           }
 
-          if (payment.booking.status === "CANCELLED") {
+          if (isParentBooking) {
+            const cancelledChild = childBookings.find(b => b.status === "CANCELLED");
+            if (cancelledChild) {
+              console.log(`⚠️ Từ chối thanh toán: Có booking trong nhóm đã bị hủy`);
+              return res.status(400).json({ 
+                success: false,
+                message: "Có booking trong nhóm đã bị hủy",
+                status: "CANCELLED"
+              });
+            }
+          } else if (booking?.status === "CANCELLED") {
             console.log(`⚠️ Từ chối thanh toán: Booking ${payment.booking_id} đã bị hủy`);
             return res.status(400).json({ 
               success: false,
@@ -308,10 +391,19 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
           }, 0);
 
           const currentTotalPaid = previousPaid + paymentInfo.amount;
-          const totalPrice = payment.booking.total_price;
+          
+          let totalPrice = 0;
+          if (isParentBooking) {
+            totalPrice = childBookings.reduce((sum, b) => sum + b.total_price, 0);
+          } else {
+            totalPrice = booking?.total_price || 0;
+          }
+          
           const newStatus = currentTotalPaid >= totalPrice ? "PAID" : "PARTIALLY_PAID";
 
           console.log("💰 Tính toán:", {
+            isParentBooking,
+            childBookingsCount: childBookings.length,
             previousPaid,
             currentPayment: paymentInfo.amount,
             currentTotalPaid,
@@ -329,15 +421,35 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
           });
 
           if (newStatus === "PAID" || newStatus === "PARTIALLY_PAID") {
-            await prisma.bookings.update({
-              where: { bookingID: payment.booking_id },
-              data: { status: "CONFIRMED" },
-            });
+            console.log(`✅ [POLLING] Bắt đầu cập nhật booking status sang CONFIRMED`);
+            if (isParentBooking) {
+              console.log(`📝 [POLLING] Cập nhật ${childBookings.length} child bookings sang CONFIRMED`);
+              const updateResult = await prisma.bookings.updateMany({
+                where: { parent_booking_id: payment.booking_id },
+                data: { status: "CONFIRMED" }
+              });
+              console.log(`✅ [POLLING] Đã cập nhật ${updateResult.count} bookings`);
+            } else {
+              const updatedBooking = await prisma.bookings.update({
+                where: { bookingID: payment.booking_id },
+                data: { status: "CONFIRMED" },
+              });
+              console.log(`✅ [POLLING] Đã cập nhật booking ${updatedBooking.bookingID} sang ${updatedBooking.status}`);
+            }
+          } else {
+            console.log(`⚠️ [POLLING] Không cập nhật booking vì newStatus = ${newStatus}`);
           }
         }
-      } catch (error) {
-        console.error("Lỗi khi lấy thông tin thanh toán từ PayOS:", error);
+      } catch (error: any) {
+        console.error(`❌ [POLLING] Lỗi khi lấy thông tin từ PayOS:`, {
+          message: error.message,
+          orderCode: payment.order_code,
+          paymentID: payment.paymentID
+        });
+        console.error(`❌ [POLLING] Stack trace:`, error.stack);
       }
+    } else {
+      console.log(`⏭️ [POLLING] Bỏ qua check PayOS vì status=${payment.status} hoặc không có order_code`);
     }
 
     const allPayments = await prisma.payments.findMany({
@@ -351,7 +463,45 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
       return sum;
     }, 0);
 
-    const remainingAmount = payment.booking.total_price - totalPaid;
+    let bookingInfo;
+    if (booking) {
+      bookingInfo = {
+        bookingID: booking.bookingID,
+        courtName: booking.court?.name || "Chưa phân bổ",
+        totalPrice: booking.total_price,
+        depositAmount: booking.deposit_amount,
+        status: booking.status,
+      };
+    } else {
+      const childBookings = await prisma.bookings.findMany({
+        where: { parent_booking_id: payment.booking_id },
+        include: { court: true }
+      });
+      
+      if (childBookings.length > 0) {
+        const totalPrice = childBookings.reduce((sum, b) => sum + b.total_price, 0);
+        const depositAmount = childBookings.reduce((sum, b) => sum + b.deposit_amount, 0);
+        const firstCourt = childBookings.find(b => b.court)?.court;
+        
+        bookingInfo = {
+          bookingID: payment.booking_id,
+          courtName: firstCourt?.name || "Nhiều sân",
+          totalPrice,
+          depositAmount,
+          status: childBookings[0].status,
+        };
+      } else {
+        bookingInfo = {
+          bookingID: payment.booking_id,
+          courtName: "Không xác định",
+          totalPrice: 0,
+          depositAmount: 0,
+          status: "PENDING",
+        };
+      }
+    }
+
+    const remainingAmount = bookingInfo.totalPrice - totalPaid;
 
     res.json({
       paymentId: payment.paymentID,
@@ -363,13 +513,7 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
       paymentUrl: payment.payment_url,
       totalPaid,
       remainingAmount,
-      booking: {
-        bookingID: payment.booking.bookingID,
-        courtName: payment.booking.court?.name || "Chưa phân bổ",
-        totalPrice: payment.booking.total_price,
-        depositAmount: payment.booking.deposit_amount,
-        status: payment.booking.status,
-      }
+      booking: bookingInfo
     });
   } catch (error) {
     console.error("Lỗi khi lấy trạng thái thanh toán:", error);
@@ -480,10 +624,6 @@ export const refundPayment = async (req: Request, res: Response) => {
     if (payment.status !== "PAID" && payment.status !== "PARTIALLY_PAID") {
       return res.status(400).json({ message: "Chỉ có thể hoàn tiền cho các thanh toán đã được hoàn tất hoặc thanh toán một phần" });
     }
-
-    // if (payment.order_code) {
-    //   await refundPayment(payment.order_code, amount, reason);
-    // }
 
     await prisma.payments.update({
       where: { paymentID: payment.paymentID },
