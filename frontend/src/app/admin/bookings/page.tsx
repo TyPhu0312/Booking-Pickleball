@@ -335,10 +335,9 @@ export default function AdminBookingsPage() {
           courts={courts}
           slots={slots}
           onClose={() => setShowCreateModal(false)}
-          onSubmit={async (newBooking) => {
-            setBookings(prev => [...prev, newBooking]);
-            setShowCreateModal(false);
+          onSubmit={async () => {
             await fetchBookings();
+            setShowCreateModal(false);
           }}
         />
       )}

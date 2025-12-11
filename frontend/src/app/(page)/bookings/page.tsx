@@ -474,7 +474,18 @@ export default function BookingPage() {
       const result = await res.json();
       console.log("✅ Booking response:", result);
       
-      const bookingId = result.booking?.bookingID || result.bookingID || result.booking?.id;
+      let bookingId: string;
+      let bookingCount = 1;
+      
+      if (result.bookings && Array.isArray(result.bookings)) {
+        bookingId = result.parent_booking_id;
+        bookingCount = result.bookings.length;
+        console.log(`✅ Đã tạo ${bookingCount} bookings cho ${bookingCount} ngày`);
+        console.log(`💰 Tổng tiền cọc: ${result.total_deposit?.toLocaleString()}đ`);
+      } else {
+        bookingId = result.bookingID || result.booking?.bookingID || result.booking?.id;
+      }
+      
       if (!bookingId) {
         console.error("❌ Không tìm thấy bookingID trong response:", result);
         throw new Error("Không nhận được booking ID từ server");

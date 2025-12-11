@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Clock, Phone, User, MapPin, Edit, CheckCircle, XCircle, Calendar } from "lucide-react";
+import { Clock, Phone, User, MapPin, Edit, CheckCircle, XCircle, Calendar, Link2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { vi } from "date-fns/locale";
 
@@ -8,6 +8,7 @@ type CourtType = "INDOOR" | "OUTDOOR";
 
 interface Booking {
   bookingID: string;
+  parent_booking_id?: string | null;
   booking_date: string;
   status: BookingStatus;
   total_price: number;
@@ -150,6 +151,14 @@ export default function BookingCard({ booking, onStatusChange, onEdit }: Booking
         
         {getStatusBadge(booking.status)}
       </div>
+
+      {/* Parent Booking Indicator */}
+      {booking.parent_booking_id && (
+        <div className="mt-2 flex items-center gap-1.5 text-xs">
+          <Link2 className="w-3.5 h-3.5 text-blue-600" />
+          <span className="text-blue-600 font-semibold">Nhóm đặt nhiều ngày</span>
+        </div>
+      )}
 
       <div className="space-y-1 text-sm">
         <div className="flex items-center gap-2 text-gray-700">
