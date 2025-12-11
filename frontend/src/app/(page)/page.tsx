@@ -6,6 +6,7 @@ import PopularSlots from "@/components/home/PopularSlots";
 import Features from "@/components/home/Features";
 import UpcomingTournaments from "@/components/home/UpcomingTournaments";
 import Blogs from "@/components/home/Blogs";
+import Reviews from "@/components/home/Reviews";
 
 export default function HomePage() {
   return (
@@ -15,6 +16,7 @@ export default function HomePage() {
       <UpcomingTournaments />
       <Blogs />
       <Banner />
+      <Reviews />
     </main>
   );
 }

@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import Link from "next/link";
-import { BookOpen, Calendar, User, ChevronRight, ArrowRight } from "lucide-react";
+import { BookOpen, Calendar, User, ChevronRight } from "lucide-react";
 import { API_URL } from "@/lib/config";
 
 interface Blog {
@@ -31,7 +31,7 @@ export default function Blogs() {
       const res = await fetch(`${API_URL}/api/blogs`);
       if (res.ok) {
         const data = await res.json();
-        setBlogs(data.slice(0, 5)); 
+        setBlogs(data.slice(0, 6)); 
       }
     } catch (error) {
       console.error("Error fetching blogs:", error);
@@ -75,78 +75,8 @@ export default function Blogs() {
             <p className="text-xl text-gray-500">Chưa có bài viết nào</p>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-            {blogs[0] && (
-              <Link
-                href={`/blogs/${blogs[0].blogID}`}
-                className="lg:col-span-2 lg:row-span-2 group relative overflow-hidden rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 bg-white">
-                {blogs[0].image ? (
-                  <div className="relative h-96 overflow-hidden">
-                    <img 
-                      src={`${API_URL}${blogs[0].image}`} 
-                      alt={blogs[0].title}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-transparent"></div>
-                    <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
-                      <div className="flex items-center gap-4 mb-4">
-                        <span className="inline-flex items-center gap-1 text-sm bg-blue-500 px-3 py-1 rounded-full">
-                          <BookOpen className="w-3 h-3" />
-                          Bài Nổi Bật
-                        </span>
-                        <span className="flex items-center gap-1 text-sm">
-                          <Calendar className="w-3 h-3" />
-                          {formatDate(blogs[0].createdAt)}
-                        </span>
-                      </div>
-                      <h3 className="text-3xl font-black mb-3 leading-tight">
-                        {blogs[0].title}
-                      </h3>
-                        <p className="text-white/90 text-lg mb-4 line-clamp-2 truncate">
-                            {truncateContent(blogs[0].content, 150)}
-                        </p>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <User className="w-4 h-4" />
-                          <span className="font-semibold">{blogs[0].author}</span>
-                        </div>
-                        <span className="inline-flex items-center gap-2 text-white hover:gap-3 transition-all">
-                          Đọc thêm
-                          <ArrowRight className="w-4 h-4" />
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-8">
-                    <div className="flex items-center gap-4 mb-4 text-gray-600">
-                      <span className="flex items-center gap-1 text-sm">
-                        <Calendar className="w-3 h-3" />
-                        {formatDate(blogs[0].createdAt)}
-                      </span>
-                    </div>
-                    <h3 className="text-3xl font-black text-gray-800 mb-4 leading-tight">
-                      {blogs[0].title}
-                    </h3>
-                    <p className="text-gray-600 text-lg mb-6 line-clamp-4 truncate">
-                      {truncateContent(blogs[0].content, 200)}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <User className="w-4 h-4" />
-                        <span className="font-semibold">{blogs[0].author}</span>
-                      </div>
-                      <span className="inline-flex items-center gap-2 text-blue-600 hover:gap-3 transition-all">
-                        Đọc thêm
-                        <ArrowRight className="w-4 h-4" />
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </Link>
-            )}
-
-            {blogs.slice(1).map((blog) => (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+            {blogs.map((blog) => (
               <Link
                 key={blog.blogID}
                 href={`/blogs/${blog.blogID}`}
@@ -177,7 +107,7 @@ export default function Blogs() {
                     {blog.title}
                   </h3>
                   
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-3 truncate">
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-3">
                     {truncateContent(blog.content)}
                   </p>
                   

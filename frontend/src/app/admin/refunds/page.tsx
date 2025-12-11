@@ -22,7 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Download, Check, X, Eye } from "lucide-react";
+import { Download, Check, X, Eye, Upload } from "lucide-react";
 import * as XLSX from "xlsx";
 import { API_URL } from "@/lib/config";
 
@@ -63,6 +63,7 @@ export default function RefundManagementPage() {
   const [selectedRefund, setSelectedRefund] = useState<RefundRequest | null>(null);
   const [adminNote, setAdminNote] = useState<string>("");
   const [actualRefund, setActualRefund] = useState<number>(0);
+  const [importing, setImporting] = useState<boolean>(false);
 
   useEffect(() => {
     fetchRefunds();
@@ -164,20 +165,21 @@ export default function RefundManagementPage() {
 
   const exportToExcel = async () => {
     try {
-      let url = `${API_URL}/api/refunds/export-excel?`;
-      if (startDate) url += `startDate=${startDate}&`;
-      if (endDate) url += `endDate=${endDate}`;
+      let url = `${API_URL}/api/refunds/export-excel?status=${selectedStatus}`;
+      if (startDate) url += `&startDate=${startDate}`;
+      if (endDate) url += `&endDate=${endDate}`;
 
       const response = await fetch(url);
       const data = await response.json();
 
+      if (data.length === 0) {
+        alert("Không có dữ liệu để xuất");
+        return;
+      }
    
       const ws = XLSX.utils.json_to_sheet(data);
-
- 
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Refunds");
-
 
       const maxWidth = data.reduce((w: any, r: any) => {
         return Object.keys(r).map((k, i) => {
@@ -187,11 +189,50 @@ export default function RefundManagementPage() {
       }, []);
       ws["!cols"] = maxWidth.map((w: number) => ({ width: w }));
 
- 
-      const fileName = `Refund_${startDate || "all"}_${endDate || "all"}.xlsx`;
+      const statusText = selectedStatus === "PENDING" ? "ChoXuLy" : selectedStatus;
+      const dateText = startDate && endDate ? `${startDate}_${endDate}` : new Date().toISOString().split('T')[0];
+      const fileName = `Refund_${statusText}_${dateText}.xlsx`;
       XLSX.writeFile(wb, fileName);
     } catch (error) {
       console.error("Error exporting to Excel:", error);
+      alert("Lỗi khi xuất Excel");
+    }
+  };
+
+  const handleImportExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(`${API_URL}/api/refunds/import-excel`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert(
+          `Import thành công!\n✅ Thành công: ${result.results.success}\n❌ Thất bại: ${result.results.failed}${
+            result.results.errors.length > 0
+              ? `\n\nLỗi:\n${result.results.errors.map((e: any) => `- ${e.error}`).join("\n")}`
+              : ""
+          }`
+        );
+        fetchRefunds();
+      } else {
+        alert("Lỗi: " + result.message);
+      }
+    } catch (error) {
+      console.error("Error importing Excel:", error);
+      alert("Lỗi khi import file Excel!");
+    } finally {
+      setImporting(false);
+      event.target.value = "";
     }
   };
 
@@ -254,11 +295,30 @@ export default function RefundManagementPage() {
               />
             </div>
 
-            <div className="flex items-end">
-              <Button onClick={exportToExcel} className="w-full">
+            <div className="flex items-end gap-2">
+              <Button onClick={exportToExcel} className="flex-1">
                 <Download className="mr-2 h-4 w-4" />
                 Xuất Excel
               </Button>
+              <label className="flex-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  disabled={importing}
+                  onClick={() => document.getElementById("import-file")?.click()}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {importing ? "Đang import..." : "Import Excel"}
+                </Button>
+                <input
+                  id="import-file"
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleImportExcel}
+                  className="hidden"
+                />
+              </label>
             </div>
           </div>
 
@@ -447,7 +507,7 @@ export default function RefundManagementPage() {
                     <div>
                       <Label>Ghi chú của Admin</Label>
                       <Textarea
-                        value={adminNote}
+                        value={selectedRefund.admin_note || adminNote}
                         onChange={(e) => setAdminNote(e.target.value)}
                         placeholder="Nhập ghi chú (nếu có)..."
                         rows={3}

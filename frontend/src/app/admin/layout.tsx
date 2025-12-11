@@ -1,4 +1,19 @@
-import Sidebar from "@/components/admin/Sidebar";
+"use client";
+
+import Sidebar, { SidebarProvider, useSidebar } from "@/components/admin/Sidebar";
+
+function AdminContent({ children }: { children: React.ReactNode }) {
+  const { collapsed } = useSidebar();
+  
+  return (
+    <>
+      <Sidebar />
+      <main className={`p-8 transition-all duration-300 ${collapsed ? "ml-20" : "ml-64"}`}>
+        {children}
+      </main>
+    </>
+  );
+}
 
 export default function AdminLayout({
   children,
@@ -6,11 +21,10 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar />
-      <main className="ml-64 p-8">
-        {children}
-      </main>
-    </div>
+    <SidebarProvider>
+      <div className="min-h-screen bg-gray-50">
+        <AdminContent>{children}</AdminContent>
+      </div>
+    </SidebarProvider>
   );
 }

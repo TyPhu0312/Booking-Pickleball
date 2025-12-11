@@ -15,12 +15,38 @@ import {
   CircleDollarSign,
   PenLine,
   DollarSign,
+  MessageSquare,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, createContext, useContext } from "react";
+
+interface SidebarContextType {
+  collapsed: boolean;
+  setCollapsed: (value: boolean) => void;
+}
+
+const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
+
+export const useSidebar = () => {
+  const context = useContext(SidebarContext);
+  if (!context) {
+    throw new Error("useSidebar must be used within SidebarProvider");
+  }
+  return context;
+};
+
+export const SidebarProvider = ({ children }: { children: React.ReactNode }) => {
+  const [collapsed, setCollapsed] = useState(false);
+  
+  return (
+    <SidebarContext.Provider value={{ collapsed, setCollapsed }}>
+      {children}
+    </SidebarContext.Provider>
+  );
+};
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  const { collapsed, setCollapsed } = useSidebar();
 
   const menuItems = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -32,6 +58,7 @@ export default function Sidebar() {
     { href: "/admin/blogs", label: "Bài viết", icon: PenLine },
     { href: "/admin/payments", label: "Thanh toán", icon: CircleDollarSign },
     { href: "/admin/refunds", label: "Hoàn tiền", icon: DollarSign },
+    { href: "/admin/feedbacks", label: "Phản hồi", icon: MessageSquare },
     { href: "/admin/stats", label: "Báo cáo", icon: BarChart3 },
 
   ];

@@ -145,6 +145,12 @@ export default function Navbar() {
                                         Thông tin
                                     </Link>
                                 </DropdownMenuItem>
+
+                                <DropdownMenuItem asChild>
+                                    <Link href="/reviews" className="cursor-pointer">
+                                        Đánh giá của tôi
+                                    </Link>
+                                </DropdownMenuItem>
                                 
                                 {(user.role.name === "admin" || user.role.name === "superadmin") && (
                                     <DropdownMenuItem asChild>
