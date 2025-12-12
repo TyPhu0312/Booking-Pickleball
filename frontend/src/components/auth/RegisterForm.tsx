@@ -51,7 +51,7 @@ export default function RegisterForm() {
     if (validate()) {
       try {
         const res = await fetch(`${API_URL}/api/auth/register`, {
-            method: "POST",
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
@@ -142,6 +142,17 @@ export default function RegisterForm() {
           {errors.confirmPassword && (
             <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
           )}
+        </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
+          <p className="text-xs text-blue-800">
+            <strong>💡 Yêu cầu mật khẩu:</strong>
+          </p>
+          <ul className="text-xs text-blue-700 mt-2 space-y-1 ml-4 list-disc">
+            <li>Tối thiểu 8 ký tự</li>
+            <li>Ít nhất 1 chữ hoa (A-Z)</li>
+            <li>Ít nhất 1 chữ số (0-9)</li>
+            <li>Ít nhất 1 ký tự đặc biệt (@$!%*?&)</li>
+          </ul>
         </div>
 
 
