@@ -164,7 +164,6 @@ model Payments {
   booking_id       String
   payment_method   PaymentMethod
   status           PaymentStatus @default(PENDING)
-  image            String?
   transaction_id   String?
   order_code       Int?          @unique
   paid_amount      Float         @default(0)
