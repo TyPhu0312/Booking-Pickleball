@@ -151,6 +151,12 @@ export default function Navbar() {
                                         Đánh giá của tôi
                                     </Link>
                                 </DropdownMenuItem>
+
+                                  <DropdownMenuItem asChild>
+                                    <Link href="/refunds" className="cursor-pointer">
+                                        Hoàn tiền
+                                    </Link>
+                                </DropdownMenuItem>
                                 
                                 {(user.role.name === "admin" || user.role.name === "superadmin") && (
                                     <DropdownMenuItem asChild>
@@ -213,6 +219,12 @@ export default function Navbar() {
                         <>
                             <Link href="/profile" className="block px-4 py-2 border-b">
                                 Thông tin
+                            </Link>
+                            <Link href="/reviews" className="block px-4 py-2 border-b">
+                                Đánh giá của tôi
+                            </Link>
+                            <Link href="/refunds" className="block px-4 py-2 border-b">
+                                Hoàn tiền
                             </Link>
                             {user.role.name === "admin" && (
                                 <Link href="/admin" className="block px-4 py-2 border-b">
