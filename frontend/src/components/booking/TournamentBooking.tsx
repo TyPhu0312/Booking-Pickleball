@@ -77,7 +77,7 @@ export default function TournamentBooking({
     <>
       <div className="flex justify-center">
         <div className="mb-6 max-w-lg w-full">
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-xl border-2 border-blue-200">
+          <div className="bg-linear-to-r from-blue-50 to-indigo-50 p-5 rounded-xl border-2 border-blue-200">
             <div className="flex items-center gap-3 mb-2">
               <span className="text-2xl">ℹ️</span>
               <h3 className="font-bold text-blue-900">Lưu ý về sân</h3>

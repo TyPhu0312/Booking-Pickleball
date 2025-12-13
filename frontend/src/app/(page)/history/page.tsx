@@ -9,6 +9,7 @@ import { API_URL } from '@/lib/config';
 
 interface Booking {
   bookingID: string;
+  parent_booking_id?: string | null;
   user?: { full_name: string } | null;
   phone_user?: string | null;
   booking_date: string;
@@ -92,6 +93,7 @@ export default function HistoryPage() {
     comment: "",
     is_anonymous: false
   });
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
 
   useEffect(() => {
@@ -330,6 +332,73 @@ export default function HistoryPage() {
     }
   };
 
+  const groupBookings = () => {
+    const grouped: Array<{
+      isGroup: boolean;
+      parentId?: string;
+      bookings: BookingWithReview[];
+      totalPrice: number;
+      totalDeposit: number;
+    }> = [];
+
+    const processedIds = new Set<string>();
+    const parentGroups = new Map<string, BookingWithReview[]>();
+
+    bookings.forEach(booking => {
+      if (booking.parent_booking_id) {
+        if (!parentGroups.has(booking.parent_booking_id)) {
+          parentGroups.set(booking.parent_booking_id, []);
+        }
+        parentGroups.get(booking.parent_booking_id)!.push(booking);
+        processedIds.add(booking.bookingID);
+      }
+    });
+
+    parentGroups.forEach((bookingsInGroup, parentId) => {
+      const totalPrice = bookingsInGroup.reduce((sum, b) => sum + b.total_price, 0);
+      const totalDeposit = bookingsInGroup.reduce((sum, b) => sum + b.deposit_amount, 0);
+      
+      grouped.push({
+        isGroup: true,
+        parentId,
+        bookings: bookingsInGroup.sort((a, b) => 
+          new Date(a.booking_date).getTime() - new Date(b.booking_date).getTime()
+        ),
+        totalPrice,
+        totalDeposit
+      });
+    });
+
+    bookings.forEach(booking => {
+      if (!processedIds.has(booking.bookingID)) {
+        grouped.push({
+          isGroup: false,
+          bookings: [booking],
+          totalPrice: booking.total_price,
+          totalDeposit: booking.deposit_amount
+        });
+      }
+    });
+
+    return grouped.sort((a, b) => {
+      const dateA = new Date(a.bookings[0].booking_date).getTime();
+      const dateB = new Date(b.bookings[0].booking_date).getTime();
+      return dateB - dateA;
+    });
+  };
+
+  const toggleGroup = (parentId: string) => {
+    setExpandedGroups(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(parentId)) {
+        newSet.delete(parentId);
+      } else {
+        newSet.add(parentId);
+      }
+      return newSet;
+    });
+  };
+
 
   if (loading) {
     return <div>Đang tải...</div>;
@@ -351,141 +420,338 @@ export default function HistoryPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {bookings.map((booking) => (
-              <tr key={booking.bookingID}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">{format(booking.booking_date, "dd-MM-yyyy")}</td>
-                <td className="px-6 py-6 text-sm">
-                  {booking.bookingSlots && booking.bookingSlots.length > 0 ? (
-                    <ul className="space-y-1">
-                      {booking.bookingSlots.map((bs, idx) => (
-                        <li key={idx}>
-                          {format(new Date(bs.date), "dd/MM")} - {bs.slot.start_time.slice(0, 5)} ~ {bs.slot.end_time.slice(0, 5)}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    "—"
-                  )}
-                </td>
+            {groupBookings().map((group, groupIndex) => {
+              if (group.isGroup && group.parentId) {
+                const isExpanded = expandedGroups.has(group.parentId);
+                const firstBooking = group.bookings[0];
+                const allDates = group.bookings.map(b => format(new Date(b.booking_date), "dd/MM/yyyy")).join(", ");
+                
+                return (
+                  <>
+                    <tr key={`group-${group.parentId}`} className="bg-blue-50 hover:bg-blue-100 transition-colors">
+                      <td className="px-6 py-4 text-sm font-semibold" colSpan={5}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => toggleGroup(group.parentId!)}
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              {isExpanded ? (
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              ) : (
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                              )}
+                            </button>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-blue-900">📦 Nhóm booking - {group.bookings.length} ngày</span>
+                                <span className="text-xs px-2 py-1 bg-blue-200 text-blue-800 rounded-full">
+                                  {firstBooking.booking_type === "CASUAL" ? "Đặt lẻ" :
+                                    firstBooking.booking_type === "WEEKLY" ? "Đặt theo tuần" :
+                                      "Đặt cho giải đấu"}
+                                </span>
+                              </div>
+                              <div className="text-xs text-gray-600 mt-1">
+                                Ngày: {allDates}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <div className="text-xs text-gray-600">Tổng tiền cọc</div>
+                              <div className="text-sm font-bold text-green-600">{group.totalDeposit.toLocaleString()} VNĐ</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs text-gray-600">Tổng tiền</div>
+                              <div className="text-sm font-bold text-blue-900">{group.totalPrice.toLocaleString()} VNĐ</div>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && group.bookings.map((booking, idx) => (
+                      <tr key={booking.bookingID} className="bg-blue-25">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="text-blue-400">└─</span>
+                            {format(booking.booking_date, "dd-MM-yyyy")}
+                          </div>
+                        </td>
+                        <td className="px-6 py-6 text-sm">
+                          {booking.bookingSlots && booking.bookingSlots.length > 0 ? (
+                            <ul className="space-y-1">
+                              {booking.bookingSlots.map((bs, idx) => (
+                                <li key={idx}>
+                                  {format(new Date(bs.date), "dd/MM")} - {bs.slot.start_time.slice(0, 5)} ~ {bs.slot.end_time.slice(0, 5)}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {booking.booking_type === "CASUAL" ? "Đặt lẻ" :
+                            booking.booking_type === "WEEKLY" ? "Đặt theo tuần" :
+                              "Đặt cho giải đấu"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs rounded-full ${booking.status === "CONFIRMED" ? "bg-green-100 text-green-800" :
+                            booking.status === "CANCELLED" ? "bg-red-100 text-red-800" :
+                              booking.status === "COMPLETED" ? "bg-blue-100 text-blue-800" :
+                                booking.status === "CHECKED_IN" ? "bg-purple-100 text-purple-800" :
+                                  booking.status === "CANCEL_REQUESTED" ? "bg-orange-100 text-orange-800" :
+                                  "bg-yellow-100 text-yellow-800"
+                            }`}>
+                            {booking.status === "CONFIRMED" ? "Đã xác nhận" :
+                              booking.status === "COMPLETED" ? "Hoàn thành" :
+                                booking.status === "CHECKED_IN" ? "Đã check-in" :
+                                  booking.status === "CANCELLED" ? "Đã hủy" : 
+                                  booking.status === "CANCEL_REQUESTED" ? "Yêu cầu hủy và hoàn tiền" :
+                                  "Chờ xác nhận"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          <div className="flex items-center gap-2">
+                            <button
+                              className="text-blue-600 hover:text-blue-900"
+                              onClick={() => handleViewDetails(booking)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
 
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  {booking.booking_type === "CASUAL" ? "Đặt lẻ" :
-                    booking.booking_type === "WEEKLY" ? "Đặt theo tuần" :
-                      "Đặt cho giải đấu"}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 text-xs rounded-full ${booking.status === "CONFIRMED" ? "bg-green-100 text-green-800" :
-                    booking.status === "CANCELLED" ? "bg-red-100 text-red-800" :
-                      booking.status === "COMPLETED" ? "bg-blue-100 text-blue-800" :
-                        booking.status === "CHECKED_IN" ? "bg-purple-100 text-purple-800" :
-                          booking.status === "CANCEL_REQUESTED" ? "bg-orange-100 text-orange-800" :
-                          "bg-yellow-100 text-yellow-800"
-                    }`}>
-                    {booking.status === "CONFIRMED" ? "Đã xác nhận" :
-                      booking.status === "COMPLETED" ? "Hoàn thành" :
-                        booking.status === "CHECKED_IN" ? "Đã check-in" :
-                          booking.status === "CANCELLED" ? "Đã hủy" : 
-                          booking.status === "CANCEL_REQUESTED" ? "Yêu cầu hủy và hoàn tiền" :
-                          "Chờ xác nhận"}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <button
-                      className="text-blue-600 hover:text-blue-900"
-                      onClick={() => handleViewDetails(booking)}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
+                            {booking.status === "PENDING" && (
+                              <>
+                                {(() => {
+                                  const paymentInfo = bookingPayments[booking.bookingID];
+                                  if (!paymentInfo) return null;
 
-                    {booking.status === "PENDING" && (
-                      <>
-                        {(() => {
-                          const paymentInfo = bookingPayments[booking.bookingID];
-                          if (!paymentInfo) return null;
-
-                          const hasPending = paymentInfo.hasPendingPayment;
-                          const pendingPayment = paymentInfo.pendingPayment;
-                          
-                          if (hasPending && pendingPayment) {
-                            const deadline = new Date(pendingPayment.payment_deadline);
-                            const isExpired = deadline < new Date();
-                            
-                            if (isExpired) {
-                              return (
+                                  const hasPending = paymentInfo.hasPendingPayment;
+                                  const pendingPayment = paymentInfo.pendingPayment;
+                                  
+                                  if (hasPending && pendingPayment) {
+                                    const deadline = new Date(pendingPayment.payment_deadline);
+                                    const isExpired = deadline < new Date();
+                                    
+                                    if (isExpired) {
+                                      return (
+                                        <button
+                                          onClick={() => {
+                                            setPaymentBookingId(booking.bookingID);
+                                            setShowPaymentModal(true);
+                                          }}
+                                          className="text-orange-600 hover:text-orange-800 text-xs font-medium"
+                                        >
+                                          Tạo lại thanh toán
+                                        </button>
+                                      );
+                                    } else {
+                                      return (
+                                        <button
+                                          onClick={() => {
+                                            setPaymentBookingId(booking.bookingID);
+                                            setShowPaymentModal(true);
+                                          }}
+                                          className="text-green-600 hover:text-green-800 text-xs font-medium"
+                                        >
+                                          Tiếp tục thanh toán
+                                        </button>
+                                      );
+                                    }
+                                  } else {
+                                    return (
+                                      <button
+                                        onClick={() => {
+                                          setPaymentBookingId(booking.bookingID);
+                                          setShowPaymentModal(true);
+                                        }}
+                                        className="text-green-600 hover:text-green-800 text-xs font-medium"
+                                      >
+                                        Thanh toán cọc
+                                      </button>
+                                    );
+                                  }
+                                })()}
+                                
                                 <button
-                                  onClick={() => {
-                                    setPaymentBookingId(booking.bookingID);
-                                    setShowPaymentModal(true);
-                                  }}
-                                  className="text-orange-600 hover:text-orange-800 text-xs font-medium"
+                                  onClick={() => handleCancelBooking(booking.bookingID)}
+                                  className="text-red-600 hover:text-red-800 text-xs font-medium"
                                 >
-                                  Tạo lại thanh toán
+                                  Hủy
                                 </button>
-                              );
-                            } else {
-                              return (
-                                <button
-                                  onClick={() => {
-                                    setPaymentBookingId(booking.bookingID);
-                                    setShowPaymentModal(true);
-                                  }}
-                                  className="text-green-600 hover:text-green-800 text-xs font-medium"
-                                >
-                                  Tiếp tục thanh toán
-                                </button>
-                              );
-                            }
-                          } else {
-                            return (
+                              </>
+                            )}
+
+                            {booking.status === "CONFIRMED" && (
                               <button
                                 onClick={() => {
-                                  setPaymentBookingId(booking.bookingID);
-                                  setShowPaymentModal(true);
+                                  setRefundBookingId(booking.bookingID);
+                                  setShowRefundModal(true);
                                 }}
-                                className="text-green-600 hover:text-green-800 text-xs font-medium"
+                                className="text-orange-600 hover:text-orange-800 text-xs font-medium"
                               >
-                                Thanh toán cọc
+                                Yêu cầu hoàn tiền
                               </button>
-                            );
-                          }
-                        })()}
-                        
+                            )}
+
+                            {booking.status === "COMPLETED" && booking.canReview && (
+                              <button
+                                onClick={() => handleOpenReview(booking)}
+                                className="flex items-center gap-1 text-yellow-600 hover:text-yellow-800 text-xs font-medium"
+                              >
+                                <Star className="w-4 h-4" />
+                                {booking.hasReviewed ? "Sửa đánh giá" : "Đánh giá"}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </>
+                );
+              } else {
+                const booking = group.bookings[0];
+                return (
+                  <tr key={booking.bookingID}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">{format(booking.booking_date, "dd-MM-yyyy")}</td>
+                    <td className="px-6 py-6 text-sm">
+                      {booking.bookingSlots && booking.bookingSlots.length > 0 ? (
+                        <ul className="space-y-1">
+                          {booking.bookingSlots.map((bs, idx) => (
+                            <li key={idx}>
+                              {format(new Date(bs.date), "dd/MM")} - {bs.slot.start_time.slice(0, 5)} ~ {bs.slot.end_time.slice(0, 5)}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {booking.booking_type === "CASUAL" ? "Đặt lẻ" :
+                        booking.booking_type === "WEEKLY" ? "Đặt theo tuần" :
+                          "Đặt cho giải đấu"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 text-xs rounded-full ${booking.status === "CONFIRMED" ? "bg-green-100 text-green-800" :
+                        booking.status === "CANCELLED" ? "bg-red-100 text-red-800" :
+                          booking.status === "COMPLETED" ? "bg-blue-100 text-blue-800" :
+                            booking.status === "CHECKED_IN" ? "bg-purple-100 text-purple-800" :
+                              booking.status === "CANCEL_REQUESTED" ? "bg-orange-100 text-orange-800" :
+                              "bg-yellow-100 text-yellow-800"
+                        }`}>
+                        {booking.status === "CONFIRMED" ? "Đã xác nhận" :
+                          booking.status === "COMPLETED" ? "Hoàn thành" :
+                            booking.status === "CHECKED_IN" ? "Đã check-in" :
+                              booking.status === "CANCELLED" ? "Đã hủy" : 
+                              booking.status === "CANCEL_REQUESTED" ? "Yêu cầu hủy và hoàn tiền" :
+                              "Chờ xác nhận"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <div className="flex items-center gap-2">
                         <button
-                          onClick={() => handleCancelBooking(booking.bookingID)}
-                          className="text-red-600 hover:text-red-800 text-xs font-medium"
+                          className="text-blue-600 hover:text-blue-900"
+                          onClick={() => handleViewDetails(booking)}
                         >
-                          Hủy
+                          <Edit className="w-4 h-4" />
                         </button>
-                      </>
-                    )}
 
-                    {booking.status === "CONFIRMED" && (
-                      <button
-                        onClick={() => {
-                          setRefundBookingId(booking.bookingID);
-                          setShowRefundModal(true);
-                        }}
-                        className="text-orange-600 hover:text-orange-800 text-xs font-medium"
-                      >
-                        Yêu cầu hoàn tiền
-                      </button>
-                    )}
+                        {booking.status === "PENDING" && (
+                          <>
+                            {(() => {
+                              const paymentInfo = bookingPayments[booking.bookingID];
+                              if (!paymentInfo) return null;
 
-                    {booking.status === "COMPLETED" && booking.canReview && (
-                      <button
-                        onClick={() => handleOpenReview(booking)}
-                        className="flex items-center gap-1 text-yellow-600 hover:text-yellow-800 text-xs font-medium"
-                      >
-                        <Star className="w-4 h-4" />
-                        {booking.hasReviewed ? "Sửa đánh giá" : "Đánh giá"}
-                      </button>
-                    )}
-                  </div>
-                </td>
+                              const hasPending = paymentInfo.hasPendingPayment;
+                              const pendingPayment = paymentInfo.pendingPayment;
+                              
+                              if (hasPending && pendingPayment) {
+                                const deadline = new Date(pendingPayment.payment_deadline);
+                                const isExpired = deadline < new Date();
+                                
+                                if (isExpired) {
+                                  return (
+                                    <button
+                                      onClick={() => {
+                                        setPaymentBookingId(booking.bookingID);
+                                        setShowPaymentModal(true);
+                                      }}
+                                      className="text-orange-600 hover:text-orange-800 text-xs font-medium"
+                                    >
+                                      Tạo lại thanh toán
+                                    </button>
+                                  );
+                                } else {
+                                  return (
+                                    <button
+                                      onClick={() => {
+                                        setPaymentBookingId(booking.bookingID);
+                                        setShowPaymentModal(true);
+                                      }}
+                                      className="text-green-600 hover:text-green-800 text-xs font-medium"
+                                    >
+                                      Tiếp tục thanh toán
+                                    </button>
+                                  );
+                                }
+                              } else {
+                                return (
+                                  <button
+                                    onClick={() => {
+                                      setPaymentBookingId(booking.bookingID);
+                                      setShowPaymentModal(true);
+                                    }}
+                                    className="text-green-600 hover:text-green-800 text-xs font-medium"
+                                  >
+                                    Thanh toán cọc
+                                  </button>
+                                );
+                              }
+                            })()}
+                            
+                            <button
+                              onClick={() => handleCancelBooking(booking.bookingID)}
+                              className="text-red-600 hover:text-red-800 text-xs font-medium"
+                            >
+                              Hủy
+                            </button>
+                          </>
+                        )}
 
-              </tr>
-            ))}
+                        {booking.status === "CONFIRMED" && (
+                          <button
+                            onClick={() => {
+                              setRefundBookingId(booking.bookingID);
+                              setShowRefundModal(true);
+                            }}
+                            className="text-orange-600 hover:text-orange-800 text-xs font-medium"
+                          >
+                            Yêu cầu hoàn tiền
+                          </button>
+                        )}
+
+                        {booking.status === "COMPLETED" && booking.canReview && (
+                          <button
+                            onClick={() => handleOpenReview(booking)}
+                            className="flex items-center gap-1 text-yellow-600 hover:text-yellow-800 text-xs font-medium"
+                          >
+                            <Star className="w-4 h-4" />
+                            {booking.hasReviewed ? "Sửa đánh giá" : "Đánh giá"}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+
+                  </tr>
+                );
+              }
+            })}
           </tbody>
         </table>
       </div>

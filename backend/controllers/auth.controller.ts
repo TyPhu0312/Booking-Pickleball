@@ -16,6 +16,11 @@ export const registerUser = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Số điện thoại không hợp lệ (phải gồm 10 số và bắt đầu bằng 0)" });
     }
 
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({ message: "Mật khẩu phải có ít nhất 8 ký tự, gồm chữ hoa, số và ký tự đặc biệt" });
+    }
+
     const existingUser = await prisma.users.findUnique({ where: { phone } });
     if (existingUser) {
       return res.status(400).json({ message: "Số điện thoại đã tồn tại" });

@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { Request, Response } from "express";
+import bcrypt from "bcryptjs";
 
 
 const prisma = new PrismaClient();
@@ -119,5 +120,41 @@ export const deleteUser = async (req: Request, res: Response) => {
         res.json({ message: "Đã xóa người dùng thành công" });
     } catch (error) {
         res.status(500).json({ error: "Lỗi khi xóa người dùng" });
+    }
+};
+
+export const changePassword = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { currentPassword, newPassword } = req.body;
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ error: "Vui lòng nhập đầy đủ thông tin" });
+        }
+
+        const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        if (!passwordRegex.test(newPassword)) {
+            return res.status(400).json({ error: "Mật khẩu phải có ít nhất 8 ký tự, gồm chữ hoa, số và ký tự đặc biệt" });
+        }
+
+        const user = await prisma.users.findUnique({ where: { userID: id } });
+        if (!user) {
+            return res.status(404).json({ error: "Không tìm thấy người dùng" });
+        }
+
+        const validPassword = await bcrypt.compare(currentPassword, user.password);
+        if (!validPassword) {
+            return res.status(400).json({ error: "Mật khẩu hiện tại không đúng" });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await prisma.users.update({
+            where: { userID: id },
+            data: { password: hashedPassword },
+        });
+
+        res.json({ message: "Đổi mật khẩu thành công" });
+    } catch (error) {
+        res.status(500).json({ error: "Lỗi khi đổi mật khẩu" });
     }
 };

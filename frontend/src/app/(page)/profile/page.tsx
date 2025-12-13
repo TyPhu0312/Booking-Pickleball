@@ -42,6 +42,7 @@ interface User {
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isPasswordOpen, setIsPasswordOpen] = useState(false);
   const [editForm, setEditForm] = useState(
     null as
       | {
@@ -54,6 +55,11 @@ export default function ProfilePage() {
         }
       | null
   );
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -108,6 +114,64 @@ export default function ProfilePage() {
     } catch (error) {
       console.error(error);
       alert("Đã có lỗi xảy ra khi cập nhật hồ sơ!");
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!passwordForm.currentPassword.trim()) {
+      alert("Vui lòng nhập mật khẩu hiện tại!");
+      return;
+    }
+    if (!passwordForm.newPassword.trim()) {
+      alert("Vui lòng nhập mật khẩu mới!");
+      return;
+    }
+    
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(passwordForm.newPassword)) {
+      alert("Mật khẩu phải có ít nhất 8 ký tự, gồm chữ hoa, số và ký tự đặc biệt!");
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      alert("Mật khẩu xác nhận không khớp!");
+      return;
+    }
+
+    try {
+      if (!user) {
+        alert("Không tìm thấy thông tin người dùng!");
+        return;
+      }
+
+      const response = await fetch(
+        `${API_URL}/api/users/change-password/${user.userID}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            currentPassword: passwordForm.currentPassword,
+            newPassword: passwordForm.newPassword,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || "Đổi mật khẩu thất bại!");
+        return;
+      }
+
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setIsPasswordOpen(false);
+      alert("Đổi mật khẩu thành công!");
+    } catch (error) {
+      console.error(error);
+      alert("Đã có lỗi xảy ra khi đổi mật khẩu!");
     }
   };
 
@@ -198,93 +262,233 @@ export default function ProfilePage() {
           >
             Chỉnh Sửa Hồ Sơ
           </Button>
+          <Button
+            onClick={() => {
+              setPasswordForm({
+                currentPassword: "",
+                newPassword: "",
+                confirmPassword: "",
+              });
+              setIsPasswordOpen(true);
+            }}
+            className="mt-8 w-full md:w-auto ml-4"
+            variant="outline"
+          >
+            Đổi mật khẩu
+          </Button>
         </div>
       </div>
 
-      {/* 🔹 Modal chỉnh sửa */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Chỉnh Sửa Hồ Sơ</DialogTitle>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="pb-4 border-b">
+            <DialogTitle className="text-2xl font-bold text-gray-800">
+              ✏️ Chỉnh Sửa Hồ Sơ
+            </DialogTitle>
+            <p className="text-sm text-gray-500 mt-2">
+              Cập nhật thông tin cá nhân và tài khoản ngân hàng của bạn
+            </p>
           </DialogHeader>
 
           {editForm && (
-            <div className="space-y-4 py-4">
-              <div>
-                <Label>Họ và tên</Label>
+            <div className="space-y-5 py-6">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-700">
+                  Họ và tên <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   value={editForm.full_name}
                   onChange={(e) =>
                     setEditForm({ ...editForm, full_name: e.target.value })
                   }
                   placeholder="Nguyễn Văn A"
+                  className="h-11 border-gray-300 focus:ring-2 focus:ring-green-500"
                 />
               </div>
 
-              <div>
-                <Label>Số điện thoại</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-700">
+                  Số điện thoại <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   value={editForm.phone || ""}
                   onChange={(e) =>
                     setEditForm({ ...editForm, phone: e.target.value })
                   }
                   placeholder="0901234567"
+                  className="h-11 border-gray-300 focus:ring-2 focus:ring-green-500"
                 />
               </div>
 
-              <div>
-                <Label>Địa chỉ</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-700">Địa chỉ</Label>
                 <Input
                   value={editForm.address || ""}
                   onChange={(e) =>
                     setEditForm({ ...editForm, address: e.target.value })
                   }
                   placeholder="Quận 7, TP.HCM"
+                  className="h-11 border-gray-300 focus:ring-2 focus:ring-green-500"
                 />
               </div>
 
-              <div>
-                <Label>Tên ngân hàng</Label>
-                <Input
-                  value={editForm.bank_name || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, bank_name: e.target.value })
-                  }
-                  placeholder="MB Bank"
-                />
-              </div>
+              <div className="pt-4 border-t">
+                <h3 className="text-sm font-semibold text-gray-700 mb-4">
+                  💳 Thông tin ngân hàng
+                </h3>
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-600">
+                      Tên ngân hàng
+                    </Label>
+                    <Input
+                      value={editForm.bank_name || ""}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, bank_name: e.target.value })
+                      }
+                      placeholder="MB Bank, Vietcombank, Techcombank..."
+                      className="h-11 border-gray-300 focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
 
-              <div>
-                <Label>Số tài khoản</Label>
-                <Input
-                  value={editForm.bank_account_number || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, bank_account_number: e.target.value })
-                  }
-                  placeholder="0789xxxxxxx"
-                />
-              </div>
-              <div>
-                <Label>Chủ tài khoản</Label>
-                <Input
-                  value={editForm.bank_account_owner || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, bank_account_owner: e.target.value })
-                  }
-                  placeholder="NGUYEN VAN A"
-                />
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-600">
+                      Số tài khoản
+                    </Label>
+                    <Input
+                      value={editForm.bank_account_number || ""}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, bank_account_number: e.target.value })
+                      }
+                      placeholder="0789123456"
+                      className="h-11 border-gray-300 focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-600">
+                      Chủ tài khoản
+                    </Label>
+                    <Input
+                      value={editForm.bank_account_owner || ""}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, bank_account_owner: e.target.value })
+                      }
+                      placeholder="NGUYEN VAN A"
+                      className="h-11 border-gray-300 focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="pt-4 border-t gap-2">
             <Button
               variant="outline"
               onClick={() => setIsEditOpen(false)}
+              className="h-11 px-6"
             >
               Hủy
             </Button>
-            <Button onClick={handleSave}>Lưu Thay Đổi</Button>
+            <Button 
+              onClick={handleSave}
+              className="h-11 px-6 bg-green-600 hover:bg-green-700"
+            >
+              💾 Lưu Thay Đổi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isPasswordOpen} onOpenChange={setIsPasswordOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="pb-4 border-b">
+            <DialogTitle className="text-2xl font-bold text-gray-800">
+              🔒 Đổi Mật Khẩu
+            </DialogTitle>
+            <p className="text-sm text-gray-500 mt-2">
+              Mật khẩu phải có ít nhất 8 ký tự, gồm chữ hoa, số và ký tự đặc biệt
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-5 py-6">
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-700">
+                Mật khẩu hiện tại <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                type="password"
+                value={passwordForm.currentPassword}
+                onChange={(e) =>
+                  setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
+                }
+                placeholder="••••••••"
+                className="h-11 border-gray-300 focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-700">
+                Mật khẩu mới <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                type="password"
+                value={passwordForm.newPassword}
+                onChange={(e) =>
+                  setPasswordForm({ ...passwordForm, newPassword: e.target.value })
+                }
+                placeholder="••••••••"
+                className="h-11 border-gray-300 focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Ví dụ: MyPass123!
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-gray-700">
+                Xác nhận mật khẩu mới <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                type="password"
+                value={passwordForm.confirmPassword}
+                onChange={(e) =>
+                  setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
+                }
+                placeholder="••••••••"
+                className="h-11 border-gray-300 focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
+              <p className="text-xs text-blue-800">
+                <strong>💡 Yêu cầu mật khẩu:</strong>
+              </p>
+              <ul className="text-xs text-blue-700 mt-2 space-y-1 ml-4 list-disc">
+                <li>Tối thiểu 8 ký tự</li>
+                <li>Ít nhất 1 chữ hoa (A-Z)</li>
+                <li>Ít nhất 1 chữ số (0-9)</li>
+                <li>Ít nhất 1 ký tự đặc biệt (@$!%*?&)</li>
+              </ul>
+            </div>
+          </div>
+
+          <DialogFooter className="pt-4 border-t gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsPasswordOpen(false)}
+              className="h-11 px-6"
+            >
+              Hủy
+            </Button>
+            <Button 
+              onClick={handleChangePassword}
+              className="h-11 px-6 bg-blue-600 hover:bg-blue-700"
+            >
+              🔑 Đổi Mật Khẩu
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
