@@ -68,6 +68,7 @@ export default function Navbar() {
         Cookies.remove("token");
         localStorage.removeItem("email_user");
         localStorage.removeItem("user");
+        localStorage.removeItem("phone_user");
         setUser(null);
         window.location.href = "/";
     };
