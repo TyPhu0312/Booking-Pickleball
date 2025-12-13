@@ -63,10 +63,12 @@ interface Slot {
 export default function AdminBookingsPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"day" | "week">("week");
+  const [displayMode, setDisplayMode] = useState<"calendar" | "list" | "status">("calendar");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [searchPhone, setSearchPhone] = useState("");
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<BookingStatus | "ALL">("ALL");
 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [courts, setCourts] = useState<Court[]>([]);
@@ -152,6 +154,66 @@ export default function AdminBookingsPage() {
     return filtered;
   };
 
+  const getFilteredBookings = () => {
+    let filtered = bookings;
+
+    if (searchPhone.trim()) {
+      filtered = filtered.filter(booking => 
+        booking.user?.phone?.includes(searchPhone) || 
+        booking.phone_user?.includes(searchPhone)
+      );
+    }
+
+    if (statusFilter !== "ALL") {
+      filtered = filtered.filter(booking => booking.status === statusFilter);
+    }
+
+    return filtered.sort((a, b) => 
+      new Date(b.booking_date).getTime() - new Date(a.booking_date).getTime()
+    );
+  };
+
+  const groupBookingsByStatus = () => {
+    const filtered = getFilteredBookings();
+    const grouped: Record<BookingStatus, Booking[]> = {
+      PENDING: [],
+      CONFIRMED: [],
+      CHECKED_IN: [],
+      COMPLETED: [],
+      CANCELLED: []
+    };
+
+    filtered.forEach(booking => {
+      if (grouped[booking.status]) {
+        grouped[booking.status].push(booking);
+      }
+    });
+
+    return grouped;
+  };
+
+  const getStatusColor = (status: BookingStatus) => {
+    const colors = {
+      PENDING: "bg-yellow-100 text-yellow-800 border-yellow-300",
+      CONFIRMED: "bg-green-100 text-green-800 border-green-300",
+      CHECKED_IN: "bg-blue-100 text-blue-800 border-blue-300",
+      COMPLETED: "bg-gray-100 text-gray-800 border-gray-300",
+      CANCELLED: "bg-red-100 text-red-800 border-red-300"
+    };
+    return colors[status];
+  };
+
+  const getStatusLabel = (status: BookingStatus) => {
+    const labels = {
+      PENDING: "Chờ xác nhận",
+      CONFIRMED: "Đã xác nhận",
+      CHECKED_IN: "Đã check-in",
+      COMPLETED: "Hoàn thành",
+      CANCELLED: "Đã hủy"
+    };
+    return labels[status];
+  };
+
   const updateBookingStatus = async (bookingID: string, newStatus: BookingStatus) => {
     try {
       const booking = bookings.find(b => b.bookingID === bookingID);
@@ -225,26 +287,61 @@ export default function AdminBookingsPage() {
 
               <div className="flex bg-gray-100 rounded-xl p-1">
                 <button
-                  onClick={() => setViewMode("day")}
+                  onClick={() => setDisplayMode("calendar")}
                   className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                    viewMode === "day" 
+                    displayMode === "calendar" 
                       ? "bg-white text-emerald-600 shadow-md" 
                       : "text-gray-600 hover:text-gray-800"
                   }`}
                 >
-                  Ngày
+                  📅 Lịch
                 </button>
                 <button
-                  onClick={() => setViewMode("week")}
+                  onClick={() => setDisplayMode("list")}
                   className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                    viewMode === "week" 
+                    displayMode === "list" 
                       ? "bg-white text-emerald-600 shadow-md" 
                       : "text-gray-600 hover:text-gray-800"
                   }`}
                 >
-                  Tuần
+                  📋 Danh sách
+                </button>
+                <button
+                  onClick={() => setDisplayMode("status")}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                    displayMode === "status" 
+                      ? "bg-white text-emerald-600 shadow-md" 
+                      : "text-gray-600 hover:text-gray-800"
+                  }`}
+                >
+                  🏷️ Trạng thái
                 </button>
               </div>
+
+              {displayMode === "calendar" && (
+                <div className="flex bg-gray-100 rounded-xl p-1">
+                  <button
+                    onClick={() => setViewMode("day")}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                      viewMode === "day" 
+                        ? "bg-white text-emerald-600 shadow-md" 
+                        : "text-gray-600 hover:text-gray-800"
+                    }`}
+                  >
+                    Ngày
+                  </button>
+                  <button
+                    onClick={() => setViewMode("week")}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                      viewMode === "week" 
+                        ? "bg-white text-emerald-600 shadow-md" 
+                        : "text-gray-600 hover:text-gray-800"
+                    }`}
+                  >
+                    Tuần
+                  </button>
+                </div>
+              )}
 
               <button
                 onClick={() => setShowCreateModal(true)}
@@ -256,78 +353,303 @@ export default function AdminBookingsPage() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between mt-6 pt-6 border-t">
-            <button
-              onClick={() => setSelectedDate(prev => addDays(prev, viewMode === "week" ? -7 : -1))}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-semibold transition-colors"
-            >
-              ← {viewMode === "week" ? "Tuần trước" : "Hôm trước"}
-            </button>
-            
-            <div className="text-center">
-              <h2 className="text-2xl font-black text-gray-800">
-                {viewMode === "week" 
-                  ? `Tuần ${format(selectedDate, "w, yyyy", { locale: vi })}`
-                  : format(selectedDate, "EEEE, dd MMMM yyyy", { locale: vi })
-                }
-              </h2>
-              <p className="text-sm text-gray-500 mt-1">
-                {viewMode === "week" && 
-                  `${format(weekDays[0], "dd/MM")} - ${format(weekDays[6], "dd/MM/yyyy")}`
-                }
-              </p>
-            </div>
+          {displayMode === "calendar" && (
+            <div className="flex items-center justify-between mt-6 pt-6 border-t">
+              <button
+                onClick={() => setSelectedDate(prev => addDays(prev, viewMode === "week" ? -7 : -1))}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-semibold transition-colors"
+              >
+                ← {viewMode === "week" ? "Tuần trước" : "Hôm trước"}
+              </button>
+              
+              <div className="text-center">
+                <h2 className="text-2xl font-black text-gray-800">
+                  {viewMode === "week" 
+                    ? `Tuần ${format(selectedDate, "w, yyyy", { locale: vi })}`
+                    : format(selectedDate, "EEEE, dd MMMM yyyy", { locale: vi })
+                  }
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  {viewMode === "week" && 
+                    `${format(weekDays[0], "dd/MM")} - ${format(weekDays[6], "dd/MM/yyyy")}`
+                  }
+                </p>
+              </div>
 
-            <button
-              onClick={() => setSelectedDate(prev => addDays(prev, viewMode === "week" ? 7 : 1))}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-semibold transition-colors"
-            >
-              {viewMode === "week" ? "Tuần sau" : "Hôm sau"} →
-            </button>
-          </div>
+              <button
+                onClick={() => setSelectedDate(prev => addDays(prev, viewMode === "week" ? 7 : 1))}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-semibold transition-colors"
+              >
+                {viewMode === "week" ? "Tuần sau" : "Hôm sau"} →
+              </button>
+            </div>
+          )}
+
+          {displayMode === "status" && (
+            <div className="flex items-center justify-center mt-6 pt-6 border-t gap-2">
+              <span className="text-sm font-semibold text-gray-600">Lọc theo trạng thái:</span>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => setStatusFilter("ALL")}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                    statusFilter === "ALL" 
+                      ? "bg-emerald-600 text-white" 
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  Tất cả
+                </button>
+                {(["PENDING", "CONFIRMED", "CHECKED_IN", "COMPLETED", "CANCELLED"] as BookingStatus[]).map((status) => (
+                  <button
+                    key={status}
+                    onClick={() => setStatusFilter(status)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                      statusFilter === status 
+                        ? "bg-emerald-600 text-white" 
+                        : `${getStatusColor(status)} hover:opacity-80`
+                    }`}
+                  >
+                    {getStatusLabel(status)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-7 divide-x divide-gray-200">
-            {weekDays.map((day, index) => (
-              <div key={index} className="min-h-[600px]">
-                <div className={`p-4 border-b ${isSameDay(day, new Date()) ? 'bg-emerald-50' : 'bg-gray-50'}`}>
-                  <div className="text-center">
-                    <div className="text-sm font-semibold text-gray-600">
-                      {format(day, "EEE", { locale: vi })}
+        {displayMode === "calendar" && (
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+            {viewMode === "week" ? (
+              <div className="grid grid-cols-1 lg:grid-cols-7 divide-x divide-gray-200">
+                {weekDays.map((day, index) => (
+                  <div key={index} className="min-h-[600px]">
+                    <div className={`p-4 border-b ${isSameDay(day, new Date()) ? 'bg-emerald-50' : 'bg-gray-50'}`}>
+                      <div className="text-center">
+                        <div className="text-sm font-semibold text-gray-600">
+                          {format(day, "EEE", { locale: vi })}
+                        </div>
+                        <div className={`text-2xl font-black mt-1 ${
+                          isSameDay(day, new Date()) ? 'text-emerald-600' : 'text-gray-800'
+                        }`}>
+                          {format(day, "dd")}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {format(day, "MMM", { locale: vi })}
+                        </div>
+                      </div>
                     </div>
-                    <div className={`text-2xl font-black mt-1 ${
-                      isSameDay(day, new Date()) ? 'text-emerald-600' : 'text-gray-800'
-                    }`}>
-                      {format(day, "dd")}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {format(day, "MMM", { locale: vi })}
+
+                    <div className="p-3 space-y-2 overflow-y-auto max-h-[530px]">
+                      {getBookingsForDate(day).map((booking) => (
+                        <BookingCard 
+                          key={booking.bookingID} 
+                          booking={booking}
+                          onStatusChange={updateBookingStatus}
+                          onEdit={setSelectedBooking}
+                        />
+                      ))}
+                      
+                      {getBookingsForDate(day).length === 0 && (
+                        <div className="text-center py-8 text-gray-400">
+                          <Calendar className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                          <p className="text-sm">Không có booking</p>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {getBookingsForDate(selectedDate).map((booking) => (
+                    <div key={booking.bookingID} className="bg-white border-2 border-gray-200 rounded-2xl p-6 hover:shadow-xl transition-all hover:border-emerald-300">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="text-xl font-bold text-gray-800">
+                            {booking.court?.name || "Chưa phân bổ"}
+                          </h3>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {booking.user?.full_name || "Khách vãng lai"}
+                          </p>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(booking.status)}`}>
+                          {getStatusLabel(booking.status)}
+                        </span>
+                      </div>
 
-                <div className="p-3 space-y-2 overflow-y-auto max-h-[530px]">
-                  {getBookingsForDate(day).map((booking) => (
-                    <BookingCard 
-                      key={booking.bookingID} 
-                      booking={booking}
-                      onStatusChange={updateBookingStatus}
-                      onEdit={setSelectedBooking}
-                    />
+                      <div className="space-y-3 mb-4">
+                        <div className="flex items-center gap-2 text-gray-700">
+                          <span className="text-2xl">📞</span>
+                          <span className="font-semibold">{booking.user?.phone || booking.phone_user}</span>
+                        </div>
+                        
+                        <div className="bg-emerald-50 rounded-lg p-3">
+                          <div className="text-xs text-emerald-700 font-semibold mb-2">Thời gian:</div>
+                          {booking.bookingSlots.map((bs, idx) => (
+                            <div key={idx} className="flex items-center gap-2 text-sm text-gray-700">
+                              <span>🕐</span>
+                              <span className="font-semibold">
+                                {bs.slot.start_time.slice(0, 5)} - {bs.slot.end_time.slice(0, 5)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="flex justify-between items-center bg-blue-50 rounded-lg p-3">
+                          <span className="text-sm font-semibold text-blue-900">Tổng tiền:</span>
+                          <span className="text-lg font-bold text-blue-600">
+                            {booking.total_price.toLocaleString()}đ
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setSelectedBooking(booking)}
+                          className="flex-1 bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg font-semibold hover:bg-emerald-200 transition-colors"
+                        >
+                          Chi tiết
+                        </button>
+                        {booking.status === "PENDING" && (
+                          <button
+                            onClick={() => updateBookingStatus(booking.bookingID, "CONFIRMED")}
+                            className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                          >
+                            Xác nhận
+                          </button>
+                        )}
+                        {booking.status === "CONFIRMED" && (
+                          <button
+                            onClick={() => updateBookingStatus(booking.bookingID, "CHECKED_IN")}
+                            className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                          >
+                            Check-in
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   ))}
                   
-                  {getBookingsForDate(day).length === 0 && (
-                    <div className="text-center py-8 text-gray-400">
-                      <Calendar className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                      <p className="text-sm">Không có booking</p>
+                  {getBookingsForDate(selectedDate).length === 0 && (
+                    <div className="col-span-full text-center py-16 text-gray-400">
+                      <Calendar className="w-20 h-20 mx-auto mb-4 opacity-30" />
+                      <p className="text-lg font-semibold">Không có booking nào trong ngày này</p>
                     </div>
                   )}
                 </div>
               </div>
-            ))}
+            )}
           </div>
-        </div>
+        )}
+
+        {displayMode === "list" && (
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-emerald-600 text-white">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-sm font-bold">Ngày</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold">Khách hàng</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold">SĐT</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold">Sân</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold">Giờ</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold">Trạng thái</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold">Tổng tiền</th>
+                    <th className="px-6 py-4 text-left text-sm font-bold">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {getFilteredBookings().map((booking) => (
+                    <tr key={booking.bookingID} className="hover:bg-emerald-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold">
+                        {format(parseISO(booking.booking_date), "dd/MM/yyyy")}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        {booking.user?.full_name || "Khách vãng lai"}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-mono">
+                        {booking.user?.phone || booking.phone_user}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold">
+                        {booking.court?.name || "Chưa phân bổ"}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        {booking.bookingSlots.map((bs, idx) => (
+                          <div key={idx}>
+                            {bs.slot.start_time.slice(0, 5)} - {bs.slot.end_time.slice(0, 5)}
+                          </div>
+                        ))}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold inline-block ${getStatusColor(booking.status)}`}>
+                          {getStatusLabel(booking.status)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-bold text-emerald-600">
+                        {booking.total_price.toLocaleString()}đ
+                      </td>
+                      <td className="px-6 py-4">
+                        <button
+                          onClick={() => setSelectedBooking(booking)}
+                          className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-xs font-semibold hover:bg-emerald-200 transition-colors"
+                        >
+                          Chi tiết
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              
+              {getFilteredBookings().length === 0 && (
+                <div className="text-center py-16 text-gray-400">
+                  <Search className="w-20 h-20 mx-auto mb-4 opacity-30" />
+                  <p className="text-lg font-semibold">Không tìm thấy booking nào</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {displayMode === "status" && (
+          <div className="space-y-6">
+            {Object.entries(groupBookingsByStatus()).map(([status, statusBookings]) => (
+              statusBookings.length > 0 && (
+                <div key={status} className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                  <div className={`px-6 py-4 border-b-4 ${getStatusColor(status as BookingStatus)}`}>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xl font-bold">
+                        {getStatusLabel(status as BookingStatus)}
+                      </h3>
+                      <span className="text-2xl font-black">
+                        {statusBookings.length}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {statusBookings.map((booking) => (
+                      <BookingCard 
+                        key={booking.bookingID} 
+                        booking={booking}
+                        onStatusChange={updateBookingStatus}
+                        onEdit={setSelectedBooking}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )
+            ))}
+            
+            {Object.values(groupBookingsByStatus()).every(arr => arr.length === 0) && (
+              <div className="bg-white rounded-2xl shadow-lg p-16 text-center text-gray-400">
+                <Calendar className="w-20 h-20 mx-auto mb-4 opacity-30" />
+                <p className="text-lg font-semibold">Không có booking nào</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {showCreateModal && (
