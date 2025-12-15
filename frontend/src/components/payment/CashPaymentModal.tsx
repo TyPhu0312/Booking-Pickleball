@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X, DollarSign, CheckCircle2 } from "lucide-react";
 import { API_URL } from "@/lib/config";
+import { toast } from "sonner";
 
 interface CashPaymentModalProps {
   bookingId: string;
@@ -31,7 +32,7 @@ export default function CashPaymentModal({
     e.preventDefault();
     
     if (paidAmount <= 0) {
-      alert("Vui lòng nhập số tiền hợp lệ");
+      toast.error("Vui lòng nhập số tiền hợp lệ");
       return;
     }
 
@@ -70,11 +71,11 @@ export default function CashPaymentModal({
         throw new Error("Lỗi khi xác nhận thanh toán");
       }
 
-      alert(`✅ Đã thu tiền mặt thành công!\n\n💰 Số tiền: ${paidAmount.toLocaleString()}đ`);
+      toast.success(`Đã thu tiền mặt thành công!\n\n💰 Số tiền: ${paidAmount.toLocaleString()}đ`);
       onPaymentSuccess();
     } catch (error) {
       console.error("Error creating cash payment:", error);
-      alert(`❌ Lỗi: ${error instanceof Error ? error.message : "Không thể tạo thanh toán"}`);
+      toast.error(`Lỗi: "Không thể tạo thanh toán"}`);
     } finally {
       setLoading(false);
     }

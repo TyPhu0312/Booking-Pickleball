@@ -11,6 +11,7 @@ import WeeklyBooking from "@/components/booking/WeeklyBooking";
 import TournamentBooking from "@/components/booking/TournamentBooking";
 import PaymentModal from "@/components/payment/PaymentModal";
 import { API_URL } from '@/lib/config';
+import { toast } from "sonner";
 
 interface SlotData {
   slot_id: string;
@@ -177,20 +178,20 @@ export default function BookingPage() {
       const slotDeadline = new Date(slotStartTime.getTime() + 10 * 60 * 1000);
       
       if (now >= slotDeadline) {
-        alert(`Slot này đã qua! Không thể đặt slot bắt đầu lúc ${slot.start_time}`);
+        toast(`Slot này đã qua! Không thể đặt slot bắt đầu lúc ${slot.start_time}`);
         return;
       }
     }
     
     if (slotDate < today) {
-      alert("Không thể đặt slot cho ngày đã qua!");
+      toast.error("Không thể đặt slot cho ngày đã qua!");
       return;
     }
 
     if (selectedCourtType) {
       const availableCourtsForType = slot.availableCourts[selectedCourtType] ?? 0;
       if (availableCourtsForType === 0) {
-        alert(`Slot này đã hết sân ${selectedCourtType === 'INDOOR' ? 'trong nhà' : 'ngoài trời'}!`);
+        toast(`Slot này đã hết sân ${selectedCourtType === 'INDOOR' ? 'trong nhà' : 'ngoài trời'}!`);
         return;
       }
     }
@@ -201,7 +202,7 @@ export default function BookingPage() {
       : [...currentDateSlots, slotId];
 
     if (!isConsecutive(newSlots, dateSlots)) {
-      alert("Chỉ được chọn các slot liên tiếp trong cùng 1 ngày!");
+      toast.error("Chỉ được chọn các slot liên tiếp trong cùng 1 ngày!");
       return;
     }
 
@@ -356,11 +357,11 @@ export default function BookingPage() {
 
   const handleSubmit = async () => {
     const totalSelectedSlots = Object.values(selectedSlotsByDate).flat().length;
-    if (totalSelectedSlots === 0) return alert("Vui lòng chọn slot!");
+    if (totalSelectedSlots === 0) return toast.error("Vui lòng chọn slot!");
 
     if (bookingType === "weekly") {
-      if (selectedWeekdays.length === 0) return alert("Chọn ít nhất 1 thứ!");
-      if (!isValidWeekly) return alert(`Chọn ngày kết thúc (tối đa ${MAX_WEEKS} tuần)!`);
+      if (selectedWeekdays.length === 0) return toast.error("Chọn ít nhất 1 thứ!");
+      if (!isValidWeekly) return toast.error(`Chọn ngày kết thúc (tối đa ${MAX_WEEKS} tuần)!`);
     }
 
     const bookingDate = new Date(StartDate ? StartDate : StartDate).toISOString();
@@ -403,7 +404,6 @@ export default function BookingPage() {
               .tz("Asia/Ho_Chi_Minh")
               .format("YYYY-MM-DDTHH:mm:ss.SSS[Z]");
 
-            console.log("Ngày thêm slot lặp:", nextDate, "Thứ:", weekday, "Slot:", slot.slotID);
             slots.push({
               slot_id: slot.slotID,
               date: nextDate,
@@ -432,22 +432,19 @@ export default function BookingPage() {
     }
 
     if (selectedCourtType === "") {
-      return alert("Vui lòng chọn loại sân!");
+      return toast("Vui lòng chọn loại sân!");
     }
 
     if (!user) {
-      return alert("Vui lòng đăng nhập!");
+      return toast("Vui lòng đăng nhập!");
     }
 
-    console.log("Tổng số bookingSlots sẽ tạo:", slots.length);
-    console.log("Chi tiết slots:", slots);
+
 
     const bookingData: any = {
       user_id: user.userID,
       booking_date: bookingDate,
       status: "PENDING",
-      total_price: total,
-      deposit_amount: deposit,
       booking_type: bookingType.toUpperCase(),
       discount: discount,
       court_type: selectedCourtType,
@@ -467,35 +464,32 @@ export default function BookingPage() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        console.error("❌ Lỗi từ server:", errorData);
+        console.error("Lỗi từ server:", errorData);
         throw new Error(errorData.message || "Lỗi khi lưu booking");
       }
 
       const result = await res.json();
-      console.log("✅ Booking response:", result);
-      
+            
       let bookingId: string;
       let bookingCount = 1;
       
       if (result.bookings && Array.isArray(result.bookings)) {
         bookingId = result.parent_booking_id;
         bookingCount = result.bookings.length;
-        console.log(`✅ Đã tạo ${bookingCount} bookings cho ${bookingCount} ngày`);
-        console.log(`💰 Tổng tiền cọc: ${result.total_deposit?.toLocaleString()}đ`);
       } else {
         bookingId = result.bookingID || result.booking?.bookingID || result.booking?.id;
       }
       
       if (!bookingId) {
-        console.error("❌ Không tìm thấy bookingID trong response:", result);
+        console.error("Không tìm thấy bookingID trong response:", result);
         throw new Error("Không nhận được booking ID từ server");
       }
       
       setCreatedBookingId(bookingId);
       setShowPaymentModal(true);
     } catch (error: any) {
-      console.error("❌ Error:", error);
-      alert("Không thể lưu booking: " + (error.message || "Vui lòng thử lại!"));
+      console.error("Error:", error);
+      toast("Không thể lưu booking: " + (error.message || "Vui lòng thử lại!"));
     }
   };
 
@@ -654,7 +648,7 @@ export default function BookingPage() {
                               ? "bg-gray-300 text-gray-600 cursor-not-allowed"
                               : isSelected
                                 ? "bg-yellow-400 text-blue-900 ring-2 ring-yellow-500 shadow-lg"
-                                : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md"
+                                : "bg-white text-blue-600 border border-blue-600 hover:bg-blue-700 hover:shadow-md hover:text-white cursor-pointer"
                             }
                   `}
                         >
@@ -751,6 +745,7 @@ export default function BookingPage() {
           }}
           onPaymentSuccess={() => {
             setShowPaymentModal(false);
+            toast.success("Thanh toán thành công!");
             router.push("/history");
           }}
         />

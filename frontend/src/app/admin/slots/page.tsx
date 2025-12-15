@@ -32,6 +32,8 @@ export default function SlotsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<SlotStatus>>({});
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [deleteSlotId, setDeleteSlotId] = useState<string | null>(null);
 
   const fetchSlotsByDate = async () => {
     setLoading(true);
@@ -40,7 +42,7 @@ export default function SlotsPage() {
       const res = await fetch(`http://localhost:5000/api/slots/getSlotStatusByOneDate/${selectedDate}`);
       if (!res.ok) throw new Error("Lỗi khi tải dữ liệu slot");
       const data = await res.json();
-      
+
       setSlotsStatus(data.slots || []);
     } catch (err: unknown) {
       setError((err as Error).message);
@@ -51,7 +53,7 @@ export default function SlotsPage() {
 
   useEffect(() => {
     fetchSlotsByDate();
-    const interval = setInterval(fetchSlotsByDate, 10000); 
+    const interval = setInterval(fetchSlotsByDate, 10000);
     return () => clearInterval(interval);
   }, [selectedDate]);
 
@@ -119,9 +121,9 @@ export default function SlotsPage() {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Bạn có chắc muốn xoá slot "${name}"?`)) return;
-    
+  const handleDelete = async (id: string) => {
+    if (!deleteSlotId) return;
+
     try {
       const res = await fetch(`${API_URL}/api/slots/delete/${id}`, { method: "DELETE" });
       const data = await res.json();
@@ -131,7 +133,9 @@ export default function SlotsPage() {
       }
 
       toast.success("Xóa slot thành công!");
-      fetchSlotsByDate();
+      setShowCancelConfirm(false);
+      setDeleteSlotId(null);
+      await fetchSlotsByDate();
     } catch (err: unknown) {
       toast.error((err as Error).message || "Có lỗi xảy ra");
     }
@@ -208,7 +212,7 @@ export default function SlotsPage() {
                       <td className="px-6 py-4 gap-1">
                         <span className="font-semibold flex items-center">
                           <DollarSign className="w-4 h-4 text-green-600" />
-                          {slot.price.toLocaleString()}đ 
+                          {slot.price.toLocaleString()}đ
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center font-medium text-gray-800">{slot.totalCourts.INDOOR}</td>
@@ -217,8 +221,15 @@ export default function SlotsPage() {
                       <td className={`px-6 py-4 text-center font-bold ${slot.availableCourts.INDOOR > 0 ? "text-green-600" : "text-red-600"}`}>{slot.availableCourts.INDOOR}</td>
                       <td className={`px-6 py-4 text-center font-bold ${slot.availableCourts.OUTDOOR > 0 ? "text-green-600" : "text-red-600"}`}>{slot.availableCourts.OUTDOOR}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        <button className="text-blue-600 hover:text-blue-900" onClick={() => openEditModal(slot)}><Edit className="w-4 h-4" /></button>
-                        <button className="text-red-600 hover:text-red-900" onClick={() => handleDelete(slot.slot_id, slot.slot_name)}><Trash2 className="w-4 h-4" /></button>
+                        <button className="text-blue-600 hover:text-blue-900" onClick={() => openEditModal(slot)}>
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button className="text-red-600 hover:text-red-900"
+                          onClick={() => {
+                            setDeleteSlotId(slot.slot_id);
+                            setShowCancelConfirm(true);
+                          }}>
+                          <Trash2 className="w-4 h-4" /></button>
                       </td>
                     </tr>
                   ))
@@ -236,7 +247,7 @@ export default function SlotsPage() {
               {editing ? "Cập nhật thông tin khung giờ" : "Nhập thông tin để tạo khung giờ mới"}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div>
               <Label htmlFor="slot_name">Tên slot *</Label>
@@ -298,8 +309,8 @@ export default function SlotsPage() {
             }}>
               Hủy
             </Button>
-            <Button 
-              onClick={handleSave} 
+            <Button
+              onClick={handleSave}
               className={editing ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700"}
             >
               {editing ? "Cập nhật" : "Tạo slot"}
@@ -307,6 +318,33 @@ export default function SlotsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {showCancelConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Xác nhận xoá slot</h2>
+            <p className="text-gray-600 mb-6">
+              Bạn có chắc chắn muốn xoá slot này? Hành động này không thể hoàn tác.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleDelete.bind(null, deleteSlotId!)}
+                className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Xác nhận xoá
+              </button>
+              <button
+                onClick={() => {
+                  setShowCancelConfirm(false);
+                  setDeleteSlotId(null);
+                }}
+                className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+              >
+                Không
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

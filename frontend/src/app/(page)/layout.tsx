@@ -2,6 +2,7 @@
 import HeroSection from "@/components/features/HeroSection";
 import Footer from "@/components/features/Footer";
 import Navbar from "@/components/features/NavBar";
+import { Toaster } from "@/components/ui/sonner";
 
 
 
@@ -14,6 +15,7 @@ export default function RootLayout({
     <main className="bg-linear-to-b from-green-50 to-white min-h-screen flex flex-col">
       <Navbar />
       <HeroSection />
+       <Toaster position="bottom-right" richColors />
       {children}
       <Footer />
     </main>

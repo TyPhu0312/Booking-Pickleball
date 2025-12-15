@@ -6,7 +6,7 @@ import { format } from "date-fns";
 import Link from "next/link";
 import { BookOpen, Calendar, User, Search, ChevronRight } from "lucide-react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { API_URL } from '@/lib/config';
 
 interface Blog {
   blogID: string;

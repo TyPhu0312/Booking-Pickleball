@@ -2,11 +2,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { Search, DollarSign, CheckCircle2, AlertCircle, Clock, Eye, Calendar, RefreshCw, NotebookPen, Banknote, QrCode } from 'lucide-react';
+import { Search, DollarSign, CheckCircle2, AlertCircle, Clock, Eye, Banknote, QrCode } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { API_URL } from '@/lib/config';
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, isWithinInterval, parseISO } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { format } from 'date-fns';
 import RemainingPaymentModal from '@/components/payment/RemainingPaymentModal';
 import CashPaymentModal from '@/components/payment/CashPaymentModal';
 import PaymentModal from '@/components/payment/PaymentModal';
@@ -14,6 +13,7 @@ import ViewInforPaymentModal from '@/components/payment/ViewInforPaymentModal';
 
 interface Booking {
   bookingID: string;
+  parent_booking_id?: string | null;
   user?: { full_name: string; phone?: string } | null;
   booking_date: string;
   status: string;
@@ -43,8 +43,14 @@ interface PaymentInfo {
   hasPartiallyPaid: boolean;
   totalPaid: number;
   totalPrice: number;
+  depositAmount: number;
   remainingAmount: number;
   payments: Payment[];
+  isGroupBooking?: boolean;
+  groupTotalPaid?: number;
+  groupTotalPrice?: number;
+  groupDepositAmount?: number;
+  bookingShareOfTotal?: number;
 }
 
 type FilterType = 'all' | 'unpaid' | 'partial' | 'paid';
@@ -74,7 +80,7 @@ export default function PaymentsPage() {
       const data = await res.json();
       
       const activeBookings = data.filter((b: Booking) => 
-        b.status === 'PENDING' || b.status === 'CONFIRMED'
+        b.status === 'PENDING' || b.status === 'CONFIRMED' || b.status === 'CHECKED_IN'
       );
       
       setBookings(activeBookings);
@@ -92,6 +98,7 @@ export default function PaymentsPage() {
             hasPartiallyPaid: false,
             totalPaid: 0,
             totalPrice: booking.total_price,
+            depositAmount: booking.deposit_amount,
             remainingAmount: booking.total_price,
             payments: []
           };
@@ -108,6 +115,12 @@ export default function PaymentsPage() {
   const getPaymentStatus = (bookingId: string) => {
     const info = bookingPayments[bookingId];
     if (!info) return 'unpaid';
+    
+    if (info.isGroupBooking) {
+      if (info.totalPaid >= info.totalPrice) return 'paid';
+      if (info.totalPaid > 0) return 'partial';
+      return 'unpaid';
+    }
     
     if (info.totalPaid >= info.totalPrice) return 'paid';
     if (info.totalPaid > 0) return 'partial';
@@ -144,19 +157,31 @@ export default function PaymentsPage() {
     return true;
   };
 
-  const filteredBookings = bookings.filter(booking => {
-    const matchSearch = 
-      booking.user?.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      booking.user?.phone?.includes(searchQuery) ||
-      booking.phone_user?.includes(searchQuery) ||
-      booking.court?.name.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredBookings = bookings
+    .filter(booking => {
+      const matchSearch = 
+        booking.user?.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        booking.user?.phone?.includes(searchQuery) ||
+        booking.phone_user?.includes(searchQuery) ||
+        booking.court?.name.toLowerCase().includes(searchQuery.toLowerCase());
 
-    if (!matchSearch) return false;
-    if (!isBookingInDateRange(booking)) return false;
+      if (!matchSearch) return false;
+      if (!isBookingInDateRange(booking)) return false;
 
-    if (filter === 'all') return true;
-    return getPaymentStatus(booking.bookingID) === filter;
-  });
+      if (filter === 'all') return true;
+      return getPaymentStatus(booking.bookingID) === filter;
+    })
+    .sort((a, b) => {
+      if (a.parent_booking_id && b.parent_booking_id) {
+        if (a.parent_booking_id === b.parent_booking_id) {
+          return new Date(a.booking_date).getTime() - new Date(b.booking_date).getTime();
+        }
+        return a.parent_booking_id.localeCompare(b.parent_booking_id);
+      }
+      if (a.parent_booking_id && !b.parent_booking_id) return -1;
+      if (!a.parent_booking_id && b.parent_booking_id) return 1;
+      return new Date(b.booking_date).getTime() - new Date(a.booking_date).getTime();
+    });
 
   const stats = {
     total: filteredBookings.length,
@@ -256,52 +281,6 @@ export default function PaymentsPage() {
         </div>
       </div>
 
-      <div className='grid grid-cols-1 md:grid-cols-4 gap-4 mb-4'>
-        <div 
-          onClick={() => setFilter('all')}
-          className={`bg-linear-to-br from-blue-500 to-blue-600 text-white p-6 rounded-xl shadow-lg cursor-pointer hover:shadow-xl transition-all transform hover:-translate-y-1 ${filter === 'all' ? 'ring-4 ring-blue-300' : ''}`}
-        >
-          <div className='flex items-center justify-between mb-2'>
-            <NotebookPen className='w-10 h-10 opacity-80' />
-            <span className='text-3xl font-bold'>{stats.total}</span>
-          </div>
-          <p className='text-blue-100 text-sm font-medium'>Tổng Booking</p>
-        </div>
-
-        <div 
-          onClick={() => setFilter('unpaid')}
-          className={`bg-linear-to-br from-red-500 to-red-600 text-white p-6 rounded-xl shadow-lg cursor-pointer hover:shadow-xl transition-all transform hover:-translate-y-1 ${filter === 'unpaid' ? 'ring-4 ring-red-300' : ''}`}
-        >
-          <div className='flex items-center justify-between mb-2'>
-            <AlertCircle className='w-10 h-10 opacity-80' />
-            <span className='text-3xl font-bold'>{stats.unpaid}</span>
-          </div>
-          <p className='text-red-100 text-sm font-medium'>Chưa Thanh Toán</p>
-        </div>
-
-        <div 
-          onClick={() => setFilter('partial')}
-          className={`bg-linear-to-br from-orange-500 to-orange-600 text-white p-6 rounded-xl shadow-lg cursor-pointer hover:shadow-xl transition-all transform hover:-translate-y-1 ${filter === 'partial' ? 'ring-4 ring-orange-300' : ''}`}
-        >
-          <div className='flex items-center justify-between mb-2'>
-            <Clock className='w-10 h-10 opacity-80' />
-            <span className='text-3xl font-bold'>{stats.partial}</span>
-          </div>
-          <p className='text-orange-100 text-sm font-medium'>Đã Cọc</p>
-        </div>
-
-        <div 
-          onClick={() => setFilter('paid')}
-          className={`bg-linear-to-br from-green-500 to-green-600 text-white p-6 rounded-xl shadow-lg cursor-pointer hover:shadow-xl transition-all transform hover:-translate-y-1 ${filter === 'paid' ? 'ring-4 ring-green-300' : ''}`}
-        >
-          <div className='flex items-center justify-between mb-2'>
-            <CheckCircle2 className='w-10 h-10 opacity-80' />
-            <span className='text-3xl font-bold'>{stats.paid}</span>
-          </div>
-          <p className='text-green-100 text-sm font-medium'>Đã Thanh Toán Đủ</p>
-        </div>
-      </div>
-
       <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mb-6'>
         <div className='bg-white p-6 rounded-xl shadow-md border-l-4 border-green-500'>
           <div className='flex items-center justify-between'>
@@ -352,26 +331,39 @@ export default function PaymentsPage() {
                   </td>
                 </tr>
               ) : (
-                filteredBookings.map((booking) => {
+                filteredBookings.map((booking, index) => {
                   const paymentInfo = bookingPayments[booking.bookingID];
                   const status = getPaymentStatus(booking.bookingID);
                   const firstSlot = booking.bookingSlots[0];
+                  
+                  const isInGroup = !!booking.parent_booking_id;
+                  const prevBooking = index > 0 ? filteredBookings[index - 1] : null;
+                  const isFirstInGroup = isInGroup && (!prevBooking || prevBooking.parent_booking_id !== booking.parent_booking_id);
+                  
+                  const groupCount = isInGroup 
+                    ? filteredBookings.filter(b => b.parent_booking_id === booking.parent_booking_id).length 
+                    : 0;
 
                   return (
-                    <tr key={booking.bookingID} className='hover:bg-gray-50'>
+                    <tr key={booking.bookingID} className={`hover:bg-gray-50 ${isInGroup ? 'bg-blue-50/30' : ''}`}>
                       
                       <td className='px-4 py-4'>
                         <div className='text-sm'>
-                          <div className='font-medium text-gray-900'>
-                            {booking.user?.full_name || 'N/A'}
-                          </div>
-                          <div className='text-gray-500'>
-                            {booking.user?.phone || booking.phone_user || 'N/A'}
+                          <div className='flex items-center gap-2'>
+                           
+                            <div>
+                              <div className='font-medium text-gray-900 flex items-center gap-2'>
+                                {booking.user?.full_name || 'N/A'}
+                              </div>
+                              <div className='text-gray-500'>
+                                {booking.user?.phone || booking.phone_user || 'N/A'}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </td>
                       <td className='px-4 py-4 whitespace-nowrap text-sm text-gray-900'>
-                        {booking.court?.name || booking.phone_user || 'N/A'}
+                        {booking.court?.name || 'Chưa phân bổ'}
                       </td>
                       <td className='px-4 py-4'>
                         <div className='text-sm space-y-1'>
@@ -392,22 +384,35 @@ export default function PaymentsPage() {
                         </div>
                       </td>
                       <td className='px-4 py-4 whitespace-nowrap text-sm font-semibold text-gray-900'>
-                        {booking.total_price.toLocaleString()}đ
+                        <div className='flex flex-col'>
+                          <span>{booking.total_price.toLocaleString()}đ</span>
+                          {isInGroup && paymentInfo?.isGroupBooking && (
+                            <span className='text-xs text-gray-500'>
+                              (Nhóm: {(paymentInfo?.groupTotalPrice ?? 0).toLocaleString()}đ)
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className='px-4 py-4 whitespace-nowrap text-sm'>
-                        <span className='font-semibold text-purple-600'>
-                          {booking.deposit_amount.toLocaleString()}đ
-                        </span>
+                        <div className='flex flex-col'>
+                          <span className='font-semibold text-purple-600'>
+                            {booking.deposit_amount.toLocaleString()}đ
+                          </span>
+                        </div>
                       </td>
                       <td className='px-4 py-4 whitespace-nowrap text-sm'>
-                        <span className='font-semibold text-green-600'>
-                          {(paymentInfo?.totalPaid ?? 0).toLocaleString()}đ
-                        </span>
+                        <div className='flex flex-col'>
+                          <span className='font-semibold text-green-600'>
+                            {(paymentInfo?.totalPaid ?? 0).toLocaleString()}đ
+                          </span>
+                        </div>
                       </td>
                       <td className='px-4 py-4 whitespace-nowrap text-sm'>
-                        <span className='font-semibold text-orange-600'>
-                          {(paymentInfo?.remainingAmount ?? booking.total_price).toLocaleString()}đ
-                        </span>
+                        <div className='flex flex-col'>
+                          <span className='font-semibold text-orange-600'>
+                            {(paymentInfo?.remainingAmount ?? booking.total_price).toLocaleString()}đ
+                          </span>
+                        </div>
                       </td>
                       <td className='px-4 py-4 whitespace-nowrap'>
                         {status === 'paid' && (
@@ -433,26 +438,35 @@ export default function PaymentsPage() {
                         <div className='flex items-center gap-2'>
                           {status !== 'paid' && (
                             <>
-                              {(paymentInfo?.totalPaid ?? 0) === 0 && (
-                                <button
-                                  onClick={() => handleDepositPayment(booking)}
-                                  className='px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-xs font-medium flex items-center gap-1'
-                                  title='Tạo QR cọc - Thanh toán tiền cọc qua PayOS'
-                                >
-                                  <QrCode className='w-3 h-3' />
-                                  QR Cọc
-                                </button>
-                              )}
-                              {(paymentInfo?.totalPaid ?? 0) > 0 && (
-                                <button
-                                  onClick={() => handleCollectPayment(booking)}
-                                  className='px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-xs font-medium flex items-center gap-1'
-                                  title='Thu phần còn lại qua PayOS'
-                                >
-                                  <DollarSign className='w-3 h-3' />
-                                  PayOS
-                                </button>
-                              )}
+                              {(() => {
+                                const totalPaidToCheck = paymentInfo?.isGroupBooking 
+                                  ? (paymentInfo?.groupTotalPaid ?? 0)
+                                  : (paymentInfo?.totalPaid ?? 0);
+                                
+                                if (totalPaidToCheck === 0) {
+                                  return (
+                                    <button
+                                      onClick={() => handleDepositPayment(booking)}
+                                      className='px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-xs font-medium flex items-center gap-1'
+                                      title='Tạo QR cọc - Thanh toán tiền cọc qua PayOS'
+                                    >
+                                      <QrCode className='w-3 h-3' />
+                                      QR Cọc
+                                    </button>
+                                  );
+                                } else {
+                                  return (
+                                    <button
+                                      onClick={() => handleCollectPayment(booking)}
+                                      className='px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-xs font-medium flex items-center gap-1'
+                                      title='Thu phần còn lại qua PayOS'
+                                    >
+                                      <DollarSign className='w-3 h-3' />
+                                      PayOS
+                                    </button>
+                                  );
+                                }
+                              })()}
                               <button
                                 onClick={() => handleCashPayment(booking)}
                                 className='px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs font-medium flex items-center gap-1'

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
@@ -13,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 
 import { API_URL } from "@/lib/config";
+import { se } from "date-fns/locale";
 
 interface Tournament {
   tournamentID: string;
@@ -49,6 +51,8 @@ export default function TournamentsPage() {
     phone_user: "",
     status: "UPCOMING",
   });
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [deleteTournamentId, setDeleteTournamentId] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -209,8 +213,8 @@ export default function TournamentsPage() {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Bạn có chắc muốn xóa giải đấu "${name}"?`)) return;
+  const handleDelete = async (id: string) => {
+    if (!deleteTournamentId) return;
 
     try {
       const res = await fetch(`${API_URL}/api/tournaments/delete/${id}`, {
@@ -224,7 +228,9 @@ export default function TournamentsPage() {
       }
 
       toast.success("Xóa giải đấu thành công!");
-      fetchTournaments();
+      setShowCancelConfirm(false);
+      setDeleteTournamentId(null);
+      await fetchTournaments();
     } catch (error: unknown) {
       toast.error((error as Error).message || "Lỗi khi xóa giải đấu");
     }
@@ -347,7 +353,10 @@ export default function TournamentsPage() {
                       Sửa
                     </button>
                     <button 
-                      onClick={() => handleDelete(tournament.tournamentID, tournament.name)}
+                      onClick={() => {
+                        setShowCancelConfirm(true);
+                        setDeleteTournamentId(tournament.tournamentID);
+                      }}
                       className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -590,6 +599,34 @@ export default function TournamentsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {showCancelConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Xác nhận xoá giải đấu</h2>
+            <p className="text-gray-600 mb-6">
+              Bạn có chắc chắn muốn xoá giải đấu này? Hành động này không thể hoàn tác.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleDelete.bind(null, deleteTournamentId!)}
+                className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Xác nhận xoá
+              </button>
+              <button
+                onClick={() => {
+                  setShowCancelConfirm(false);
+                  setDeleteTournamentId(null);
+                }}
+                className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+              >
+                Không
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

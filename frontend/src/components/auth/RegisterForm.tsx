@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { API_URL } from '@/lib/config';
+import { toast } from "sonner";
 
 export default function RegisterForm() {
   const [form, setForm] = useState({
@@ -45,7 +46,7 @@ export default function RegisterForm() {
     e.preventDefault();
 
     if (form.password !== form.confirmPassword) {
-      alert("Mật khẩu không khớp!");
+      toast.error("Mật khẩu không khớp!");
       return;
     }
     if (validate()) {
@@ -65,20 +66,20 @@ export default function RegisterForm() {
         const data = await res.json();
 
         if (!res.ok) {
-          alert(data.message || "Đăng ký thất bại");
+          toast.error(data.message || "Đăng ký thất bại");
           return;
         }
 
         localStorage.setItem("token", data.token);
-        alert("Đăng ký thành công!");
+        toast.success("Đăng ký thành công!");
         window.location.href = "/login";
       } catch (error) {
         console.error(error);
-        alert("Có lỗi xảy ra, thử lại sau.");
+        toast.error("Có lỗi xảy ra, thử lại sau.");
       }
     }
     else {
-      console.log("❌ Có lỗi, vui lòng kiểm tra lại.");
+      toast.error("Có lỗi, vui lòng kiểm tra lại.");
     }
   };
 

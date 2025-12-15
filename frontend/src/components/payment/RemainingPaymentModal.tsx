@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { X, Clock, QrCode, CreditCard } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { API_URL } from "@/lib/config";
+import { toast } from "sonner";
 
 interface RemainingPaymentModalProps {
   bookingId: string;
@@ -89,7 +90,7 @@ export default function RemainingPaymentModal({
       setPaymentData(data);
       startPolling(data.paymentId);
     } catch (error: any) {
-      alert("Không thể tạo thanh toán: " + error.message);
+      toast.error("Không thể tạo thanh toán: " + error.message);
       onClose();
     } finally {
       setLoading(false);
@@ -103,25 +104,27 @@ export default function RemainingPaymentModal({
         const res = await fetch(`${API_URL}/api/payos/${paymentId}/status`);
         
         if (!res.ok) {
-          console.warn("⚠️ Polling failed with status:", res.status);
+          console.warn("Polling failed with status:", res.status);
           return;
         }
 
         const data = await res.json();
-        
-        if (data.status === "PAID") {
+                
+        if (data.status === "PAID" || data.status === "PARTIALLY_PAID") {
           clearInterval(interval);
           setPolling(false);
           onPaymentSuccess();
         }
       } catch (error) {
-        console.error("❌ Polling error:", error);
+        console.error("Polling error:", error);
       }
     }, 3000);
 
     setTimeout(() => {
       clearInterval(interval);
       setPolling(false);
+      toast.error("Hết thời gian thanh toán. Vui lòng tạo lại đơn hàng.");
+      onClose();
     }, 120000);
   };
 

@@ -102,26 +102,26 @@ export default function AdminFeedbacksPage() {
     setCurrentPage(1);
   };
 
-  const handleDeleteFeedback = async (feedbackID: string) => {
-    if (!confirm("Bạn có chắc muốn xóa đánh giá này không?")) return;
+  // const handleDeleteFeedback = async (feedbackID: string) => {
+  //   if (!confirm("Bạn có chắc muốn xóa đánh giá này không?")) return;
 
-    try {
-      const response = await fetch(`${API_URL}/api/feedbacks/${feedbackID}`, {
-        method: "DELETE",
-      });
+  //   try {
+  //     const response = await fetch(`${API_URL}/api/feedbacks/${feedbackID}`, {
+  //       method: "DELETE",
+  //     });
 
-      if (response.ok) {
-        alert("Xóa đánh giá thành công!");
-        fetchFeedbacks();
-      } else {
-        const error = await response.json();
-        alert(error.message || "Xóa đánh giá thất bại");
-      }
-    } catch (error) {
-      console.error("Error deleting feedback:", error);
-      alert("Có lỗi xảy ra khi xóa đánh giá");
-    }
-  };
+  //     if (response.ok) {
+  //       alert("Xóa đánh giá thành công!");
+  //       fetchFeedbacks();
+  //     } else {
+  //       const error = await response.json();
+  //       alert(error.message || "Xóa đánh giá thất bại");
+  //     }
+  //   } catch (error) {
+  //     console.error("Error deleting feedback:", error);
+  //     alert("Có lỗi xảy ra khi xóa đánh giá");
+  //   }
+  // };
 
   const handleViewDetail = (feedback: Feedback) => {
     setSelectedFeedback(feedback);

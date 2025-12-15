@@ -3,6 +3,7 @@
 import Sidebar, { SidebarProvider, useSidebar } from "@/components/admin/Sidebar";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Toaster } from "sonner";
 
 interface User {
   userID: string;
@@ -84,6 +85,7 @@ export default function AdminLayout({
     <SidebarProvider>
       <div className="min-h-screen bg-gray-50">
         <AdminContent>{children}</AdminContent>
+        <Toaster position="top-right" richColors />
       </div>
     </SidebarProvider>
   );

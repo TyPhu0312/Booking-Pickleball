@@ -4,9 +4,9 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 export const startAutoCancelScheduler = () => {
-  cron.schedule("*/1 * * * *", async () => {
+  cron.schedule("*/10 * * * *", async () => {
     try {
-      console.log("🕐 Đang kiểm tra các thanh toán hết hạn...");
+      console.log(" Đang kiểm tra các thanh toán hết hạn...");
 
       const now = new Date();
 
@@ -62,9 +62,9 @@ export const startAutoCancelScheduler = () => {
             );
             
             await payOS.cancelPaymentLink(payment.order_code);
-            console.log(`✅ Đã hủy payment link ${payment.order_code} trên PayOS`);
+            console.log(`Đã hủy payment link ${payment.order_code} trên PayOS`);
           } catch (error) {
-            console.warn(`⚠️ Không thể hủy payment link ${payment.order_code}:`, error);
+            console.warn(`Không thể hủy payment link ${payment.order_code}:`, error);
           }
         }
 
@@ -87,21 +87,21 @@ export const startAutoCancelScheduler = () => {
       }
 
       if (expiredPayments.length > 0) {
-        console.log(`🎯 Đã hủy ${expiredPayments.length} booking hết hạn`);
+        console.log(`Đã hủy ${expiredPayments.length} booking hết hạn`);
       }
     } catch (error) {
-      console.error("❌ Lỗi trong scheduler tự động hủy:", error);
+      console.error("Lỗi trong scheduler tự động hủy:", error);
     }
   });
 
-  console.log("✅ Scheduler tự động hủy đã khởi động (chạy mỗi 10 phút)");
+  console.log("Scheduler tự động hủy đã khởi động (chạy mỗi 10 phút)");
 };
 
 
 export const startAutoUpdateCourtStatus = () => {
-    cron.schedule("*/15 * * * *", async () => {
+    cron.schedule("*/5 * * * *", async () => {
         try {
-            console.log("🕐 Đang kiểm tra trạng thái sân...");
+            console.log("Đang kiểm tra trạng thái sân...");
 
             const now = new Date();
             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -110,7 +110,7 @@ export const startAutoUpdateCourtStatus = () => {
 
             const activeBookings = await prisma.bookings.findMany({
                 where: {
-                    status: { in: ['CONFIRMED', 'CHECKED_IN'] },
+                    status: { in: ['CHECKED_IN'] },
                     court_id: { not: null },
                 },
                 include: {
@@ -170,15 +170,15 @@ export const startAutoUpdateCourtStatus = () => {
                     where: { courtID: courtId },
                     data: { status: status as any }
                 });
-                console.log(`✅ Sân ${courtId} → ${status}`);
+                console.log(`Sân ${courtId} → ${status}`);
             }
 
-            console.log(`✅ Đã kiểm tra ${processedCourts.size} sân`);
+            console.log(`Đã kiểm tra ${processedCourts.size} sân`);
 
         } catch (error) {
-            console.error("❌ Lỗi trong scheduler cập nhật trạng thái sân:", error);
+            console.error("Lỗi trong scheduler cập nhật trạng thái sân:", error);
         }
     });
 
-    console.log("✅ Scheduler tự động cập nhật trạng thái sân đã khởi động (chạy mỗi 15 phút)");
+    console.log("Scheduler tự động cập nhật trạng thái sân đã khởi động (chạy mỗi 5 phút)");
 };

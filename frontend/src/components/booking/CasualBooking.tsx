@@ -52,7 +52,7 @@ export default function CasualBooking({
         <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg w-full">
           <div className="bg-linear-to-r from-blue-50 to-blue-100 p-4 rounded-xl shadow-sm border border-blue-200 flex flex-col">
             <label className="text-md font-medium mb-2 text-blue-800 flex items-center gap-1">
-              📅 Ngày Bắt đầu
+              📅 Từ ngày
             </label>
             <DatePicker
               selected={StartDate ? new Date(StartDate) : null}
@@ -72,7 +72,7 @@ export default function CasualBooking({
 
           <div className="bg-linear-to-r from-green-50 to-green-100 p-4 rounded-xl shadow-sm border border-green-200 flex flex-col">
             <label className="text-md font-medium mb-2 text-green-800 flex items-center gap-1">
-              📅 Ngày Kết Thúc
+              📅 Đến ngày
             </label>
             <DatePicker
               selected={EndDate ? new Date(EndDate) : null}

@@ -7,18 +7,18 @@ import { Menu } from "lucide-react";
 import Image from "next/image";
 import Cookies from "js-cookie";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
 interface User {
     userID: string;
     full_name: string;
-    role:{
+    role: {
         roleID: string;
         name: string;
         description?: string;
@@ -116,13 +116,6 @@ export default function Navbar() {
                         </Link>
 
                         <Link
-                            href="/history"
-                            className="relative group px-1 py-1 transition-all duration-300 hover:text-blue-600"
-                        >
-                            Lịch sử
-                            <span className="absolute left-0 -bottom-1 w-0 h-0.5 bg-blue-500 transition-all group-hover:w-full"></span>
-                        </Link>
-                        <Link
                             href="/blogs"
                             className="relative group px-1 py-1 transition-all duration-300 hover:text-blue-600"
                         >
@@ -153,12 +146,18 @@ export default function Navbar() {
                                     </Link>
                                 </DropdownMenuItem>
 
-                                  <DropdownMenuItem asChild>
+                                <DropdownMenuItem asChild>
                                     <Link href="/refunds" className="cursor-pointer">
                                         Hoàn tiền
                                     </Link>
                                 </DropdownMenuItem>
-                                
+
+                                <DropdownMenuItem asChild>
+                                    <Link href="/history" className="cursor-pointer">
+                                        Lịch sử đặt sân
+                                    </Link>
+                                </DropdownMenuItem>
+
                                 {(user.role.name === "admin" || user.role.name === "superadmin") && (
                                     <DropdownMenuItem asChild>
                                         <Link href="/admin" className="cursor-pointer">
@@ -166,7 +165,7 @@ export default function Navbar() {
                                         </Link>
                                     </DropdownMenuItem>
                                 )}
-                                
+
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600">
                                     Đăng xuất
@@ -210,9 +209,7 @@ export default function Navbar() {
                     <Link href="/bookings" className="block px-4 py-2 border-b">
                         Đặt sân
                     </Link>
-                    <Link href="/history" className="block px-4 py-2 border-b">
-                        Lịch sử
-                    </Link>
+                   
                     <Link href="/blogs" className="block px-4 py-2 border-b">
                         Bài viết
                     </Link>
@@ -226,6 +223,9 @@ export default function Navbar() {
                             </Link>
                             <Link href="/refunds" className="block px-4 py-2 border-b">
                                 Hoàn tiền
+                            </Link>
+                             <Link href="/history" className="block px-4 py-2 border-b">
+                                Lịch sử đặt sân
                             </Link>
                             {user.role.name === "admin" && (
                                 <Link href="/admin" className="block px-4 py-2 border-b">

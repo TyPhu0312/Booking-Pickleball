@@ -49,7 +49,6 @@ interface BookingCardProps {
 export default function BookingCard({ booking, onStatusChange, onEdit }: BookingCardProps) {
   const [showActions, setShowActions] = useState(false);
 
-  // Nhóm slots theo ngày
   const getSlotsByDate = () => {
     const grouped: { [date: string]: typeof booking.bookingSlots } = {};
     
@@ -61,7 +60,6 @@ export default function BookingCard({ booking, onStatusChange, onEdit }: Booking
       grouped[dateKey].push(bs);
     });
 
-    // Sắp xếp slots trong mỗi ngày theo thời gian bắt đầu
     Object.keys(grouped).forEach(date => {
       grouped[date].sort((a, b) => 
         a.slot.start_time.localeCompare(b.slot.start_time)
@@ -73,7 +71,6 @@ export default function BookingCard({ booking, onStatusChange, onEdit }: Booking
 
   const slotsByDate = getSlotsByDate();
   const uniqueDates = Object.keys(slotsByDate).sort();
-  const isMultipleDates = uniqueDates.length > 1;
 
   const isRecurring = booking.bookingSlots.some(bs => bs.is_recurring);
   const recurringInfo = isRecurring ? booking.bookingSlots.find(bs => bs.is_recurring) : null;
@@ -95,14 +92,14 @@ export default function BookingCard({ booking, onStatusChange, onEdit }: Booking
 
     const labels = {
       PENDING: "Chờ",
-      CONFIRMED: "OK",
-      CHECKED_IN: "In",
-      COMPLETED: "Done",
+      CONFIRMED: "Đã cọc",
+      CHECKED_IN: "Đã check-in",
+      COMPLETED: "Hoàn thành",
       CANCELLED: "Hủy",
     };
 
     return (
-      <span className={`px-2 py-1 rounded-lg text-xs font-bold border ${styles[status]}`}>
+      <span className={`px-3 py-1.5 rounded-lg text-sm font-bold border-2 ${styles[status]} shadow-sm`}>
         {labels[status]}
       </span>
     );
@@ -117,7 +114,8 @@ export default function BookingCard({ booking, onStatusChange, onEdit }: Booking
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <MapPin className="w-4 h-4 text-emerald-600" />
-            <span className="font-bold text-gray-800">{booking.court?.name || "Chưa phân bổ"}</span>
+            <span className={`font-bold text-gray-800 ${booking.court?.name ? 'underline' : ''}`}>{booking.court?.name || "Chưa phân bổ"}</span>
+             {getStatusBadge(booking.status)}
           </div>
           
           <div className="space-y-1.5 mt-2">
@@ -148,11 +146,8 @@ export default function BookingCard({ booking, onStatusChange, onEdit }: Booking
             </div>
           )}
         </div>
-        
-        {getStatusBadge(booking.status)}
       </div>
 
-      {/* Parent Booking Indicator */}
       {booking.parent_booking_id && (
         <div className="mt-2 flex items-center gap-1.5 text-xs">
           <Link2 className="w-3.5 h-3.5 text-blue-600" />
@@ -225,7 +220,7 @@ export default function BookingCard({ booking, onStatusChange, onEdit }: Booking
               </button>
             )}
             
-            {!["COMPLETED", "CANCELLED"].includes(booking.status) && (
+            {!["COMPLETED", "CANCELLED", "CHECKED_IN"].includes(booking.status) && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();

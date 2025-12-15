@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import Cookies from "js-cookie";
-import { Phone } from "lucide-react";
 import { API_URL } from '@/lib/config';
+import { toast } from "sonner";
 
 export default function LoginForm() {
   const [phone, setPhone] = useState("");
@@ -40,7 +40,7 @@ export default function LoginForm() {
       localStorage.setItem("phone_user", phone);
       Cookies.set("token", data.token, { expires: 7 }); 
    
-      alert("Đăng nhập thành công!");
+      toast.success("Đăng nhập thành công!");
       window.location.href = "/"; 
     } catch (err) {
       console.error(err);

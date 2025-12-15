@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { se } from "date-fns/locale";
 
 interface Court {
   courtID: string;
@@ -37,16 +38,17 @@ export default function CourtsPage() {
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [editImagePreview, setEditImagePreview] = useState<string>("");
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteCourtId, setDeleteCourtId] = useState<string | null>(null);
 
   const fetchCourts = async () => {
     try {
       const res = await fetch(`${API_URL}/api/courts`);
       const data = await res.json();
       setCourts(data);
-      console.log(`${API_URL}${data[0]?.image}`)
-
-    } catch (error) {
+      } catch (error) {
       console.error("Lỗi khi tải sân:", error);
+      toast.error("Lỗi khi tải sân");
     } finally {
       setLoading(false);
     }
@@ -160,8 +162,8 @@ export default function CourtsPage() {
   };
 
 
-  const handleDeleteCourt = async (id: string, name: string) => {
-    if (!confirm(`Bạn có chắc chắn muốn xóa sân "${name}"?`)) return;
+  const handleDeleteCourt = async (id: string) => {
+    if (!deleteCourtId) return;
     
     try {
       const res = await fetch(`${API_URL}/api/courts/delete/${id}`, {
@@ -175,6 +177,8 @@ export default function CourtsPage() {
       }
       
       toast.success("Xóa sân thành công!");
+      setShowDeleteDialog(false);
+      setDeleteCourtId(null);
       fetchCourts();
     } catch (error: unknown) {
       toast.error((error as Error).message || "Lỗi khi xóa sân");
@@ -257,10 +261,12 @@ export default function CourtsPage() {
                         ? "bg-yellow-100 text-yellow-800"
                         : court.status === "MAINTENANCE"
                           ? "bg-red-100 text-red-800"
+                          : court.status === "ALMOST_DONE"
+                          ? "bg-gray-100 text-blue-800"
                           : "bg-gray-100 text-gray-800"
                       }`}
                   >
-                    {court.status === "AVAILABLE" ? "Hoạt động" : court.status === "OCCUPIED" ? "Đang sử dụng" : court.status === "MAINTENANCE" ? "Bảo trì" : "Đóng cửa"}
+                    {court.status === "AVAILABLE" ? "Hoạt động" : court.status === "OCCUPIED" ? "Đang sử dụng" : court.status === "MAINTENANCE" ? "Bảo trì" : court.status === "ALMOST_DONE" ? "Sắp hoàn thành" : "Đóng cửa"}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap font-medium">{court.multiplier}</td>
@@ -271,7 +277,10 @@ export default function CourtsPage() {
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => handleDeleteCourt(court.courtID, court.name)}
+                    onClick={() => {
+                      setDeleteCourtId(court.courtID);
+                      setShowDeleteDialog(true);
+                    }}
                     className="text-red-600 hover:text-red-900"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -340,6 +349,7 @@ export default function CourtsPage() {
                   <SelectItem value="AVAILABLE">Hoạt động</SelectItem>
                   <SelectItem value="OCCUPIED">Đang sử dụng</SelectItem>
                   <SelectItem value="MAINTENANCE">Bảo trì</SelectItem>
+                  <SelectItem value="ALMOST_DONE">Sắp hoàn thành</SelectItem>
                   <SelectItem value="CLOSED">Đóng cửa</SelectItem>
                 </SelectContent>
               </Select>
@@ -445,6 +455,7 @@ export default function CourtsPage() {
                     <SelectItem value="AVAILABLE">Hoạt động</SelectItem>
                     <SelectItem value="OCCUPIED">Đang sử dụng</SelectItem>
                     <SelectItem value="MAINTENANCE">Bảo trì</SelectItem>
+                    <SelectItem value="ALMOST_DONE">Sắp hoàn thành</SelectItem>
                     <SelectItem value="CLOSED">Đóng cửa</SelectItem>
                   </SelectContent>
                 </Select>
@@ -497,7 +508,33 @@ export default function CourtsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
+     {showDeleteDialog && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Xác nhận xoá sân</h2>
+            <p className="text-gray-600 mb-6">
+              Bạn có chắc chắn muốn xoá sân này? Hành động này không thể hoàn tác.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleDeleteCourt.bind(null, deleteCourtId!)}
+                className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Xác nhận xoá
+              </button>
+              <button
+                onClick={() => {
+                  setShowDeleteDialog(false);
+                  setDeleteCourtId(null);
+                }}
+                className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+              >
+                Không
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
