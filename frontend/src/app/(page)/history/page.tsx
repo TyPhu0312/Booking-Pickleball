@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { format, set } from "date-fns";
-import { Edit, Trash2, Star } from "lucide-react";
+import { format } from "date-fns";
+import { Edit, Star } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import PaymentModal from "@/components/payment/PaymentModal";
 import { API_URL } from '@/lib/config';
+import { toast } from "sonner";
 
 interface Booking {
   bookingID: string;
@@ -77,7 +78,6 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [viewMode, setViewMode] = useState<"group" | "detail">("group");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentBookingId, setPaymentBookingId] = useState<string | null>(null);
   const [bookingPayments, setBookingPayments] = useState<Record<string, any>>({});
@@ -93,7 +93,8 @@ export default function HistoryPage() {
     comment: "",
     is_anonymous: false
   });
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelBookingId, setCancelBookingId] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -144,8 +145,6 @@ export default function HistoryPage() {
         } else {
           setBookings(data);
         }
-      } else {
-        console.error("API response not OK:", response.status);
       }
     } catch (error) {
       console.error("Lỗi khi lấy lịch sử đặt slot:", error);
@@ -193,11 +192,12 @@ export default function HistoryPage() {
     setSelectedBooking(null);
   };
 
-  const handleCancelBooking = async (bookingID: string) => {
-     if (!confirm("Bạn có chắc muốn hủy đặt sân này không?")) return;
+  const handleCancelBooking = async () => {
+    if (!cancelBookingId) return;
+    
     try {
       const response = await fetch(
-        `${API_URL}/api/bookings/delete/${bookingID}`,
+        `${API_URL}/api/bookings/delete/${cancelBookingId}`,
         {
           method: "PUT",
           headers: {
@@ -207,13 +207,16 @@ export default function HistoryPage() {
       );
 
       if (response.ok) {
-        alert("Hủy đặt sân thành công.");
+        toast.success("Hủy đặt sân thành công.");
+        setShowCancelConfirm(false);
+        setCancelBookingId(null);
         fetchBookings();
       } else {
-        alert("Hủy đặt sân thất bại.");
+        toast.error("Hủy đặt sân thất bại.");
       }
     } catch (error) {
       console.error("Lỗi khi hủy đặt sân:", error);
+      toast.error("Có lỗi xảy ra khi hủy đặt sân.");
     }
   };
 
@@ -221,12 +224,12 @@ export default function HistoryPage() {
     if (!refundBookingId) return;
 
     if (!refundForm.cancel_reason) {
-      alert("Vui lòng nhập lý do hủy!");
+      toast("Vui lòng nhập lý do hủy!");
       return;
     }
 
     if (!user?.bank_name || !user?.bank_account_number || !user?.bank_account_owner) {
-      alert("Vui lòng cập nhật thông tin ngân hàng ở trang Profile trước khi yêu cầu hoàn tiền!");
+      toast("Vui lòng cập nhật thông tin ngân hàng ở trang Profile trước khi yêu cầu hoàn tiền!");
       return;
     }
 
@@ -238,7 +241,6 @@ export default function HistoryPage() {
         bank_account_owner: user.bank_account_owner
       };
       
-      console.log("Gửi yêu cầu hoàn tiền với dữ liệu:", requestData);
       const response = await fetch(
         `${API_URL}/api/refunds/request-cancel/${refundBookingId}`,
         {
@@ -255,7 +257,7 @@ export default function HistoryPage() {
       if (response.ok) {
         const refundAmount = data.refundAmount || data.refund_amount || 0;
         const refundPercentage = data.refundPercentage || data.refund_percentage || 0;
-        alert(`Yêu cầu hoàn tiền thành công!\nSố tiền hoàn: ${refundAmount.toLocaleString()}đ (${refundPercentage}%)`);
+        toast.success(`Yêu cầu hoàn tiền thành công!\nSố tiền hoàn: ${refundAmount.toLocaleString()}đ (${refundPercentage}%)`);
         setShowRefundModal(false);
         setRefundBookingId(null);
         setRefundForm({
@@ -263,11 +265,11 @@ export default function HistoryPage() {
         });
         fetchBookings();
       } else {
-        alert(data.message || "Yêu cầu hoàn tiền thất bại");
+        toast.error("Yêu cầu hoàn tiền thất bại");
       }
     } catch (error) {
       console.error("Lỗi khi yêu cầu hoàn tiền:", error);
-      alert("Có lỗi xảy ra khi gửi yêu cầu");
+      toast.error("Có lỗi xảy ra khi gửi yêu cầu");
     }
   };
 
@@ -292,11 +294,6 @@ export default function HistoryPage() {
   const handleSubmitReview = async () => {
     if (!reviewBooking || !user?.userID || !reviewBooking.court?.courtID) return;
 
-    // if (!reviewForm.comment.trim()) {
-    //   alert("Vui lòng nhập nhận xét!");
-    //   return;
-    // }
-
     try {
       const response = await fetch(`${API_URL}/api/feedbacks`, {
         method: "POST",
@@ -313,7 +310,7 @@ export default function HistoryPage() {
       });
 
       if (response.ok) {
-        alert(reviewBooking.hasReviewed ? "Cập nhật đánh giá thành công!" : "Gửi đánh giá thành công!");
+        toast.success(reviewBooking.hasReviewed ? "Cập nhật đánh giá thành công!" : "Gửi đánh giá thành công!");
         setShowReviewModal(false);
         setReviewBooking(null);
         setReviewForm({
@@ -324,11 +321,11 @@ export default function HistoryPage() {
         fetchBookings();
       } else {
         const error = await response.json();
-        alert(error.message || "Gửi đánh giá thất bại");
+        toast.error(error.message || "Gửi đánh giá thất bại");
       }
     } catch (error) {
       console.error("Lỗi khi gửi đánh giá:", error);
-      alert("Có lỗi xảy ra khi gửi đánh giá");
+      toast.error("Có lỗi xảy ra khi gửi đánh giá");
     }
   };
 
@@ -387,18 +384,6 @@ export default function HistoryPage() {
     });
   };
 
-  const toggleGroup = (parentId: string) => {
-    setExpandedGroups(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(parentId)) {
-        newSet.delete(parentId);
-      } else {
-        newSet.add(parentId);
-      }
-      return newSet;
-    });
-  };
-
 
   if (loading) {
     return <div>Đang tải...</div>;
@@ -406,7 +391,7 @@ export default function HistoryPage() {
 
   return (
     <div className="container mx-auto px-4 py-12">
-      <h1 className="text-3xl font-bold text-center mb-8">Lịch Sử Đặt Slot</h1>
+      <h1 className="text-3xl font-bold text-center mb-8">Lịch Sử Đặt Sân</h1>
 
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
         <table className="w-full">
@@ -422,62 +407,12 @@ export default function HistoryPage() {
           <tbody className="divide-y divide-gray-200">
             {groupBookings().map((group, groupIndex) => {
               if (group.isGroup && group.parentId) {
-                const isExpanded = expandedGroups.has(group.parentId);
-                const firstBooking = group.bookings[0];
-                const allDates = group.bookings.map(b => format(new Date(b.booking_date), "dd/MM/yyyy")).join(", ");
-                
                 return (
                   <>
-                    <tr key={`group-${group.parentId}`} className="bg-blue-50 hover:bg-blue-100 transition-colors">
-                      <td className="px-6 py-4 text-sm font-semibold" colSpan={5}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <button
-                              onClick={() => toggleGroup(group.parentId!)}
-                              className="text-blue-600 hover:text-blue-800"
-                            >
-                              {isExpanded ? (
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                              ) : (
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                </svg>
-                              )}
-                            </button>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-blue-900">📦 Nhóm booking - {group.bookings.length} ngày</span>
-                                <span className="text-xs px-2 py-1 bg-blue-200 text-blue-800 rounded-full">
-                                  {firstBooking.booking_type === "CASUAL" ? "Đặt lẻ" :
-                                    firstBooking.booking_type === "WEEKLY" ? "Đặt theo tuần" :
-                                      "Đặt cho giải đấu"}
-                                </span>
-                              </div>
-                              <div className="text-xs text-gray-600 mt-1">
-                                Ngày: {allDates}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <div className="text-right">
-                              <div className="text-xs text-gray-600">Tổng tiền cọc</div>
-                              <div className="text-sm font-bold text-green-600">{group.totalDeposit.toLocaleString()} VNĐ</div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-xs text-gray-600">Tổng tiền</div>
-                              <div className="text-sm font-bold text-blue-900">{group.totalPrice.toLocaleString()} VNĐ</div>
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                    {isExpanded && group.bookings.map((booking, idx) => (
+                    {group.bookings.map((booking, idx) => (
                       <tr key={booking.bookingID} className="bg-blue-25">
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <div className="flex items-center gap-2">
-                            <span className="text-blue-400">└─</span>
                             {format(booking.booking_date, "dd-MM-yyyy")}
                           </div>
                         </td>
@@ -578,7 +513,10 @@ export default function HistoryPage() {
                                 })()}
                                 
                                 <button
-                                  onClick={() => handleCancelBooking(booking.bookingID)}
+                                  onClick={() => {
+                                    setCancelBookingId(booking.bookingID);
+                                    setShowCancelConfirm(true);
+                                  }}
                                   className="text-red-600 hover:text-red-800 text-xs font-medium"
                                 >
                                   Hủy
@@ -716,7 +654,10 @@ export default function HistoryPage() {
                             })()}
                             
                             <button
-                              onClick={() => handleCancelBooking(booking.bookingID)}
+                              onClick={() => {
+                                setCancelBookingId(booking.bookingID);
+                                setShowCancelConfirm(true);
+                              }}
                               className="text-red-600 hover:text-red-800 text-xs font-medium"
                             >
                               Hủy
@@ -835,170 +776,13 @@ export default function HistoryPage() {
             </div>
 
             <div className="mt-4">
-              {selectedBooking.booking_type === "WEEKLY" && (
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-medium">Danh sách slot:</h3>
-                  <button
-                    onClick={() => setViewMode(viewMode === "group" ? "detail" : "group")}
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    {viewMode === "group" ? "Xem chi tiết từng ngày" : "Xem gộp theo tuần"}
-                  </button>
-                </div>
-
-              )}
-
-
-
               {(() => {
-                const groupedSlots: Record<number, typeof selectedBooking.bookingSlots> = {};
-
-                selectedBooking.bookingSlots.forEach((bs) => {
-                  if (bs.is_recurring && bs.recurring_day) {
-                    if (!groupedSlots[bs.recurring_day]) groupedSlots[bs.recurring_day] = [];
-                    groupedSlots[bs.recurring_day].push(bs);
-                  }
-                });
-
-                const weeklyGroups = Object.entries(groupedSlots);
-                const singleSlots = selectedBooking.bookingSlots.filter((bs) => !bs.is_recurring);
-
-                if (viewMode === "group" && selectedBooking.booking_type === "WEEKLY") {
-                  return (
-                    <>
-                      {weeklyGroups.map(([day, slots], i) => {
-                        const firstSlot = slots[0];
-                        const earliest = slots.map(s => s.slot.start_time).sort()[0];
-                        const latest = slots.map(s => s.slot.end_time).sort().reverse()[0];
-
-                        const jsTargetDay = parseInt(day, 10);
-
-                        const slotsForDay = selectedBooking.bookingSlots.filter(
-                          (bs) => bs.is_recurring && bs.recurring_day === parseInt(day)
-                        );
-
-                        const startDate = slotsForDay.length
-                          ? new Date(Math.min(...slotsForDay.map(bs => new Date(bs.date).getTime())))
-                          : new Date(selectedBooking.booking_date);
-
-                        console.log("selectedBooking", startDate);
-
-
-                        const jsStartDay = startDate.getDay();
-                        let offset = (jsTargetDay - jsStartDay + 7) % 7;
-                        if (offset === 0) offset = 7;
-
-                        const dayLabel = jsTargetDay === 0 ? "Chủ nhật" : `Thứ ${jsTargetDay + 1}`;
-
-                        return (
-                          <div
-                            key={i}
-                            className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 mb-4 hover:shadow-md transition-shadow"
-                          >
-                            <div className="flex justify-between items-center mb-2">
-                              <h3 className="font-semibold text-gray-800 text-lg">Đặt hằng tuần: {dayLabel}</h3>
-                              <span className="text-sm text-gray-500">Số tuần: {firstSlot.num_weeks}</span>
-                            </div>
-
-                            <div className="flex justify-between mb-2">
-                              <span className="font-medium text-gray-600">Giờ:</span>
-                              <span className="text-gray-800">{earliest.slice(0, 5)} - {latest.slice(0, 5)}</span>
-                            </div>
-
-                            <p className="text-sm text-gray-500 mb-1">Các ngày dự kiến:</p>
-                            <ul className="list-disc ml-5 space-y-1 text-sm text-gray-700">
-                              {Array.from({ length: firstSlot.num_weeks || 0 }, (_, idx) => {
-                                const date = new Date(startDate);
-                                date.setDate(date.getDate() + idx * 7);
-                                return <li key={idx}>{format(date, "dd-MM-yyyy")}</li>;
-                              })}
-                            </ul>
-                          </div>
-
-                        );
-                      })}
-
-                      {singleSlots.map((bs, idx) => (
-                        <div
-                          key={idx}
-                          className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 mb-3 hover:shadow-md transition-shadow"
-                        >
-                          <div className="flex justify-between mb-2">
-                            <span className="font-medium text-gray-600">Ngày:</span>
-                            <span className="text-gray-800">{format(selectedBooking.booking_date, "dd-MM-yyyy")}</span>
-                          </div>
-
-                          <div className="flex justify-between">
-                            <span className="font-medium text-gray-600">Giờ:</span>
-                            <span className="text-gray-800">
-                              {`${bs.slot.start_time.slice(0, 5)} - ${bs.slot.end_time.slice(0, 5)}`}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-
-                    </>
-                  );
-                }
-                else if (viewMode === "detail" && selectedBooking.booking_type === "WEEKLY") {
-                  return (
-                    <>
-                      {weeklyGroups.map(([day, slots], i) => {
-                        const firstSlot = slots[0];
-                        const earliest = slots.map(s => s.slot.start_time).sort()[0];
-                        const latest = slots.map(s => s.slot.end_time).sort().reverse()[0];
-                        const jsTargetDay = parseInt(day, 10);
-
-                        const slotsForDay = selectedBooking.bookingSlots.filter(
-                          (bs) => bs.is_recurring && bs.recurring_day === parseInt(day)
-                        );
-
-                        const startDate = slotsForDay.length
-                          ? new Date(Math.min(...slotsForDay.map(bs => new Date(bs.date).getTime())))
-                          : new Date(selectedBooking.booking_date);
-
-                        console.log("selectedBooking", startDate);
-
-
-                        const jsStartDay = startDate.getDay();
-                        let offset = (jsTargetDay - jsStartDay + 7) % 7;
-                        if (offset === 0) offset = 7;
-
-                        const dayLabel = jsTargetDay === 0 ? "Chủ nhật" : `Thứ ${jsTargetDay + 1}`;
-
-                        return (
-                          <div
-                            key={i}
-                            className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 mb-4 hover:shadow-md transition-shadow"
-                          >
-                            <h4 className="text-gray-800 font-semibold text-lg mb-2">{dayLabel}</h4>
-                            <ScrollArea className="h-48 rounded-md border">
-                            <ul className="list-disc ml-5 space-y-1 text-sm text-gray-700">
-                              {Array.from({ length: firstSlot.num_weeks || 0 }, (_, idx) => {
-                                const date = new Date(startDate);
-                                date.setDate(date.getDate() + idx * 7);
-                                return (
-                                  <li key={idx}>
-                                    {format(date, "dd-MM-yyyy")} — {earliest.slice(0, 5)} - {latest.slice(0, 5)}
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                            </ScrollArea>
-                          </div>
-
-                        );
-                      })}
-                    </>
-                  );
-                }
-                else if (selectedBooking.booking_type !== "WEEKLY") {
-                  return (
-                    <>
-                      {selectedBooking.bookingSlots && selectedBooking.bookingSlots.length > 0 && (
-                        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 mb-3 hover:shadow-md transition-shadow">
-                          <h4 className="font-semibold text-gray-800 mb-3">Danh sách slot:</h4>
-                          <ScrollArea className="h-48 rounded-md border">
+                return (
+                  <>
+                    {selectedBooking.bookingSlots && selectedBooking.bookingSlots.length > 0 && (
+                      <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 mb-3 hover:shadow-md transition-shadow">
+                        <h4 className="font-semibold text-gray-800 mb-3">Danh sách slot:</h4>
+                        <ScrollArea className="h-48 rounded-md border">
                           <ul className="space-y-2">
                             {selectedBooking.bookingSlots.map((bs, idx) => (
                               <li key={idx} className="flex justify-between items-center border-b pb-2 last:border-0">
@@ -1009,12 +793,11 @@ export default function HistoryPage() {
                               </li>
                             ))}
                           </ul>
-                          </ScrollArea>
-                        </div>
-                      )}
-                    </>
-                  );
-                }
+                        </ScrollArea>
+                      </div>
+                    )}
+                  </>
+                );
               })()}
             </div>
           </div>
@@ -1112,6 +895,33 @@ export default function HistoryPage() {
                   Hủy
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCancelConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 relative">
+            <h2 className="text-lg font-bold text-gray-800 mb-3">Xác nhận hủy đặt sân</h2>
+            <p className="text-gray-600 mb-6">Bạn có chắc chắn muốn hủy đặt sân này không?</p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancelBooking}
+                className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Xác nhận hủy
+              </button>
+              <button
+                onClick={() => {
+                  setShowCancelConfirm(false);
+                  setCancelBookingId(null);
+                }}
+                className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+              >
+                Đóng
+              </button>
             </div>
           </div>
         </div>

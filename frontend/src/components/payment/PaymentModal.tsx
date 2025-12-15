@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback } from "react";
 import { X, Clock, QrCode, CreditCard } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { API_URL } from "@/lib/config";
+import { toast } from "sonner";
 
 interface PaymentModalProps {
   bookingId: string;
@@ -44,10 +45,8 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
 
   const handleTimeExpired = useCallback(async () => {
     try {
-      console.log("⏰ Hết thời gian thanh toán, đang kiểm tra...");
-      
       if (!paymentData?.paymentId) {
-        console.warn("⚠️ Không có paymentId");
+        console.warn("Không có paymentId");
         return;
       }
 
@@ -55,17 +54,13 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
       
       if (statusRes.ok) {
         const statusData = await statusRes.json();
-        console.log("📊 Status check:", statusData.status);
         
         if (statusData.status === "PARTIALLY_PAID" || statusData.status === "PAID") {
-          console.log("✅ Đã thanh toán, không hủy");
           onPaymentSuccess();
           return;
         }
       }
-
-      console.log("❌ Chưa thanh toán, đang hủy booking...");
-      
+   
       try {
         const cancelPaymentRes = await fetch(`${API_URL}/api/payos/${paymentData.paymentId}/cancel`, {
           method: "POST",
@@ -73,12 +68,12 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
         });
         
         if (cancelPaymentRes.ok) {
-          console.log("✅ Đã hủy payment link trên PayOS");
+          console.log("Đã hủy payment link trên PayOS");
         } else {
-          console.warn("⚠️ Không thể hủy payment link, tiếp tục hủy booking");
+          console.warn("Không thể hủy payment link, tiếp tục hủy booking");
         }
       } catch (error) {
-        console.error("❌ Lỗi khi hủy payment link:", error);
+        console.error("Lỗi khi hủy payment link:", error);
       }
       
       const cancelRes = await fetch(`${API_URL}/api/bookings/updateBookingStatus/${bookingId}`, {
@@ -88,14 +83,13 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
       });
 
       if (cancelRes.ok) {
-        console.log("✅ Đã hủy booking thành công");
-        alert("Hết thời gian thanh toán. Booking và mã QR đã bị hủy.");
+        toast.error("Hết thời gian thanh toán. Booking và mã QR đã bị hủy.");
         onClose();
       } else {
-        console.error("❌ Lỗi khi hủy booking:", await cancelRes.text());
+        console.error("Lỗi khi hủy booking:", await cancelRes.text());
       }
     } catch (error) {
-      console.error("❌ Error handling time expired:", error);
+      console.error("Lỗi khi xử lý hết thời gian:", error);
     }
   }, [paymentData, bookingId, onPaymentSuccess, onClose]);
 
@@ -119,7 +113,6 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
     }, 1000);
 
     return () => {
-      console.log("🧹 Cleanup timer");
       clearInterval(timer);
     };
   }, [paymentData, handleTimeExpired]);

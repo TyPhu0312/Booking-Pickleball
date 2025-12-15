@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import moment from "moment-timezone";
 import { API_URL } from '@/lib/config';
 import PaymentModal from "@/components/payment/PaymentModal";
+import { toast } from "sonner";
 
 type BookingStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "COMPLETED" | "CANCELLED";
 type CourtType = "INDOOR" | "OUTDOOR";
@@ -182,7 +183,7 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
     e.preventDefault();
 
     if (!selectedCourtId) {
-      alert("Không có sân trống cho các slot đã chọn");
+      toast("Không có sân trống cho các slot đã chọn");
       return;
     }
 
@@ -190,7 +191,7 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
     const selectedSlots = slots.filter(s => formData.slot_ids.includes(s.slotID));
 
     if (!selectedCourt || selectedSlots.length === 0) {
-      alert("Vui lòng chọn loại sân và ít nhất 1 slot");
+      toast("Vui lòng chọn loại sân và ít nhất 1 slot");
       return;
     }
 
@@ -255,12 +256,8 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
         body: JSON.stringify(bookingData)
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
-
       if (response.ok) {
         const responseData = await response.json();
-        console.log('Response data:', responseData);
 
         let bookingId: string;
         let bookingCount = 1;
@@ -268,16 +265,13 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
         if (responseData.bookings && Array.isArray(responseData.bookings)) {
           bookingId = responseData.bookings[0].bookingID;
           bookingCount = responseData.bookings.length;
-          console.log(`Created ${bookingCount} bookings with parent_id: ${responseData.parent_booking_id}`);
         } else {
           bookingId = responseData.bookingID;
-          console.log('Created single booking:', bookingId);
         }
 
         const detailResponse = await fetch(`${API_URL}/api/bookings/getBookingById/${bookingId}`);
         if (detailResponse.ok) {
           const fullBooking = await detailResponse.json();
-          console.log('Full booking details:', fullBooking);
 
           if (paymentMethod === "PAYOS") {
             setCreatedBookingId(fullBooking.bookingID);
@@ -296,12 +290,12 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
 
               if (cashPaymentResponse.ok) {
                 const successMsg = bookingCount > 1 
-                  ? `✅ Đã tạo thành công ${bookingCount} bookings (${bookingCount} ngày)!\n💵 Khách hàng sẽ thanh toán tiền mặt khi đến sân.\n💰 Tổng tiền cọc: ${deposit.toLocaleString()}đ`
-                  : `✅ Đã tạo booking thành công!\n💵 Khách hàng sẽ thanh toán tiền mặt khi đến sân.\n💰 Tiền cọc cần thu: ${deposit.toLocaleString()}đ`;
-                alert(successMsg);
+                  ? `Đã tạo thành công ${bookingCount} bookings (${bookingCount} ngày)!\nKhách hàng sẽ thanh toán tiền mặt khi đến sân.\n💰 Tổng tiền cọc: ${deposit.toLocaleString()}đ`
+                  : `Đã tạo booking thành công!\nKhách hàng sẽ thanh toán tiền mặt khi đến sân.\n💰 Tiền cọc cần thu: ${deposit.toLocaleString()}đ`;
+                toast.success(successMsg);
                 onSubmit(fullBooking);
               } else {
-                alert("⚠️ Đã tạo booking nhưng lỗi khi tạo payment record.\nVui lòng kiểm tra lại.");
+                toast.error("Đã tạo booking nhưng lỗi khi tạo payment record.\nVui lòng kiểm tra lại.");
                 onSubmit(fullBooking);
               }
             } catch (error) {
@@ -309,7 +303,7 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
               const successMsg = bookingCount > 1
                 ? `✅ Đã tạo thành công ${bookingCount} bookings!\n💵 Thanh toán tiền mặt khi đến sân.`
                 : "✅ Đã tạo booking thành công!\n💵 Thanh toán tiền mặt khi đến sân.";
-              alert(successMsg);
+              toast.success(successMsg);
               onSubmit(fullBooking);
             }
           }
@@ -331,16 +325,16 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
           // }
         } else {
           console.error('Failed to fetch booking details');
-          alert("Đã tạo booking nhưng không lấy được chi tiết");
+          toast.error("Đã tạo booking nhưng không lấy được chi tiết");
         }
       } else {
         const error = await response.json();
         console.error('Error response:', error);
-        alert(`Lỗi: ${error.message || "Không thể tạo booking"}`);
+        toast.error(`Lỗi: ${error.message || "Không thể tạo booking"}`);
       }
     } catch (error) {
       console.error("Error creating booking:", error);
-      alert("Lỗi khi tạo booking");
+      toast.error("Lỗi khi tạo booking");
     }
   };
 

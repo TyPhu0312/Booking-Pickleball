@@ -121,8 +121,6 @@ export default function TournamentsPage() {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        console.log("Created tournament:", data);
         toast.success("Tạo giải đấu thành công!");
         setIsCreateOpen(false);
         setForm({ name: "", start_day: "", max_teams: "", description: "", image: "", status: "UPCOMING", user_id: "" });
@@ -174,7 +172,7 @@ export default function TournamentsPage() {
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-        <h1 className="text-3xl font-bold">Các Giải Đấu Pickleball</h1>
+        <h1 className="text-3xl font-bold">Các Giải Đấu</h1>
         <Button onClick={() => setIsCreateOpen(true)} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700">
           <Plus className="w-5 h-5" />
           Tạo Giải Đấu

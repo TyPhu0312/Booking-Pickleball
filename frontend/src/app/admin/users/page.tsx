@@ -41,17 +41,17 @@ export default function UsersPage() {
     fetchUsers();
   }, []);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Bạn có chắc muốn xóa người dùng này không?")) return;
-    try {
-      const res = await fetch(`${API_URL}/api/users/delete/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Xóa thất bại");
-      alert("Xóa người dùng thành công");
-      fetchUsers();
-    } catch (err: unknown) {
-      alert((err as Error).message);
-    }
-  };
+  // const handleDelete = async (id: string) => {
+  //   if (!confirm("Bạn có chắc muốn xóa người dùng này không?")) return;
+  //   try {
+  //     const res = await fetch(`${API_URL}/api/users/delete/${id}`, { method: "DELETE" });
+  //     if (!res.ok) throw new Error("Xóa thất bại");
+  //     alert("Xóa người dùng thành công");
+  //     fetchUsers();
+  //   } catch (err: unknown) {
+  //     alert((err as Error).message);
+  //   }
+  // };
   return (
     <div>
     <h1 className="text-3xl font-bold mb-8">Quản Lý Người Dùng</h1>

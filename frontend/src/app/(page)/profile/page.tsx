@@ -17,6 +17,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/avatar";
+import { toast } from "sonner";
 
 interface Role {
   roleID: string;
@@ -76,19 +77,17 @@ export default function ProfilePage() {
     if (!editForm) return;
 
     if (!editForm.full_name.trim()) {
-      alert("Vui lòng nhập họ tên!");
+      toast("Vui lòng nhập họ tên!");
       return;
     }
     if (!editForm.phone || !/^0[3|5|7|8|9]\d{8}$/.test(editForm.phone)) {
-      alert("Số điện thoại không hợp lệ!");
+      toast("Số điện thoại không hợp lệ!");
       return;
     }
-
-    console.log("Saving user:", editForm);
-
+    
     try {
       if (!user) {
-        alert("Không tìm thấy thông tin người dùng!");
+        toast.error("Không tìm thấy thông tin người dùng!");
         return;
       }
       const response = await fetch(
@@ -101,7 +100,7 @@ export default function ProfilePage() {
       );
 
       if (!response.ok) {
-        alert("Cập nhật hồ sơ thất bại!");
+        toast.error("Cập nhật hồ sơ thất bại!");
         return;
       }
 
@@ -110,36 +109,36 @@ export default function ProfilePage() {
       localStorage.setItem("user", JSON.stringify(updatedUser));
 
       setIsEditOpen(false);
-      alert("Cập nhật hồ sơ thành công!");
+      toast.success("Cập nhật hồ sơ thành công!");
     } catch (error) {
       console.error(error);
-      alert("Đã có lỗi xảy ra khi cập nhật hồ sơ!");
+      toast.error("Đã có lỗi xảy ra khi cập nhật hồ sơ!");
     }
   };
 
   const handleChangePassword = async () => {
     if (!passwordForm.currentPassword.trim()) {
-      alert("Vui lòng nhập mật khẩu hiện tại!");
+      toast("Vui lòng nhập mật khẩu hiện tại!");
       return;
     }
     if (!passwordForm.newPassword.trim()) {
-      alert("Vui lòng nhập mật khẩu mới!");
+      toast("Vui lòng nhập mật khẩu mới!");
       return;
     }
     
     const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(passwordForm.newPassword)) {
-      alert("Mật khẩu phải có ít nhất 8 ký tự, gồm chữ hoa, số và ký tự đặc biệt!");
+      toast("Mật khẩu phải có ít nhất 8 ký tự, gồm chữ hoa, số và ký tự đặc biệt!");
       return;
     }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      alert("Mật khẩu xác nhận không khớp!");
+      toast("Mật khẩu xác nhận không khớp!");
       return;
     }
 
     try {
       if (!user) {
-        alert("Không tìm thấy thông tin người dùng!");
+        toast.error("Không tìm thấy thông tin người dùng!");
         return;
       }
 
@@ -158,7 +157,7 @@ export default function ProfilePage() {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.error || "Đổi mật khẩu thất bại!");
+        toast.error(data.error || "Đổi mật khẩu thất bại!");
         return;
       }
 
@@ -168,10 +167,10 @@ export default function ProfilePage() {
         confirmPassword: "",
       });
       setIsPasswordOpen(false);
-      alert("Đổi mật khẩu thành công!");
+      toast.success("Đổi mật khẩu thành công!");
     } catch (error) {
       console.error(error);
-      alert("Đã có lỗi xảy ra khi đổi mật khẩu!");
+      toast.error("Đã có lỗi xảy ra khi đổi mật khẩu!");
     }
   };
 
@@ -242,15 +241,6 @@ export default function ProfilePage() {
                 {user.bank_account_number || "Chưa cập nhật"}
               </p>
             </div>
-
-            {/* <div>
-              <Label className="text-gray-600 ">Chủ tài khoản</Label>
-              <p className="font-medium">
-                {user.bank_account_owner || "Chưa cập nhật"}
-              </p>
-            </div> */}
-
-           
           </div>
 
           <Button

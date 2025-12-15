@@ -58,32 +58,28 @@ export default function RefundsPage() {
   useEffect(() => {
     const fetchRefunds = async () => {
       if (!user?.userID) {
-        console.log("❌ Không có user ID");
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
-        console.log("🔍 Fetching refunds for user:", user.userID);
         
         const response = await fetch(
           `${API_URL}/api/refunds/requests?userId=${user.userID}`
         );
         
         if (!response.ok) {
-          console.error("❌ Failed to fetch refunds:", response.status);
+          console.error("Failed to fetch refunds:", response.status);
           setLoading(false);
           return;
         }
 
         const data = await response.json();
-        console.log("✅ Refunds fetched:", data.length, "items");
-        console.log("📋 Refunds data:", data);
-        
+              
         setRefunds(data);
       } catch (error) {
-        console.error("❌ Error fetching refunds:", error);
+        console.error("Error fetching refunds:", error);
       } finally {
         setLoading(false);
       }
@@ -310,9 +306,6 @@ export default function RefundsPage() {
                 <div className="flex justify-between items-center">
                   <div>
                     <h2 className="text-2xl font-bold">Chi Tiết Hoàn Tiền</h2>
-                    <p className="text-blue-100 text-sm mt-1">
-                      Mã booking: {selectedRefund.booking_id}
-                    </p>
                   </div>
                   <button
                     onClick={() => setSelectedRefund(null)}

@@ -5,8 +5,7 @@ import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { useParams, useRouter } from "next/navigation";
 import { Calendar, User, ArrowLeft, BookOpen } from "lucide-react";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { API_URL } from '@/lib/config';
 
 interface Blog {
   blogID: string;

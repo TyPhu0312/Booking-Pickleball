@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { XCircle } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { API_URL } from '@/lib/config';
+import { toast } from "sonner";
 
 type BookingStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "COMPLETED" | "CANCELLED";
 type CourtType = "INDOOR" | "OUTDOOR";
@@ -195,16 +196,16 @@ export default function EditBookingModal({ booking, onClose, onUpdate }: EditBoo
         if (detailResponse.ok) {
           const fullBooking = await detailResponse.json();
           const wasAssigning = !booking.court && selectedCourtId;
-          alert(wasAssigning ? "✅ Đã phân bổ sân thành công!" : "✅ Cập nhật booking thành công!");
+          toast.success(wasAssigning ? "✅ Đã phân bổ sân thành công!" : "✅ Cập nhật booking thành công!");
           onUpdate(fullBooking);
         }
       } else {
         const error = await response.json();
-        alert(`Không thể cập nhật booking: ${error.message || ""}`);
+        toast.error(`Không thể cập nhật booking: ${error.message || ""}`);
       }
     } catch (error) {
       console.error("Error updating booking:", error);
-      alert("Lỗi khi cập nhật booking");
+      toast.error("Lỗi khi cập nhật booking");
     }
   };
 

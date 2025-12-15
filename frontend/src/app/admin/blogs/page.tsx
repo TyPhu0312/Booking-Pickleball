@@ -8,9 +8,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { API_URL } from "@/lib/config";
+import { set } from "date-fns";
+
 
 interface Blog {
   blogID: string;
@@ -39,6 +40,8 @@ export default function BlogsPage() {
   const [editImagePreview, setEditImagePreview] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelBlogId, setCancelBlogId] = useState<string | null>(null);
 
   const fetchBlogs = async () => {
     try {
@@ -92,7 +95,7 @@ export default function BlogsPage() {
       formDataToSend.append("title", formData.title);
       formDataToSend.append("content", formData.content);
       formDataToSend.append("author", formData.author);
-      
+
       if (imageFile) {
         formDataToSend.append("image", imageFile);
       }
@@ -101,13 +104,13 @@ export default function BlogsPage() {
         method: "POST",
         body: formDataToSend,
       });
-      
+
       const data = await res.json();
-      
+
       if (!res.ok) {
         throw new Error(data.error || "Lỗi khi tạo blog");
       }
-      
+
       toast.success("Tạo blog thành công!");
       setShowForm(false);
       setFormData({ title: "", content: "", author: "" });
@@ -121,7 +124,7 @@ export default function BlogsPage() {
 
   const handleUpdateBlog = async () => {
     if (!editingBlog) return;
-    
+
     try {
       if (!editingBlog.title || !editingBlog.content || !editingBlog.author) {
         toast.error("Vui lòng điền đầy đủ thông tin");
@@ -132,7 +135,7 @@ export default function BlogsPage() {
       formDataToSend.append("title", editingBlog.title);
       formDataToSend.append("content", editingBlog.content);
       formDataToSend.append("author", editingBlog.author);
-      
+
       if (editImageFile) {
         formDataToSend.append("image", editImageFile);
       }
@@ -141,13 +144,13 @@ export default function BlogsPage() {
         method: "PUT",
         body: formDataToSend,
       });
-      
+
       const data = await res.json();
-      
+
       if (!res.ok) {
         throw new Error(data.error || "Lỗi khi cập nhật blog");
       }
-      
+
       toast.success("Cập nhật blog thành công!");
       setEditingBlog(null);
       setEditImageFile(null);
@@ -158,21 +161,23 @@ export default function BlogsPage() {
     }
   };
 
-  const handleDeleteBlog = async (id: string, title: string) => {
-    if (!confirm(`Bạn có chắc chắn muốn xóa blog "${title}"?`)) return;
-    
+  const handleDeleteBlog = async (id: string) => {
+    if (!cancelBlogId) return;
+
     try {
       const res = await fetch(`${API_URL}/api/blogs/delete/${id}`, {
         method: "DELETE",
       });
-      
+
       const data = await res.json();
-      
+
       if (!res.ok) {
         throw new Error(data.error || "Lỗi khi xóa blog");
       }
-      
+
       toast.success("Xóa blog thành công!");
+      setShowCancelConfirm(false);
+      setCancelBlogId(null);
       fetchBlogs();
     } catch (error: unknown) {
       toast.error((error as Error).message || "Lỗi khi xóa blog");
@@ -209,7 +214,7 @@ export default function BlogsPage() {
 
   if (loading) return <p>Đang tải dữ liệu...</p>;
 
-   const truncateContent = (content: string, maxLength: number = 150) => {
+  const truncateContent = (content: string, maxLength: number = 150) => {
     const plainText = content.replace(/<[^>]*>/g, '');
     if (plainText.length <= maxLength) return plainText;
     return plainText.substring(0, maxLength) + "...";
@@ -254,8 +259,8 @@ export default function BlogsPage() {
               <tr key={blog.blogID} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   {blog.image ? (
-                    <img 
-                      src={`${API_URL}${blog.image}`} 
+                    <img
+                      src={`${API_URL}${blog.image}`}
                       alt={blog.title}
                       className="w-16 h-16 object-cover rounded-lg"
                     />
@@ -274,14 +279,15 @@ export default function BlogsPage() {
                   {formatDate(blog.createdAt)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                  <button 
+                  <button
                     className="text-blue-600 hover:text-blue-900"
                     onClick={() => setEditingBlog(blog)}
                   >
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => handleDeleteBlog(blog.blogID, blog.title)}
+                    onClick={() => {setCancelBlogId(blog.blogID);
+                                    setShowCancelConfirm(true);}}
                     className="text-red-600 hover:text-red-900"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -296,7 +302,7 @@ export default function BlogsPage() {
           <div className="flex items-center justify-between px-6 py-4 border-t">
             <div className="text-sm text-gray-700">
               <span className="font-medium"></span>Tổng số bài viết{" "}
-              <span className="font-medium">{filteredBlogs.length}</span> 
+              <span className="font-medium">{filteredBlogs.length}</span>
             </div>
             <div className="flex gap-2">
               <Button
@@ -343,7 +349,7 @@ export default function BlogsPage() {
               Nhập thông tin để tạo blog mới
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-8 mt-2">
             <div>
               <Label htmlFor="title">Tiêu đề *</Label>
@@ -386,9 +392,9 @@ export default function BlogsPage() {
               />
               {imagePreview && (
                 <div className="mt-3">
-                  <img 
-                    src={imagePreview} 
-                    alt="Preview" 
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
                     className="w-full h-64 object-cover rounded-lg border-2 border-gray-200"
                   />
                 </div>
@@ -419,7 +425,7 @@ export default function BlogsPage() {
               Cập nhật thông tin blog
             </DialogDescription>
           </DialogHeader>
-          
+
           {editingBlog && (
             <div className="space-y-4 ">
               <div>
@@ -457,8 +463,8 @@ export default function BlogsPage() {
                 {editingBlog.image && !editImagePreview && (
                   <div className="mb-3">
                     <p className="text-sm text-gray-600 mb-2">Ảnh hiện tại:</p>
-                    <img 
-                      src={`${API_URL}${editingBlog.image}`} 
+                    <img
+                      src={`${API_URL}${editingBlog.image}`}
                       alt={editingBlog.title}
                       className="w-full h-64 object-cover rounded-lg border-2 border-gray-200"
                     />
@@ -474,9 +480,9 @@ export default function BlogsPage() {
                 {editImagePreview && (
                   <div className="mt-3">
                     <p className="text-sm text-gray-600 mb-2">Ảnh mới:</p>
-                    <img 
-                      src={editImagePreview} 
-                      alt="Preview" 
+                    <img
+                      src={editImagePreview}
+                      alt="Preview"
                       className="w-full h-64 object-cover rounded-lg border-2 border-green-200"
                     />
                   </div>
@@ -499,6 +505,33 @@ export default function BlogsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+       {showCancelConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 relative">
+            <h2 className="text-lg font-bold text-gray-800 mb-3">Xác nhận xoá bài viết</h2>
+            <p className="text-gray-600 mb-6">Bạn có chắc chắn muốn xoá bài viết này không?</p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={handleDeleteBlog.bind(null, cancelBlogId!)}
+                className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Xác nhận xoá
+              </button>
+              <button
+                onClick={() => {
+                  setShowCancelConfirm(false);
+                  setCancelBlogId(null);
+                }}
+                className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

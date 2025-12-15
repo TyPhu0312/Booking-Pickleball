@@ -1,6 +1,7 @@
 "use client";
 
-import { format } from "date-fns";
+import { useEffect } from "react";
+import { format, differenceInWeeks } from "date-fns";
 import DatePicker from "react-datepicker";
 
 type CourtType = "INDOOR" | "OUTDOOR";
@@ -39,6 +40,22 @@ export default function WeeklyBooking({
   onWeekdaysChange,
   onCourtTypeChange,
 }: WeeklyBookingProps) {
+  useEffect(() => {
+    if (StartDate && EndDate) {
+      const start = new Date(StartDate);
+      const end = new Date(EndDate);
+      
+      if (end > start) {
+        const weeks = differenceInWeeks(end, start) + 1; 
+        const calculatedWeeks = Math.min(weeks, maxWeeks);
+        
+        if (calculatedWeeks !== numberWeeks) {
+          onNumberWeeksChange(calculatedWeeks);
+        }
+      }
+    }
+  }, [StartDate, EndDate, maxWeeks, numberWeeks, onNumberWeeksChange]);
+
   return (
     <div className="flex justify-center">
       <div className="w-full max-w-lg p-6 bg-white rounded-2xl shadow-lg border border-gray-200">
@@ -98,24 +115,6 @@ export default function WeeklyBooking({
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-semibold mb-2 text-gray-700">🔁 Số Tuần Lặp Lại</label>
-          <input
-            type="number"
-            min={1}
-            max={maxWeeks}
-            value={numberWeeks}
-            onChange={(e) => {
-              const value = parseInt(e.target.value, 10);
-              if (!isNaN(value) && value > 0 && value <= maxWeeks) {
-                onNumberWeeksChange(value);
-              }
-            }}
-            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-400 shadow-sm text-sm max-w-xs"
-          />
-          <p className="mt-1 text-xs text-gray-500">Tối đa {maxWeeks} tuần</p>
-        </div>
-
-        <div className="mb-6">
           <label className="block text-sm font-semibold mb-2 text-gray-700">📅 Chọn Thứ Trong Tuần</label>
           <div className="flex flex-wrap gap-3">
             {[0, 1, 2, 3, 4, 5, 6].map((day) => (
@@ -138,6 +137,15 @@ export default function WeeklyBooking({
               </label>
             ))}
           </div>
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-sm font-semibold mb-2 text-gray-700">🔁 Số Tuần Lặp Lại</label>
+          <div className="bg-gray-50 px-4 py-3 border border-gray-300 rounded-lg text-sm max-w-xs">
+            <span className="font-bold text-lg text-blue-600">{numberWeeks}</span>
+            <span className="text-gray-600 ml-2">tuần</span>
+          </div>
+          <p className="mt-1 text-xs text-gray-500">Tự động tính dựa trên ngày bắt đầu và kết thúc</p>
         </div>
 
         <div className="bg-linear-to-r from-purple-50 to-purple-100 p-4 rounded-xl shadow-sm border border-purple-200 flex flex-col">

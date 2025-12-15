@@ -22,9 +22,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Download, Check, X, Eye, Upload } from "lucide-react";
+import { Download, Eye, Upload } from "lucide-react";
 import * as XLSX from "xlsx";
 import { API_URL } from "@/lib/config";
+import { toast } from "sonner";
 
 interface RefundRequest {
   paymentID: string;
@@ -84,59 +85,6 @@ export default function RefundManagementPage() {
     }
   };
 
-  const handleApprove = async (paymentID: string, refundAmount: number) => {
-    try {
-      const response = await fetch(
-        `${API_URL}/api/refunds/update-status/${paymentID}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            refund_status: "APPROVED",
-            admin_note: adminNote,
-            processed_by: "admin-id", 
-            actual_refund: actualRefund || refundAmount,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        alert("Duyệt refund thành công!");
-        fetchRefunds();
-        setSelectedRefund(null);
-        setAdminNote("");
-      }
-    } catch (error) {
-      console.error("Error approving refund:", error);
-    }
-  };
-
-  const handleReject = async (paymentID: string) => {
-    try {
-      const response = await fetch(
-        `${API_URL}/api/refunds/update-status/${paymentID}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            refund_status: "REJECTED",
-            admin_note: adminNote,
-            processed_by: "admin-id",
-          }),
-        }
-      );
-
-      if (response.ok) {
-        alert("Từ chối refund thành công!");
-        fetchRefunds();
-        setSelectedRefund(null);
-        setAdminNote("");
-      }
-    } catch (error) {
-      console.error("Error rejecting refund:", error);
-    }
-  };
-
   const handleComplete = async (paymentID: string) => {
     try {
       const response = await fetch(
@@ -153,7 +101,7 @@ export default function RefundManagementPage() {
       );
 
       if (response.ok) {
-        alert("Đã đánh dấu hoàn thành!");
+        toast.success("Đã đánh dấu hoàn thành!");
         fetchRefunds();
         setSelectedRefund(null);
         setAdminNote("");
@@ -173,7 +121,7 @@ export default function RefundManagementPage() {
       const data = await response.json();
 
       if (data.length === 0) {
-        alert("Không có dữ liệu để xuất");
+        toast("Không có dữ liệu để xuất");
         return;
       }
    
@@ -195,7 +143,7 @@ export default function RefundManagementPage() {
       XLSX.writeFile(wb, fileName);
     } catch (error) {
       console.error("Error exporting to Excel:", error);
-      alert("Lỗi khi xuất Excel");
+      toast.error("Lỗi khi xuất Excel");
     }
   };
 
@@ -216,20 +164,16 @@ export default function RefundManagementPage() {
       const result = await response.json();
 
       if (response.ok) {
-        alert(
-          `Import thành công!\n✅ Thành công: ${result.results.success}\n❌ Thất bại: ${result.results.failed}${
-            result.results.errors.length > 0
-              ? `\n\nLỗi:\n${result.results.errors.map((e: any) => `- ${e.error}`).join("\n")}`
-              : ""
-          }`
+        toast.success(
+          `Import thành công!`
         );
         fetchRefunds();
       } else {
-        alert("Lỗi: " + result.message);
+        toast.error("Lỗi: " + result.message);
       }
     } catch (error) {
       console.error("Error importing Excel:", error);
-      alert("Lỗi khi import file Excel!");
+      toast.error("Lỗi khi import file Excel!");
     } finally {
       setImporting(false);
       event.target.value = "";
@@ -272,7 +216,7 @@ export default function RefundManagementPage() {
                   <SelectItem value="PENDING">Chờ duyệt</SelectItem>
                   <SelectItem value="APPROVED">Đã duyệt</SelectItem>
                   <SelectItem value="REJECTED">Từ chối</SelectItem>
-                  <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
+                  <SelectItem value="COMPLETED">Đã hoàn tiền</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -393,28 +337,6 @@ export default function RefundManagementPage() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {refund.refund_status === "PENDING" && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-green-600"
-                              onClick={() =>
-                                handleApprove(refund.paymentID, refund.refund_amount)
-                              }
-                            >
-                              <Check className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-red-600"
-                              onClick={() => handleReject(refund.paymentID)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
                         {refund.refund_status === "APPROVED" && (
                           <Button
                             size="sm"
@@ -515,30 +437,6 @@ export default function RefundManagementPage() {
                     </div>
 
                     <div className="flex gap-2 pt-4">
-                      <Button
-                        className="flex-1 bg-green-600 hover:bg-green-700"
-                        onClick={() =>
-                          handleApprove(selectedRefund.paymentID, actualRefund)
-                        }
-                      >
-                        <Check className="mr-2 h-4 w-4" />
-                        Duyệt Refund
-                      </Button>
-                      <Button
-                        className="flex-1 bg-red-600 hover:bg-red-700"
-                        onClick={() => handleReject(selectedRefund.paymentID)}
-                      >
-                        <X className="mr-2 h-4 w-4" />
-                        Từ chối
-                      </Button>
-                      {selectedRefund.refund_status === "APPROVED" && (
-                        <Button
-                          className="flex-1 bg-blue-600 hover:bg-blue-700"
-                          onClick={() => handleComplete(selectedRefund.paymentID)}
-                        >
-                          Hoàn thành
-                        </Button>
-                      )}
                       <Button
                         variant="outline"
                         onClick={() => {

@@ -1,11 +1,13 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { X, Calendar, Clock, CreditCard, DollarSign, CheckCircle2, XCircle, AlertCircle, User, Phone, MapPin } from "lucide-react";
+import { X, Calendar, Clock, DollarSign, CheckCircle2, XCircle, AlertCircle, User, Phone, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { useEffect, useState } from "react";
 import { API_URL } from "@/lib/config";
+import { toast } from "sonner";
 
 interface ViewInforPaymentModalProps {
   bookingId: string;
@@ -71,7 +73,7 @@ export default function ViewInforPaymentModal({ bookingId, onClose }: ViewInforP
     fetchBookingDetails();
   }, [bookingId]);
 
-  const fetchBookingDetails = async () => {
+  const fetchBookingDetails = async () => {  
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/api/bookings/getBookingById/${bookingId}`);
@@ -91,7 +93,7 @@ export default function ViewInforPaymentModal({ bookingId, onClose }: ViewInforP
       setRemainingAmount(data.total_price - paid);
     } catch (error) {
       console.error("Lỗi khi lấy thông tin booking:", error);
-      alert("Không thể lấy thông tin booking");
+      toast.error("Không thể lấy thông tin booking");
       onClose();
     } finally {
       setLoading(false);
@@ -338,76 +340,6 @@ export default function ViewInforPaymentModal({ bookingId, onClose }: ViewInforP
                 <span className="font-black text-xl text-orange-600">{remainingAmount.toLocaleString()}đ</span>
               </div>
             </div>
-          </div>
-
-          <div className="bg-linear-to-br from-orange-50 to-red-50 rounded-xl p-5 border border-orange-200">
-            <h3 className="font-bold text-lg text-gray-800 mb-4 flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-orange-600" />
-              Lịch Sử Thanh Toán ({booking.payments.length})
-            </h3>
-            
-            {booking.payments.length === 0 ? (
-              <div className="text-center py-8">
-                <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-600">Chưa có giao dịch thanh toán nào</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {booking.payments.map((payment) => (
-                  <div
-                    key={payment.paymentID}
-                    className="bg-white rounded-lg p-4 border-2 border-orange-200 hover:border-orange-400 transition-colors"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <p className="font-semibold text-gray-900">
-                            {getPaymentMethodLabel(payment.payment_method)}
-                          </p>
-                          {getPaymentStatusBadge(payment.status)}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-black text-xl text-orange-600">
-                          {payment.paid_amount.toLocaleString()}đ
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 text-xs">
-                      <div>
-                        <p className="text-gray-600">Tạo lúc:</p>
-                        <p className="font-semibold text-gray-900">
-                          {format(new Date(payment.createdAt), "dd/MM/yyyy HH:mm:ss")}
-                        </p>
-                      </div>
-                      {payment.payment_deadline && (
-                        <div>
-                          <p className="text-gray-600">Hết hạn:</p>
-                          <p className="font-semibold text-gray-900">
-                            {format(new Date(payment.payment_deadline), "dd/MM/yyyy HH:mm:ss")}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {payment.payment_url && payment.status === "PENDING" && (
-                      <div className="mt-3 pt-3 border-t border-orange-200">
-                        <a
-                          href={payment.payment_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
-                        >
-                          <CreditCard className="w-3 h-3" />
-                          Mở link thanh toán
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
 

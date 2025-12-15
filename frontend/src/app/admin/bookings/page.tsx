@@ -8,6 +8,7 @@ import BookingCard from "@/components/admin/BookingCard";
 import CreateBookingModal from "@/components/admin/CreateBookingModal";
 import EditBookingModal from "@/components/admin/EditBookingModal";
 import { API_URL } from '@/lib/config';
+import {toast} from "sonner";
 
 type BookingStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "COMPLETED" | "CANCELLED";
 type CourtType = "INDOOR" | "OUTDOOR";
@@ -69,6 +70,8 @@ export default function AdminBookingsPage() {
   const [searchPhone, setSearchPhone] = useState("");
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<BookingStatus | "ALL">("ALL");
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelBookingId, setCancelBookingId] = useState<string | null>(null);
 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [courts, setCourts] = useState<Court[]>([]);
@@ -215,6 +218,12 @@ export default function AdminBookingsPage() {
   };
 
   const updateBookingStatus = async (bookingID: string, newStatus: BookingStatus) => {
+    if (newStatus === "CANCELLED") {
+      setCancelBookingId(bookingID);
+      setShowCancelConfirm(true);
+      return;
+    }
+
     try {
       const booking = bookings.find(b => b.bookingID === bookingID);
       
@@ -237,15 +246,53 @@ export default function AdminBookingsPage() {
         setBookings(prev => 
           prev.map(b => b.bookingID === bookingID ? updatedBooking : b)
         );
-        alert("Cập nhật trạng thái thành công!");
+        toast.success("Cập nhật trạng thái thành công!");
       } else {
         const error = await response.json();
-        alert("Chưa phân bổ sân!! Vui lòng phân bổ sân trước khi xác nhận hoặc check-in.");
-        console.error("Error response:", error);
+        toast.error(error.message || "Chưa phân bổ sân!! Vui lòng phân bổ sân trước khi xác nhận hoặc check-in.");
       }
     } catch (error) {
       console.error("Error updating booking status:", error);
-      alert("Lỗi khi cập nhật trạng thái. Vui lòng kiểm tra console để biết thêm chi tiết.");
+      toast.error("Lỗi khi cập nhật trạng thái");
+    }
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancelBookingId) return;
+
+    try {
+      const booking = bookings.find(b => b.bookingID === cancelBookingId);
+      
+      const requestBody: { status: BookingStatus; courtID?: string } = { 
+        status: "CANCELLED" 
+      };
+      
+      if (booking?.court?.courtID) {
+        requestBody.courtID = booking.court.courtID;
+      }
+      
+      const response = await fetch(`${API_URL}/api/bookings/updateBookingStatus/${cancelBookingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (response.ok) {
+        const updatedBooking = await response.json();
+        setBookings(prev => 
+          prev.map(b => b.bookingID === cancelBookingId ? updatedBooking : b)
+        );
+        toast.success("Đã hủy booking thành công!");
+        setShowCancelConfirm(false);
+        setCancelBookingId(null);
+      } else {
+        const error = await response.json();
+        toast.error(error.message || "Không thể hủy booking");
+        console.error("Error response:", error);
+      }
+    } catch (error) {
+      console.error("Error cancelling booking:", error);
+      toast.error("Lỗi khi hủy booking");
     }
   };
 
@@ -676,6 +723,35 @@ export default function AdminBookingsPage() {
           }}
         />
       )}
+
+      {showCancelConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Xác nhận hủy booking</h2>
+            <p className="text-gray-600 mb-6">
+              Bạn có chắc chắn muốn hủy booking này? Hành động này không thể hoàn tác.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleConfirmCancel}
+                className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Xác nhận hủy
+              </button>
+              <button
+                onClick={() => {
+                  setShowCancelConfirm(false);
+                  setCancelBookingId(null);
+                }}
+                className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+              >
+                Không
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
     </div>
   );
 }

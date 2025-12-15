@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Star, Filter, MapPin, Calendar, MessageSquare, Trash2, Edit } from "lucide-react";
 import { format } from "date-fns";
 import { API_URL } from "@/lib/config";
+import { toast } from "sonner";
 
 interface Court {
   courtID: string;
@@ -44,6 +45,8 @@ export default function ReviewsPage() {
     comment: "",
     is_anonymous: false
   });
+    const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+    const [cancelFeedbackId, setCancelFeedbackId] = useState<string | null>(null);
 
   useEffect(() => {
     const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
@@ -105,7 +108,7 @@ export default function ReviewsPage() {
   };
 
   const handleDeleteReview = async (feedbackID: string) => {
-    if (!confirm("Bạn có chắc muốn xóa đánh giá này không?")) return;
+    if (!cancelFeedbackId) return;
 
     try {
       const response = await fetch(`${API_URL}/api/feedbacks/${feedbackID}`, {
@@ -113,15 +116,17 @@ export default function ReviewsPage() {
       });
 
       if (response.ok) {
-        alert("Xóa đánh giá thành công!");
+        toast.success("Xóa đánh giá thành công!");
         fetchFeedbacks();
+        setShowCancelConfirm(false);
+        setCancelFeedbackId(null);
       } else {
         const error = await response.json();
-        alert(error.message || "Xóa đánh giá thất bại");
+        toast.error(error.message || "Xóa đánh giá thất bại");
       }
     } catch (error) {
       console.error("Error deleting feedback:", error);
-      alert("Có lỗi xảy ra khi xóa đánh giá");
+      toast.error("Có lỗi xảy ra khi xóa đánh giá");
     }
   };
 
@@ -139,7 +144,7 @@ export default function ReviewsPage() {
     if (!editingFeedback || !user?.userID) return;
 
     if (!editForm.comment.trim()) {
-      alert("Vui lòng nhập nhận xét!");
+      toast.error("Vui lòng nhập nhận xét!");
       return;
     }
 
@@ -159,7 +164,7 @@ export default function ReviewsPage() {
       });
 
       if (response.ok) {
-        alert("Cập nhật đánh giá thành công!");
+        toast.success("Cập nhật đánh giá thành công!");
         setShowEditModal(false);
         setEditingFeedback(null);
         setEditForm({
@@ -170,11 +175,11 @@ export default function ReviewsPage() {
         fetchFeedbacks();
       } else {
         const error = await response.json();
-        alert(error.message || "Cập nhật đánh giá thất bại");
+        toast.error(error.message || "Cập nhật đánh giá thất bại");
       }
     } catch (error) {
       console.error("Lỗi khi cập nhật đánh giá:", error);
-      alert("Có lỗi xảy ra khi cập nhật đánh giá");
+      toast.error("Có lỗi xảy ra khi cập nhật đánh giá");
     }
   };
 
@@ -389,7 +394,10 @@ export default function ReviewsPage() {
                     <Edit className="w-5 h-5" />
                   </button>
                   <button
-                    onClick={() => handleDeleteReview(feedback.feedbackID)}
+                    onClick={() => {
+                      setCancelFeedbackId(feedback.feedbackID);
+                      setShowCancelConfirm(true);
+                    }}
                     className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                     title="Xóa đánh giá"
                   >
@@ -510,6 +518,38 @@ export default function ReviewsPage() {
                   Hủy
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCancelConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Xác nhận xóa đánh giá</h2>
+            <p className="text-gray-600 mb-6">
+              Bạn có chắc chắn muốn xóa đánh giá này? Hành động này không thể hoàn tác.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  if (cancelFeedbackId) {
+                    handleDeleteReview(cancelFeedbackId);
+                  }
+                }}
+                className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Xóa
+              </button>
+              <button
+                onClick={() => {
+                  setShowCancelConfirm(false);
+                  setCancelFeedbackId(null);
+                }}
+                className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+              >
+                Hủy
+              </button>
             </div>
           </div>
         </div>
