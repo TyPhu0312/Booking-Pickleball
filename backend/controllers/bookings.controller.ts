@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { Request, Response } from "express";
+import { createPaymentLink } from "../services/payos.service";
 
 const prisma = new PrismaClient();
 
@@ -60,21 +61,47 @@ interface SlotInput {
 }
 export const createBooking = async (req: Request, res: Response) => {
     try {
-        const { user_id, phone_user, booking_date, status, total_price, deposit_amount, booking_type, discount, court_type, court_id, note, slots } = req.body;
+        const { user_id, phone_user, booking_date, status, booking_type, discount, court_type, court_id, note, slots } = req.body;
+
+        const VAT = 0.08;
+        const depositRate = booking_type === 'TOURNAMENT' ? 0.5 : booking_type === 'WEEKLY' ? 0.5 : 0.2;
+        const discountPercent = discount || (booking_type === 'TOURNAMENT' ? 10 : booking_type === 'WEEKLY' ? 5 : 0);
 
         const isWeeklyBooking = booking_type === 'WEEKLY';
         const uniqueDates = new Set(slots.map((slot: SlotInput) => slot.date));
         const hasMultipleDates = uniqueDates.size > 1;
 
         if (!isWeeklyBooking && !hasMultipleDates) {
+            const slotDetails = await prisma.slots.findMany({
+                where: {
+                    slotID: { in: slots.map((s: SlotInput) => s.slot_id) }
+                }
+            });
+
+            let courtMultiplier = 1;
+            if (court_type) {
+                const courtTypeData = await prisma.courts.findFirst({
+                    where: { type: court_type },
+                    select: { multiplier: true }
+                });
+                courtMultiplier = courtTypeData?.multiplier || 1;
+            }
+
+            const basePrice = slotDetails.reduce((sum, slot) => sum + (slot.price * courtMultiplier), 0);
+            const discountAmount = basePrice * (discountPercent / 100);
+            const priceAfterDiscount = basePrice - discountAmount;
+            const vatAmount = priceAfterDiscount * VAT;
+            const totalPrice = Math.round(priceAfterDiscount + vatAmount);
+            const depositAmount = Math.round(totalPrice * depositRate);
+
             const newBooking = await prisma.bookings.create({
                 data: { 
                     user_id, 
                     phone_user, 
                     booking_date, 
                     status, 
-                    total_price, 
-                    deposit_amount, 
+                    total_price: totalPrice, 
+                    deposit_amount: depositAmount, 
                     booking_type, 
                     discount, 
                     note, 
@@ -93,7 +120,43 @@ export const createBooking = async (req: Request, res: Response) => {
             await prisma.bookingSlots.createMany({
                 data: newBookingSlots,
             });
-            return res.status(201).json(newBooking);
+            
+            try {
+                const paymentLink = await createPaymentLink({
+                    amount: depositAmount,
+                    description: "Coc dat san",
+                    bookingId: newBooking.bookingID,
+                    buyerName: newBooking.user_id ? "Khách hàng" : "Khách hàng",
+                    buyerPhone: phone_user || "0000000000",
+                });
+                
+                const payment = await prisma.payments.create({
+                    data: {
+                        booking_id: newBooking.bookingID,
+                        payment_method: "PAYOS" as any,
+                        status: "PENDING",
+                        order_code: paymentLink.orderCode,
+                        payment_url: paymentLink.checkoutUrl,
+                        qr_code_url: paymentLink.qrCode,
+                        payment_link_id: paymentLink.paymentLinkId,
+                        payment_deadline: new Date(Date.now() + 3 * 60 * 1000),
+                    }
+                });
+                
+                return res.status(201).json({
+                    ...newBooking,
+                    payment: {
+                        paymentId: payment.paymentID,
+                        orderCode: paymentLink.orderCode,
+                        checkoutUrl: paymentLink.checkoutUrl,
+                        qrCode: paymentLink.qrCode,
+                        deadline: payment.payment_deadline,
+                    }
+                });
+            } catch (paymentError) {
+                console.error("⚠️ Lỗi khi tạo payment link:", paymentError);
+                return res.status(201).json(newBooking);
+            }
         }
 
         const slotsByDate = slots.reduce((acc: any, slot: SlotInput) => {
@@ -106,24 +169,57 @@ export const createBooking = async (req: Request, res: Response) => {
         }, {});
 
         const dateKeys = Object.keys(slotsByDate);
-        const parentBookingId = `parent-${Date.now()}`;
+        
+        const parentBookingId = dateKeys.length > 1 ? `parent-${Date.now()}` : null;
         const createdBookings = [];
 
-        const pricePerDate = total_price / dateKeys.length;
-        const depositPerDate = deposit_amount / dateKeys.length;
+        const allSlotIds = slots.map((s: SlotInput) => s.slot_id);
+        const slotDetails = await prisma.slots.findMany({
+            where: {
+                slotID: { in: allSlotIds }
+            }
+        });
+
+        const slotPriceMap = new Map(slotDetails.map(s => [s.slotID, s.price]));
+
+        let courtMultiplier = 1;
+        if (court_type) {
+            const courtTypeData = await prisma.courts.findFirst({
+                where: { type: court_type },
+                select: { multiplier: true }
+            });
+            courtMultiplier = courtTypeData?.multiplier || 1;
+        }
+
+        let totalDepositAllDays = 0;
+        let totalPriceAllDays = 0;
 
         for (const dateKey of dateKeys) {
             const slotsForDate = slotsByDate[dateKey];
             
+            const basePriceForThisDate = slotsForDate.reduce((sum: number, slot: SlotInput) => {
+                const slotPrice = slotPriceMap.get(slot.slot_id) || 0;
+                return sum + (slotPrice * courtMultiplier);
+            }, 0);
+
+            const discountAmountForThisDate = basePriceForThisDate * (discountPercent / 100);
+            const priceAfterDiscountForThisDate = basePriceForThisDate - discountAmountForThisDate;
+            const vatAmountForThisDate = priceAfterDiscountForThisDate * VAT;
+            const priceForThisDate = Math.round(priceAfterDiscountForThisDate + vatAmountForThisDate);
+            const depositForThisDate = Math.round(priceForThisDate * depositRate);
+
+            totalPriceAllDays += priceForThisDate;
+            totalDepositAllDays += depositForThisDate;
+            
             const booking = await prisma.bookings.create({
                 data: { 
-                    parent_booking_id: dateKeys.length > 1 ? parentBookingId : null,
+                    parent_booking_id: parentBookingId,
                     user_id, 
                     phone_user, 
                     booking_date: new Date(dateKey), 
                     status, 
-                    total_price: pricePerDate, 
-                    deposit_amount: depositPerDate, 
+                    total_price: priceForThisDate,      
+                    deposit_amount: depositForThisDate,
                     booking_type, 
                     discount, 
                     note, 
@@ -148,19 +244,72 @@ export const createBooking = async (req: Request, res: Response) => {
             createdBookings.push(booking);
         }
 
-        if (createdBookings.length === 1) {
-            res.status(201).json(createdBookings[0]);
-        } else {
-            res.status(201).json({
-                parent_booking_id: parentBookingId,
-                bookings: createdBookings,
-                total_deposit: deposit_amount, 
-                total_price: total_price, 
-                message: `Đã tạo ${createdBookings.length} booking cho ${createdBookings.length} ngày`,
+        try {
+            const firstBookingId = createdBookings[0].bookingID;
+            const paymentBookingId = parentBookingId || firstBookingId;
+            const depositAmount = parentBookingId ? totalDepositAllDays : createdBookings[0].deposit_amount;
+            
+            const paymentLink = await createPaymentLink({
+                amount: depositAmount,
+                description: "Coc dat san",
+                bookingId: firstBookingId,
+                buyerName: "Khách hàng",
+                buyerPhone: phone_user || "0000000000",
             });
+            
+            const payment = await prisma.payments.create({
+                data: {
+                    booking_id: paymentBookingId,
+                    payment_method: "PAYOS" as any,
+                    status: "PENDING",
+                    order_code: paymentLink.orderCode,
+                    payment_url: paymentLink.checkoutUrl,
+                    qr_code_url: paymentLink.qrCode,
+                    payment_link_id: paymentLink.paymentLinkId,
+                    payment_deadline: new Date(Date.now() + 3 * 60 * 1000),
+                }
+            });
+            
+            const paymentInfo = {
+                paymentId: payment.paymentID,
+                orderCode: paymentLink.orderCode,
+                checkoutUrl: paymentLink.checkoutUrl,
+                qrCode: paymentLink.qrCode,
+                deadline: payment.payment_deadline,
+            };
+            
+            if (createdBookings.length === 1) {
+                res.status(201).json({
+                    ...createdBookings[0],
+                    payment: paymentInfo
+                });
+            } else {
+                res.status(201).json({
+                    parent_booking_id: parentBookingId,
+                    bookings: createdBookings,
+                    total_deposit: totalDepositAllDays,
+                    total_price: totalPriceAllDays,
+                    message: `Đã tạo ${createdBookings.length} booking cho ${createdBookings.length} ngày`,
+                    payment: paymentInfo
+                });
+            }
+        } catch (paymentError) {
+            console.error("Lỗi khi tạo payment link:", paymentError);
+            if (createdBookings.length === 1) {
+                res.status(201).json(createdBookings[0]);
+            } else {
+                res.status(201).json({
+                    parent_booking_id: parentBookingId,
+                    bookings: createdBookings,
+                    total_deposit: totalDepositAllDays,
+                    total_price: totalPriceAllDays,
+                    message: `Đã tạo ${createdBookings.length} booking cho ${createdBookings.length} ngày`,
+                });
+            }
         }
     } catch (error: unknown) {
         const err = error as { message?: string; meta?: unknown };
+        console.error("Lỗi khi tạo booking:", err);
         res.status(500).json({
             error: "Lỗi khi tạo đặt sân",
             message: err.message,
@@ -168,6 +317,8 @@ export const createBooking = async (req: Request, res: Response) => {
         });
     }
 }
+
+//hầu như hàm này không có sử dụng đến
 export const updateBooking = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
@@ -326,10 +477,8 @@ export const deleteBooking = async (req: Request, res: Response) => {
     }
 }
 
-// Lấy danh sách bookings được group theo parent_booking_id
 export const getGroupedBookings = async (req: Request, res: Response) => {
     try {
-        // Lấy tất cả parent bookings (booking gốc không có parent)
         const parentBookings = await prisma.bookings.findMany({
             where: {
                 parent_booking_id: null,
