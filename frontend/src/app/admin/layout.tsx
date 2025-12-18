@@ -3,7 +3,7 @@
 import Sidebar, { SidebarProvider, useSidebar } from "@/components/admin/Sidebar";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Toaster } from "sonner";
+import { toast, Toaster } from "sonner";
 
 interface User {
   userID: string;
@@ -49,7 +49,7 @@ export default function AdminLayout({
         const user: User = JSON.parse(userStr);
         
         if (!user.role || (user.role.name !== "admin" && user.role.name !== "superadmin")) {
-          alert("Bạn không có quyền truy cập trang quản trị!");
+          toast.error("Bạn không có quyền truy cập trang quản trị!");
           router.push("/");
           return;
         }

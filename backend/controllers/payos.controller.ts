@@ -481,6 +481,7 @@ export const getPaymentStatus = async (req: Request, res: Response) => {
               });
             }
           } else {
+            console.error("Không thể cập nhật trạng thái booking: trạng thái thanh toán không hợp lệ");
           }
         }
       } catch (error: any) {
