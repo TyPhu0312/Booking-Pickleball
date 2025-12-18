@@ -166,8 +166,8 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
       setPaymentData(data);
       startPolling(data.paymentId);
     } catch (error: any) {
-      console.error("❌ Create payment error:", error);
-      alert("Không thể tạo thanh toán: " + error.message);
+      console.error("Create payment error:", error);
+      toast.error("Không thể tạo thanh toán: " + error.message);
       onClose();
     } finally {
       setLoading(false);
@@ -181,7 +181,7 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
         const res = await fetch(`${API_URL}/api/payos/${paymentId}/status`);
                 
         if (!res.ok) {
-          console.warn("⚠️ Polling failed with status:", res.status);
+          console.warn("Polling failed with status:", res.status);
           return;
         }
 
@@ -191,16 +191,18 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
           clearInterval(interval);
           setPolling(false);
           onPaymentSuccess();
+          toast.success("Thanh toán thành công!");
         }
       } catch (error) {
-        console.error("❌ Polling error:", error);
+        console.error("Polling error:", error);
       }
     }, 3000);
 
     setTimeout(() => {
       clearInterval(interval);
       setPolling(false);
-      console.log("⏱️ Polling timeout after 2 minutes");
+      toast.error("Hết thời gian thanh toán. Vui lòng tạo đặt lại booking.");
+      onClose();
     }, 120000);
   };
 

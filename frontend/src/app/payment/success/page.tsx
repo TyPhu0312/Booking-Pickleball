@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function PaymentSuccessPage() {
   const router = useRouter();
@@ -20,6 +21,7 @@ export default function PaymentSuccessPage() {
       setChecking(false);
       setTimeout(() => {
         router.push("/history");
+        toast.success("Thanh toán thành công!");
       }, 2000);
     }, 2000);
   }, [bookingId, router]);

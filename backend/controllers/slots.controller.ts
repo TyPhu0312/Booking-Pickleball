@@ -40,6 +40,37 @@ export const createSlot = async (req: Request, res: Response) => {
         if (!timeRegex.test(start_time) || !timeRegex.test(end_time)) {
             return res.status(400).json({ error: "Thời gian không hợp lệ (định dạng HH:mm)." });
         }
+
+        if (start_time >= end_time) {
+            return res.status(400).json({
+                error: "Giờ bắt đầu phải nhỏ hơn giờ kết thúc.",
+            });
+        }
+
+         const conflictSlot = await prisma.slots.findFirst({
+            where: {
+                AND: [
+                    {
+                        start_time: {
+                            lt: end_time,
+                        },
+                    },
+                    {
+                        end_time: {
+                            gt: start_time, 
+                        },
+                    },
+                ],
+            },
+        });
+
+         if (conflictSlot) {
+            return res.status(409).json({
+                error: "Khung giờ bị trùng với khung giờ đã tồn tại.",
+                conflictSlot,
+            });
+        }
+
         const newSlot = await prisma.slots.create({
             data: { slot_name, start_time, end_time, price },
         });
@@ -88,6 +119,25 @@ export const deleteSlot = async (req: Request, res: Response) => {
 
         if (!existingSlot) {
             return res.status(404).json({ error: "Không tìm thấy khung giờ" });
+        }
+
+        const bookingsUsingSlot = await prisma.bookingSlots.findFirst({
+            where: {
+                slot_id: id,
+                booking: {
+                    status: { notIn: ["CANCELLED", "CANCEL_REQUESTED"] }
+                }
+            },
+            include: {
+                booking: true,
+            }
+        });
+
+        if (bookingsUsingSlot) {
+            return res.status(400).json({
+                error: "Không thể xóa khung giờ này vì đang có booking sử dụng",
+                message: "Vui lòng hủy tất cả các booking liên quan trước khi xóa khung giờ"
+            });
         }
 
         await prisma.slots.delete({
@@ -196,7 +246,7 @@ export const getSlotStatusByDate = async (req: Request, res: Response) => {
 
         if (startDate > endDate) {
             return res.status(400).json({ message: "Ngày bắt đầu phải nhỏ hơn ngày kết thúc" });
-          }
+        }
 
         const courts = await prisma.courts.groupBy({
             by: ["type"],

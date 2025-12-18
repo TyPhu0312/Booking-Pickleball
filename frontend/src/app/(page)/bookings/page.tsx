@@ -484,6 +484,7 @@ export default function BookingPage() {
         console.error("Không tìm thấy bookingID trong response:", result);
         throw new Error("Không nhận được booking ID từ server");
       }
+      toast.success(`Đặt booking thành công!`);
       
       setCreatedBookingId(bookingId);
       setShowPaymentModal(true);
@@ -745,8 +746,8 @@ export default function BookingPage() {
           }}
           onPaymentSuccess={() => {
             setShowPaymentModal(false);
-            toast.success("Thanh toán thành công!");
             router.push("/history");
+            toast.success("Thanh toán thành công!");
           }}
         />
       )}

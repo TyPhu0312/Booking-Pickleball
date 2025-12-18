@@ -114,6 +114,7 @@ export default function RemainingPaymentModal({
           clearInterval(interval);
           setPolling(false);
           onPaymentSuccess();
+          toast.success("Thanh toán thành công!");
         }
       } catch (error) {
         console.error("Polling error:", error);
@@ -123,7 +124,7 @@ export default function RemainingPaymentModal({
     setTimeout(() => {
       clearInterval(interval);
       setPolling(false);
-      toast.error("Hết thời gian thanh toán. Vui lòng tạo lại đơn hàng.");
+      toast.error("Hết thời gian thanh toán. Vui lòng tạo lại thanh toán.");
       onClose();
     }, 120000);
   };
