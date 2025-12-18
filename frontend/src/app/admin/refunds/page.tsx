@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -26,6 +27,7 @@ import { Download, Eye, Upload } from "lucide-react";
 import * as XLSX from "xlsx";
 import { API_URL } from "@/lib/config";
 import { toast } from "sonner";
+import { se } from "date-fns/locale";
 
 interface RefundRequest {
   paymentID: string;
@@ -52,18 +54,24 @@ interface RefundRequest {
     court?: {
       name: string;
     } | null;
+    bookingSlots?: Array<{
+      slot: {
+        slot_name: string;
+        start_time: string;
+        end_time: string;
+      };
+      date: string;
+    }>;
   };
 }
 
 export default function RefundManagementPage() {
-  const [refunds, setRefunds] = useState<RefundRequest[]>([]);
   const [filteredRefunds, setFilteredRefunds] = useState<RefundRequest[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>("PENDING");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [selectedRefund, setSelectedRefund] = useState<RefundRequest | null>(null);
   const [adminNote, setAdminNote] = useState<string>("");
-  const [actualRefund, setActualRefund] = useState<number>(0);
   const [importing, setImporting] = useState<boolean>(false);
 
   useEffect(() => {
@@ -72,16 +80,29 @@ export default function RefundManagementPage() {
 
   const fetchRefunds = async () => {
     try {
-      let url = `${API_URL}/api/refunds/requests?status=${selectedStatus}`;
+      let url = `${API_URL}/api/refunds/admin/requests?status=${selectedStatus}`;
       if (startDate) url += `&startDate=${startDate}`;
       if (endDate) url += `&endDate=${endDate}`;
 
       const response = await fetch(url);
+      
+      if (!response.ok) {
+        toast.error(`Lỗi tải dữ liệu: ${response.status}`);
+        setFilteredRefunds([]);
+        return;
+      }
+
       const data = await response.json();
-      setRefunds(data);
-      setFilteredRefunds(data);
+      const dataArray = Array.isArray(data) ? data : [];
+      setFilteredRefunds(dataArray);
+
+      if (dataArray.length === 0) {
+        toast.info("Không có dữ liệu refund với bộ lọc này");
+      }
     } catch (error) {
       console.error("Error fetching refunds:", error);
+      toast.error("Lỗi khi tải dữ liệu refund");
+      setFilteredRefunds([]);
     }
   };
 
@@ -164,9 +185,14 @@ export default function RefundManagementPage() {
       const result = await response.json();
 
       if (response.ok) {
+        const { results } = result;
         toast.success(
-          `Import thành công!`
+          `Import hoàn tất! Thành công: ${results.success} | Thất bại: ${results.failed}`,
+          {
+            duration: 5000,
+          }
         );
+        
         fetchRefunds();
       } else {
         toast.error("Lỗi: " + result.message);
@@ -271,7 +297,7 @@ export default function RefundManagementPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Khách hàng</TableHead>
-                  <TableHead>Sân</TableHead>
+                  <TableHead>Sân & Ngày</TableHead>
                   <TableHead>Tiền cọc</TableHead>
                   <TableHead>% Hoàn</TableHead>
                   <TableHead>Tiền hoàn</TableHead>
@@ -294,7 +320,17 @@ export default function RefundManagementPage() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{refund.booking.court?.name || "Chưa phân bổ"}</TableCell>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{refund.booking.court?.name || "Chưa phân bổ"}</div>
+                        {refund.booking.bookingSlots && refund.booking.bookingSlots[0] && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {new Date(refund.booking.bookingSlots[0].date).toLocaleDateString("vi-VN")} • 
+                            {refund.booking.bookingSlots[0].slot.start_time.slice(0, 5)}-{refund.booking.bookingSlots[0].slot.end_time.slice(0, 5)}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       {refund.booking.deposit_amount.toLocaleString()}đ
                     </TableCell>
@@ -332,7 +368,6 @@ export default function RefundManagementPage() {
                           variant="outline"
                           onClick={() => {
                             setSelectedRefund(refund);
-                            setActualRefund(refund.refund_amount);
                           }}
                         >
                           <Eye className="h-4 w-4" />
@@ -378,6 +413,25 @@ export default function RefundManagementPage() {
                         </p>
                       </div>
                       <div>
+                        <Label>Sân</Label>
+                        <p className="font-medium">
+                          {selectedRefund.booking.court?.name || "Chưa phân bổ"}
+                        </p>
+                      </div>
+                      {selectedRefund.booking.bookingSlots && selectedRefund.booking.bookingSlots[0] && (
+                        <div>
+                          <Label>Ngày & Giờ</Label>
+                          <p className="font-medium">
+                            {new Date(selectedRefund.booking.bookingSlots[0].date).toLocaleDateString("vi-VN")}
+                            <br />
+                            <span className="text-sm text-gray-600">
+                              {selectedRefund.booking.bookingSlots[0].slot.start_time.slice(0, 5)}-
+                              {selectedRefund.booking.bookingSlots[0].slot.end_time.slice(0, 5)}
+                            </span>
+                          </p>
+                        </div>
+                      )}
+                      <div>
                         <Label>Tiền cọc</Label>
                         <p className="font-medium">
                           {selectedRefund.booking.deposit_amount.toLocaleString()}đ
@@ -418,22 +472,13 @@ export default function RefundManagementPage() {
                     </div>
 
                     <div>
-                      <Label>Số tiền hoàn (có thể điều chỉnh)</Label>
-                      <Input
-                        type="number"
-                        value={actualRefund}
-                        onChange={(e) => setActualRefund(Number(e.target.value))}
-                      />
+                      <Label>Số tiền hoàn</Label>
+                      <p className="font-medium text-green-600">{selectedRefund.refund_amount.toLocaleString()}đ</p>
                     </div>
 
                     <div>
                       <Label>Ghi chú của Admin</Label>
-                      <Textarea
-                        value={selectedRefund.admin_note || adminNote}
-                        onChange={(e) => setAdminNote(e.target.value)}
-                        placeholder="Nhập ghi chú (nếu có)..."
-                        rows={3}
-                      />
+                      <p>{selectedRefund.admin_note|| ""}</p>
                     </div>
 
                     <div className="flex gap-2 pt-4">

@@ -32,6 +32,14 @@ interface RefundRequest {
       full_name: string;
       phone: string;
     };
+    bookingSlots?: Array<{
+      slot: {
+        slot_name: string;
+        start_time: string;
+        end_time: string;
+      };
+      date: string;
+    }>;
   };
 }
 
@@ -70,16 +78,19 @@ export default function RefundsPage() {
         );
         
         if (!response.ok) {
-          console.error("Failed to fetch refunds:", response.status);
+          const errorData = await response.json().catch(() => ({}));
+          console.error("Failed to fetch refunds:", response.status, errorData);
           setLoading(false);
+          setRefunds([]);
           return;
         }
 
         const data = await response.json();
               
-        setRefunds(data);
+        setRefunds(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Error fetching refunds:", error);
+        setRefunds([]);
       } finally {
         setLoading(false);
       }
@@ -100,7 +111,7 @@ export default function RefundsPage() {
       case "PENDING":
         return (
           <span className="px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-            🕐 Chờ duyệt
+            Chờ duyệt
           </span>
         );
       case "APPROVED":
@@ -118,7 +129,7 @@ export default function RefundsPage() {
       case "COMPLETED":
         return (
           <span className="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-            💰 Đã hoàn tiền
+            Đã hoàn tiền
           </span>
         );
       default:
@@ -138,7 +149,7 @@ export default function RefundsPage() {
     <div className="container mx-auto px-4 py-12">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">
-          💸 Lịch Sử Hoàn Tiền
+          Lịch Sử Hoàn Tiền
         </h1>
         <p className="text-gray-600 mb-8">
           Theo dõi các yêu cầu hoàn tiền của bạn
@@ -146,7 +157,7 @@ export default function RefundsPage() {
 
         {refunds.length > 0 && (
           <div className="mt-8 bg-linear-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
-            <h3 className="text-lg font-semibold mb-4">📊 Tổng quan</h3>
+            <h3 className="text-lg font-semibold mb-4">Tổng quan</h3>
             <div className="grid md:grid-cols-3 gap-4">
               <div className="bg-white/10 rounded-lg p-4">
                 <p className="text-sm opacity-90 mb-1">Tổng số yêu cầu</p>
@@ -244,7 +255,7 @@ export default function RefundsPage() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sân</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sân & Ngày đặt</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tiền cọc</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">% Hoàn</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tiền hoàn</th>
@@ -258,7 +269,17 @@ export default function RefundsPage() {
                 {filteredRefunds.map((refund) => (
                   <tr key={refund.paymentID} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm">
-                      {refund.booking?.court?.name || "Chưa phân bố"}
+                      <div>
+                        <div className="font-medium">{refund.booking?.court?.name || "Chưa phân bố"}</div>
+                        {refund.booking?.bookingSlots && refund.booking.bookingSlots[0] && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {new Date(refund.booking.bookingSlots[0].date).toLocaleDateString("vi-VN")}
+                            <br />
+                            {refund.booking.bookingSlots[0].slot.start_time.slice(0, 5)}-
+                            {refund.booking.bookingSlots[0].slot.end_time.slice(0, 5)}
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-sm">
                       {refund.booking?.deposit_amount?.toLocaleString() || "0"}đ
@@ -325,7 +346,6 @@ export default function RefundsPage() {
 
                 <div className="bg-linear-to-br from-green-50 to-emerald-50 rounded-xl p-5 border border-green-200">
                   <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                    <span className="text-2xl">🏟️</span>
                     Thông tin đặt sân
                   </h3>
                   <div className="grid md:grid-cols-2 gap-4">
@@ -341,19 +361,27 @@ export default function RefundsPage() {
                         {selectedRefund.booking?.court?.type === "INDOOR" ? "Trong nhà" : "Ngoài trời"}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-xs text-gray-600 mb-1">Ngày đặt sân</p>
-                      <p className="font-semibold text-gray-800">
-                        {selectedRefund.booking?.booking_date 
-                          ? format(new Date(selectedRefund.booking.booking_date), "dd/MM/yyyy")
-                          : "N/A"
-                        }
-                      </p>
-                    </div>
+                    {selectedRefund.booking?.bookingSlots && selectedRefund.booking.bookingSlots[0] && (
+                      <>
+                        <div>
+                          <p className="text-xs text-gray-600 mb-1">Ngày đặt sân</p>
+                          <p className="font-semibold text-gray-800">
+                            {format(new Date(selectedRefund.booking.bookingSlots[0].date), "dd/MM/yyyy")}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 mb-1">Giờ chơi</p>
+                          <p className="font-semibold text-gray-800">
+                            {selectedRefund.booking.bookingSlots[0].slot.start_time.slice(0, 5)} - 
+                            {selectedRefund.booking.bookingSlots[0].slot.end_time.slice(0, 5)}
+                          </p>
+                        </div>
+                      </>
+                    )}
                     <div>
                       <p className="text-xs text-gray-600 mb-1">Trạng thái booking</p>
                       <p className="font-semibold text-gray-800">
-                        {selectedRefund.booking?.status || "N/A"}
+                        {selectedRefund.booking?.status === "CANCEL_REQUESTED" ? "Đang chờ hủy" : "Đã huỷ"}
                       </p>
                     </div>
                   </div>
@@ -361,7 +389,6 @@ export default function RefundsPage() {
 
                 <div className="bg-linear-to-br from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-200">
                   <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                    <span className="text-2xl">💰</span>
                     Thông tin thanh toán
                   </h3>
                   <div className="grid md:grid-cols-2 gap-4">
@@ -415,7 +442,6 @@ export default function RefundsPage() {
 
                 <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
                   <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                    <span className="text-2xl">📅</span>
                     Thời gian
                   </h3>
                   <div className="space-y-2">
@@ -445,7 +471,6 @@ export default function RefundsPage() {
                 {selectedRefund.refund_reason && (
                   <div className="bg-amber-50 rounded-xl p-5 border border-amber-200">
                     <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                      <span className="text-2xl">📝</span>
                       Lý do hủy sân
                     </h3>
                     <p className="text-gray-700 leading-relaxed bg-white p-4 rounded-lg">
