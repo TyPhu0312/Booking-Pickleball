@@ -90,6 +90,25 @@ export const deleteSlot = async (req: Request, res: Response) => {
             return res.status(404).json({ error: "Không tìm thấy khung giờ" });
         }
 
+        const bookingsUsingSlot = await prisma.bookingSlots.findFirst({
+            where: {
+                slot_id: id,
+                booking: {
+                    status: { notIn: ["CANCELLED"] }
+                }
+            },
+            include: {
+                booking: true,
+            }
+        });
+
+        if (bookingsUsingSlot) {
+            return res.status(400).json({ 
+                error: "Không thể xóa khung giờ này vì đang có booking sử dụng",
+                message: "Vui lòng hủy tất cả các booking liên quan trước khi xóa khung giờ"
+            });
+        }
+
         await prisma.slots.delete({
             where: { slotID: id },
         });
