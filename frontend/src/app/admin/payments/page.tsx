@@ -80,7 +80,7 @@ export default function PaymentsPage() {
       const data = await res.json();
       
       const activeBookings = data.filter((b: Booking) => 
-        b.status === 'PENDING' || b.status === 'CONFIRMED' || b.status === 'CHECKED_IN'
+        b.status === 'PENDING' || b.status === 'CONFIRMED' || b.status === 'CHECKED_IN' || b.status === 'COMPLETED'
       );
       
       setBookings(activeBookings);
@@ -334,18 +334,9 @@ export default function PaymentsPage() {
                 filteredBookings.map((booking, index) => {
                   const paymentInfo = bookingPayments[booking.bookingID];
                   const status = getPaymentStatus(booking.bookingID);
-                  const firstSlot = booking.bookingSlots[0];
                   
-                  const isInGroup = !!booking.parent_booking_id;
-                  const prevBooking = index > 0 ? filteredBookings[index - 1] : null;
-                  const isFirstInGroup = isInGroup && (!prevBooking || prevBooking.parent_booking_id !== booking.parent_booking_id);
-                  
-                  const groupCount = isInGroup 
-                    ? filteredBookings.filter(b => b.parent_booking_id === booking.parent_booking_id).length 
-                    : 0;
-
                   return (
-                    <tr key={booking.bookingID} className={`hover:bg-gray-50 ${isInGroup ? 'bg-blue-50/30' : ''}`}>
+                    <tr key={booking.bookingID} className={`hover:bg-gray-50 }`}>
                       
                       <td className='px-4 py-4'>
                         <div className='text-sm'>
@@ -386,11 +377,6 @@ export default function PaymentsPage() {
                       <td className='px-4 py-4 whitespace-nowrap text-sm font-semibold text-gray-900'>
                         <div className='flex flex-col'>
                           <span>{booking.total_price.toLocaleString()}đ</span>
-                          {isInGroup && paymentInfo?.isGroupBooking && (
-                            <span className='text-xs text-gray-500'>
-                              (Nhóm: {(paymentInfo?.groupTotalPrice ?? 0).toLocaleString()}đ)
-                            </span>
-                          )}
                         </div>
                       </td>
                       <td className='px-4 py-4 whitespace-nowrap text-sm'>
