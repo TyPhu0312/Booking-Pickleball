@@ -151,6 +151,13 @@ export const startAutoUpdateCourtStatus = () => {
 
                     if (now >= endTime) {
                         newStatus = 'AVAILABLE';
+                        if (booking.status !== 'COMPLETED') {
+                            await prisma.bookings.update({
+                                where: { bookingID: booking.bookingID },
+                                data: { status: 'COMPLETED' }
+                            });
+                        }
+                        console.log(`Booking ${booking.bookingID} đã hoàn thành.`);
                     } else if (now >= fifteenMinutesBefore && now < endTime) {
                         newStatus = 'ALMOST_DONE';
                     }
