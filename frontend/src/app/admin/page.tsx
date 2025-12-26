@@ -81,17 +81,19 @@ export default function AdminDashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [bookingsRes, courtsRes, usersRes, tournamentsRes] = await Promise.all([
+      const [bookingsRes, courtsRes, usersRes, tournamentsRes, refundsRes] = await Promise.all([
         fetch(`${API_URL}/api/bookings`),
         fetch(`${API_URL}/api/courts`),
         fetch(`${API_URL}/api/users`),
         fetch(`${API_URL}/api/tournaments/active`),
+        fetch(`${API_URL}/api/refunds/admin/requests`),
       ]);
 
       const bookings = await bookingsRes.json();
       const courts = await courtsRes.json();
       const users = await usersRes.json();
       const tournaments = await tournamentsRes.json();
+      const refunds = refundsRes.ok ? await refundsRes.json() : [];
 
       const today = new Date();
       const todayStart = startOfDay(today);
@@ -109,19 +111,39 @@ export default function AdminDashboard() {
         return bookingDate >= monthStart && bookingDate <= monthEnd;
       });
 
-      const monthRevenue = monthBookings.reduce((sum: number, b: any) => {
+      const grossMonthRevenue = monthBookings.reduce((sum: number, b: any) => {
         if (b.status === "COMPLETED" || b.status === "CONFIRMED") {
           return sum + (b.total_price || 0);
         }
         return sum;
       }, 0);
 
-      const todayRevenue = todayBookings.reduce((sum: number, b: any) => {
+      const monthRefundsPaid = refunds.reduce((acc: number, p: any) => {
+        if (!p.booking_id) return acc;
+        if (p.refund_status !== "COMPLETED") return acc;
+        const inMonth = monthBookings.some((mb: any) => mb.bookingID === p.booking_id);
+        if (!inMonth) return acc;
+        return acc + Number(p.refund_amount || 0);
+      }, 0);
+
+      const monthRevenue = grossMonthRevenue - monthRefundsPaid;
+
+      const grossTodayRevenue = todayBookings.reduce((sum: number, b: any) => {
         if (b.status === "COMPLETED" || b.status === "CONFIRMED") {
           return sum + (b.total_price || 0);
         }
         return sum;
       }, 0);
+
+      const todayRefundsPaid = refunds.reduce((acc: number, p: any) => {
+        if (!p.booking_id) return acc;
+        if (p.refund_status !== "COMPLETED") return acc;
+        const inToday = todayBookings.some((tb: any) => tb.bookingID === p.booking_id);
+        if (!inToday) return acc;
+        return acc + Number(p.refund_amount || 0);
+      }, 0);
+
+      const todayRevenue = grossTodayRevenue - todayRefundsPaid;
 
       const newUsers = users.filter((u: any) => {
         const userDate = new Date(u.createdAt);
@@ -188,6 +210,7 @@ export default function AdminDashboard() {
     COMPLETED: "Hoàn thành",
     CANCELLED: "Đã hủy",
     CHECKED_IN: "Đã check-in",
+    CANCEL_REQUESTED: "Yêu cầu hoàn tiền",
   };
 
   const hourlyChartData = {
@@ -358,9 +381,6 @@ export default function AdminDashboard() {
             <h3 className="text-lg font-semibold text-slate-800">
               Tình Trạng Sân Theo Giờ
             </h3>
-            <Link href="/admin/slots" className="text-sm text-cyan-600 hover:underline">
-              Xem chi tiết
-            </Link>
           </div>
           <div className="h-80">
             <Bar data={hourlyChartData} options={chartOptions} />

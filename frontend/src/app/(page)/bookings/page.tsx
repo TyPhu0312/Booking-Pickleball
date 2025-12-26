@@ -124,7 +124,6 @@ export default function BookingPage() {
         setSlotDataByDate(data);
         const firstDateSlots = Object.values(data)[0] as SlotData[];
         setSlotData(firstDateSlots || []);
-        console.log("Dữ liệu slot theo ngày:", data);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi');
       } finally {
@@ -136,7 +135,7 @@ export default function BookingPage() {
     fetchSlots();
     fetchCourtMultiplier();
 
-    const interval = setInterval(fetchSlotsByDate, 10000);
+    const interval = setInterval(fetchSlotsByDate, 5000);
     return () => clearInterval(interval);
   }, [StartDate, EndDate]);
 

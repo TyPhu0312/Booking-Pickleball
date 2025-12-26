@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -52,11 +53,13 @@ interface Court {
 
 interface StatsData {
   totalRevenue: number;
+  grossRevenue: number;
+  refundsPaid: number;
   totalBookings: number;
   completedBookings: number;
   pendingBookings: number;
   cancelledBookings: number;
-  revenueByDay: { date: string; revenue: number }[];
+  revenueByDay: { date: string; gross: number; refundsPaid: number; net: number }[];
   revenueByMonth: { month: string; revenue: number }[];
   bookingsByStatus: { status: string; count: number }[];
   courtDistribution: { INDOOR: number; OUTDOOR: number };
@@ -76,9 +79,10 @@ export default function StatsPage() {
   const fetchStats = async () => {
     setLoading(true);
     try {
-      const [bookingsRes, courtsRes] = await Promise.all([
+      const [bookingsRes, courtsRes, refundsRes] = await Promise.all([
         fetch(`${API_URL}/api/bookings`),
         fetch(`${API_URL}/api/courts`),
+        fetch(`${API_URL}/api/refunds/admin/requests`),
       ]);
 
       if (!bookingsRes.ok || !courtsRes.ok) {
@@ -87,6 +91,27 @@ export default function StatsPage() {
 
       const bookings: Booking[] = await bookingsRes.json();
       const courts: Court[] = await courtsRes.json();
+      const refundsData: any[] = refundsRes.ok ? await refundsRes.json() : [];
+
+      const refundsByBooking: Record<string, { refundToCustomer: number; paidTotal: number; retained: number; hasRefund: boolean }> = {};
+      refundsData.forEach((p) => {
+        const bookingId = p.booking_id;
+        if (!bookingId) return;
+        const paid = Number(p.paid_amount || 0);
+        const refund = Number(p.refund_amount || 0);
+        const status = p.refund_status;
+
+        const consideredRefund = status === "COMPLETED" ? refund : 0;
+
+        if (!refundsByBooking[bookingId]) {
+          refundsByBooking[bookingId] = { refundToCustomer: consideredRefund, paidTotal: paid, retained: Math.max(paid - refund, 0), hasRefund: !!p.refund_amount };
+        } else {
+          refundsByBooking[bookingId].refundToCustomer += consideredRefund;
+          refundsByBooking[bookingId].paidTotal += paid;
+          refundsByBooking[bookingId].retained += Math.max(paid - refund, 0);
+          refundsByBooking[bookingId].hasRefund = refundsByBooking[bookingId].hasRefund || !!p.refund_amount;
+        }
+      });
 
       const currentMonthStart = startOfMonth(new Date(selectedMonth));
       const currentMonthEnd = endOfMonth(new Date(selectedMonth));
@@ -106,13 +131,25 @@ export default function StatsPage() {
         const dayBookings = monthBookings.filter(
           (b) => format(new Date(b.createdAt), "yyyy-MM-dd") === dayStr
         );
-        const revenue = dayBookings.reduce((sum, b) => {
+
+        const dayGross = dayBookings.reduce((sum, b) => {
           if (b.status === "COMPLETED" || b.status === "CONFIRMED") {
-            return sum + (b.total_price || 0);
+            return sum + Number(b.total_price || 0);
           }
           return sum;
         }, 0);
-        return { date: dayStr, revenue };
+
+        const dayRefundsPaid = refundsData.reduce((acc, p) => {
+          if (!p.booking_id) return acc;
+          if (p.refund_status !== "COMPLETED") return acc;
+          const inDay = dayBookings.some((db) => db.bookingID === p.booking_id);
+          if (!inDay) return acc;
+          return acc + Number(p.refund_amount || 0);
+        }, 0);
+
+        const dayNet = dayGross - dayRefundsPaid;
+
+        return { date: dayStr, gross: dayGross, refundsPaid: dayRefundsPaid, net: dayNet };
       });
 
       const revenueByMonth = [];
@@ -127,14 +164,24 @@ export default function StatsPage() {
           return bookingDate >= monthStart && bookingDate <= monthEnd;
         });
 
-        const revenue = monthBookingsData.reduce((sum, b) => {
+        const monthGross = monthBookingsData.reduce((sum, b) => {
           if (b.status === "COMPLETED" || b.status === "CONFIRMED") {
-            return sum + (b.total_price || 0);
+            return sum + Number(b.total_price || 0);
           }
           return sum;
         }, 0);
 
-        revenueByMonth.push({ month: monthStr, revenue });
+        const monthRefundsPaid = refundsData.reduce((acc, p) => {
+          if (!p.booking_id) return acc;
+          if (p.refund_status !== "COMPLETED") return acc;
+          const inMonth = monthBookingsData.some((mb) => mb.bookingID === p.booking_id);
+          if (!inMonth) return acc;
+          return acc + Number(p.refund_amount || 0);
+        }, 0);
+
+        const monthNet = monthGross - monthRefundsPaid;
+
+        revenueByMonth.push({ month: monthStr, revenue: monthNet });
       }
 
       const statusCount = monthBookings.reduce((acc, b) => {
@@ -159,15 +206,29 @@ export default function StatsPage() {
 
       const availableCourts = courts.filter((c) => c.status === "AVAILABLE").length;
 
-      const totalRevenue = monthBookings.reduce((sum, b) => {
+      const grossRevenue = monthBookings.reduce((sum, b) => {
         if (b.status === "COMPLETED" || b.status === "CONFIRMED") {
-          return sum + (b.total_price || 0);
+          return sum + Number(b.total_price || 0);
         }
         return sum;
       }, 0);
 
+      const refundsPaid = refundsData.reduce((acc, p) => {
+        if (!p.booking_id) return acc;
+        const inMonth = monthBookings.some((mb) => mb.bookingID === p.booking_id);
+        if (!inMonth) return acc;
+        if (p.refund_status === "COMPLETED") {
+          return acc + Number(p.refund_amount || 0);
+        }
+        return acc;
+      }, 0);
+
+      const totalRevenue = grossRevenue - refundsPaid;
+
       setStats({
         totalRevenue,
+        grossRevenue,
+        refundsPaid,
         totalBookings: monthBookings.length,
         completedBookings: monthBookings.filter((b) => b.status === "COMPLETED").length,
         pendingBookings: monthBookings.filter((b) => b.status === "PENDING").length,
@@ -192,11 +253,13 @@ export default function StatsPage() {
 
     const revenueData = stats.revenueByDay.map((item) => ({
       Ngày: format(new Date(item.date), "dd/MM/yyyy"),
-      "Doanh thu (VNĐ)": item.revenue,
+      "Doanh thu ròng (VNĐ)": item.net,
     }));
 
     const summaryData = [
-      { "Chỉ số": "Tổng doanh thu", "Giá trị": stats.totalRevenue },
+      { "Chỉ số": "Doanh thu gộp", "Giá trị": (stats as any).grossRevenue || 0 },
+      { "Chỉ số": "Tiền đã trả khách", "Giá trị": (stats as any).refundsPaid || 0 },
+      { "Chỉ số": "Doanh thu ròng", "Giá trị": stats.totalRevenue },
       { "Chỉ số": "Tổng đặt sân", "Giá trị": stats.totalBookings },
       { "Chỉ số": "Đã hoàn thành", "Giá trị": stats.completedBookings },
       { "Chỉ số": "Đang chờ", "Giá trị": stats.pendingBookings },
@@ -226,10 +289,23 @@ export default function StatsPage() {
     labels: stats.revenueByDay.map((item) => format(new Date(item.date), "dd/MM")),
     datasets: [
       {
-        label: "Doanh thu (VNĐ)",
-        data: stats.revenueByDay.map((item) => item.revenue),
+        label: "Doanh thu ròng (VNĐ)",
+        data: stats.revenueByDay.map((item) => item.net),
         backgroundColor: "rgba(59, 130, 246, 0.6)",
         borderColor: "rgba(59, 130, 246, 1)",
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const refundsChartData = {
+    labels: stats.revenueByDay.map((item) => format(new Date(item.date), "dd/MM")),
+    datasets: [
+      {
+        label: "Tiền đã hoàn (VNĐ)",
+        data: stats.revenueByDay.map((item) => item.refundsPaid),
+        backgroundColor: "rgba(239, 68, 68, 0.6)",
+        borderColor: "rgba(239, 68, 68, 1)",
         borderWidth: 1,
       },
     ],
@@ -269,6 +345,7 @@ export default function StatsPage() {
         PENDING: "Chờ xử lý",
         CANCELLED: "Đã hủy",
         CHECKED_IN: "Đã check-in",
+        CANCEL_REQUESTED: "Yêu cầu hủy và hoàn tiền",
       };
       return statusLabels[item.status] || item.status;
     }),
@@ -319,6 +396,11 @@ export default function StatsPage() {
         },
       },
     },
+  };
+
+  const refundsChartOptions = {
+    ...chartOptions,
+    maintainAspectRatio: false,
   };
 
   const lineChartOptions = {
@@ -380,9 +462,12 @@ export default function StatsPage() {
           </div>
           <p className="text-sm text-gray-600 mb-1">Tổng Doanh Thu</p>
           <p className="text-2xl font-bold text-blue-600">{stats.totalRevenue.toLocaleString()}đ</p>
-          <p className="text-xs text-gray-500 mt-2">
-            {format(new Date(selectedMonth), "MM/yyyy")}
-          </p>
+          <p className="text-xs text-gray-500 mt-2">{format(new Date(selectedMonth), "MM/yyyy")}</p>
+          <div className="mt-2 text-xs text-gray-600">
+            <div>Doanh thu gộp: {(stats as any).grossRevenue?.toLocaleString?.() ?? 0}đ</div>
+            <div>Tiền đã trả khách: {(stats as any).refundsPaid?.toLocaleString?.() ?? 0}đ</div>
+            <div className="font-semibold">Doanh thu sau trừ hoàn: {stats.totalRevenue.toLocaleString()}đ</div>
+          </div>
         </div>
 
         <div className="bg-white p-6 rounded-xl shadow-lg border-l-4 border-green-500">
@@ -464,6 +549,13 @@ export default function StatsPage() {
               <Pie data={statusDistData} />
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-xl shadow-lg mb-6">
+        <h3 className="font-semibold mb-4">Tiền đã hoàn theo ngày</h3>
+        <div className="mb-4 h-40">
+          <Bar data={refundsChartData} options={refundsChartOptions} />
         </div>
       </div>
     </div>
