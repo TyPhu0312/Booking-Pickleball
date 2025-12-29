@@ -476,38 +476,3 @@ export const deleteBooking = async (req: Request, res: Response) => {
         res.status(500).json({ error: "Lỗi khi huỷ đặt sân" });
     }
 }
-
-export const getGroupedBookings = async (req: Request, res: Response) => {
-    try {
-        const parentBookings = await prisma.bookings.findMany({
-            where: {
-                parent_booking_id: null,
-            },
-            include: {
-                user: true,
-                court: true,
-                bookingSlots: {
-                    include: {
-                        slot: true,
-                    },
-                },
-                payments: true,
-                childBookings: {
-                    include: {
-                        bookingSlots: {
-                            include: {
-                                slot: true,
-                            },
-                        },
-                    },
-                },
-            },
-            orderBy: { createdAt: "desc" },
-        });
-
-        res.json(parentBookings);
-    } catch (error) {
-        console.error("Lỗi khi lấy grouped bookings:", error);
-        res.status(500).json({ error: "Lỗi khi lấy grouped bookings" });
-    }
-};
