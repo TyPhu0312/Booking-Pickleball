@@ -187,7 +187,7 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
 
         const data = await res.json();
     
-        if (data.status === "PARTIALLY_PAID" || data.status === "PAID") {
+        if (data.status === "PARTIALLY_PAID") {
           clearInterval(interval);
           setPolling(false);
           onPaymentSuccess();

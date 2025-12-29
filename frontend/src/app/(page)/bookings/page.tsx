@@ -676,12 +676,14 @@ export default function BookingPage() {
                 <span className="font-medium">Giá mỗi tuần:</span>
                 <span className="font-bold">{getPricePerWeek().toLocaleString()} VNĐ</span>
               </div>
+              {discount > 0 && (
               <div>
                 <div className="flex justify-between">
                   <span className="font-medium">Giảm giá:</span>
-                  <span className="font-bold text-red-600">-{discount}%</span>
+                  <span className="font-bold">-{discount}%</span>
                 </div>
               </div>
+              )}
               <div>
                 <div className="flex justify-between">
                   <span className="font-medium">Tiền cọc ({bookingType === "weekly" ? depositWeekly*100 : bookingType === "tournament" ? depositTournament*100 : depositCasual*100}%):</span>
