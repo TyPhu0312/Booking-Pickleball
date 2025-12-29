@@ -6,7 +6,6 @@ const prisma = new PrismaClient();
 
 export const createPayOSPayment = async (req: Request, res: Response) => {
   const { bookingId, paymentType } = req.body;
-  console.log("🔍 createPayOSPayment called with:", { bookingId, paymentType });
   try {
     const result = await prisma.$transaction(async (tx) => {
       let booking = await tx.bookings.findUnique({

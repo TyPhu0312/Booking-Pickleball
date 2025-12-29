@@ -254,6 +254,7 @@ export default function StatsPage() {
     const revenueData = stats.revenueByDay.map((item) => ({
       Ngày: format(new Date(item.date), "dd/MM/yyyy"),
       "Doanh thu ròng (VNĐ)": item.net,
+      "Tiền đã hoàn trả (VNĐ)": item.refundsPaid || 0,
     }));
 
     const summaryData = [

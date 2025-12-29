@@ -110,7 +110,7 @@ export default function RemainingPaymentModal({
 
         const data = await res.json();
                 
-        if (data.status === "PAID" || data.status === "PARTIALLY_PAID") {
+        if (data.status === "PAID") {
           clearInterval(interval);
           setPolling(false);
           onPaymentSuccess();
