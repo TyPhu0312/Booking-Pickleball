@@ -48,10 +48,11 @@ interface BookingCardProps {
 
 export default function BookingCard({ booking, onStatusChange, onEdit }: BookingCardProps) {
   const [showActions, setShowActions] = useState(false);
+  const [allowCheckIn, setAllowCheckIn] = useState(false);
 
   const getSlotsByDate = () => {
     const grouped: { [date: string]: typeof booking.bookingSlots } = {};
-    
+
     booking.bookingSlots.forEach(bs => {
       const dateKey = bs.date;
       if (!grouped[dateKey]) {
@@ -61,19 +62,50 @@ export default function BookingCard({ booking, onStatusChange, onEdit }: Booking
     });
 
     Object.keys(grouped).forEach(date => {
-      grouped[date].sort((a, b) => 
+      grouped[date].sort((a, b) =>
         a.slot.start_time.localeCompare(b.slot.start_time)
       );
     });
 
+
     return grouped;
   };
+  const currentDate = new Date();
+  if (!allowCheckIn && booking.status === "CONFIRMED") {
+    const firstBookingDateStr = booking.bookingSlots[0].date;
+    const firstBookingDate = parseISO(firstBookingDateStr);
+    const hasStarted = booking.bookingSlots.some(bs => {
+      const [startHour, startMinute] = bs.slot.start_time.split(":").map(Number);
+      const slotDateTime = new Date(firstBookingDate);
+      slotDateTime.setHours(startHour, startMinute - 10, 0, 0);
+      return currentDate >= slotDateTime;
+    })
+    const isFalseCheckInTime = booking.bookingSlots.some(bs => {
+      const [startHour, startMinute] = bs.slot.start_time.split(":").map(Number);
+      const slotDateTime = new Date(firstBookingDate);
+      slotDateTime.setHours(startHour, startMinute, 0, 0);
+      return currentDate < slotDateTime;
+    }
+    );
+    if (
+      firstBookingDate.getFullYear() === currentDate.getFullYear() &&
+      firstBookingDate.getMonth() === currentDate.getMonth() &&
+      firstBookingDate.getDate() === currentDate.getDate()
+    ) {
+      if (hasStarted && isFalseCheckInTime) {
+        setAllowCheckIn(true);
+      }
+    }
+
+  }
 
   const slotsByDate = getSlotsByDate();
   const uniqueDates = Object.keys(slotsByDate).sort();
 
   const isRecurring = booking.bookingSlots.some(bs => bs.is_recurring);
   const recurringInfo = isRecurring ? booking.bookingSlots.find(bs => bs.is_recurring) : null;
+
+
 
   const getDayName = (day: number | null) => {
     if (day === null) return '';
@@ -106,7 +138,7 @@ export default function BookingCard({ booking, onStatusChange, onEdit }: Booking
   };
 
   return (
-    <div 
+    <div
       className="bg-linear-to-br from-white to-gray-50 border-2 border-gray-200 rounded-xl p-3 hover:shadow-lg transition-all cursor-pointer group"
       onClick={() => setShowActions(!showActions)}
     >
@@ -115,15 +147,15 @@ export default function BookingCard({ booking, onStatusChange, onEdit }: Booking
           <div className="flex items-center gap-2 mb-1">
             <MapPin className="w-4 h-4 text-emerald-600" />
             <span className={`font-bold text-gray-800 ${booking.court?.name ? 'underline' : ''}`}>{booking.court?.name || "Chưa phân bổ"}</span>
-             {getStatusBadge(booking.status)}
+            {getStatusBadge(booking.status)}
           </div>
-          
+
           <div className="space-y-1.5 mt-2">
             {uniqueDates.map(dateKey => {
               const slots = slotsByDate[dateKey];
               const dateObj = parseISO(dateKey);
               const timeRanges = slots.map(bs => `${bs.slot.start_time}-${bs.slot.end_time}`);
-              
+
               return (
                 <div key={dateKey} className="text-xs">
                   <div className="flex items-center gap-1.5 text-gray-600">
@@ -137,7 +169,7 @@ export default function BookingCard({ booking, onStatusChange, onEdit }: Booking
               );
             })}
           </div>
-          
+
           {isRecurring && recurringInfo && (
             <div className="flex items-center gap-1 text-xs mt-2">
               <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
@@ -169,7 +201,7 @@ export default function BookingCard({ booking, onStatusChange, onEdit }: Booking
             </>
           )}
         </div>
-        
+
         <div className="flex items-center justify-between">
           <span className="text-gray-600">Tổng:</span>
           <span className="font-bold text-emerald-600">
@@ -193,8 +225,8 @@ export default function BookingCard({ booking, onStatusChange, onEdit }: Booking
                 Xác nhận
               </button>
             )}
-            
-            {booking.status === "CONFIRMED" && (
+
+            {booking.status === "CONFIRMED" && allowCheckIn && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -206,7 +238,7 @@ export default function BookingCard({ booking, onStatusChange, onEdit }: Booking
                 Check-in
               </button>
             )}
-            
+
             {booking.status === "CHECKED_IN" && (
               <button
                 onClick={(e) => {
@@ -219,7 +251,7 @@ export default function BookingCard({ booking, onStatusChange, onEdit }: Booking
                 Hoàn thành
               </button>
             )}
-            
+
             {!["COMPLETED", "CANCELLED", "CHECKED_IN"].includes(booking.status) && (
               <button
                 onClick={(e) => {
@@ -233,7 +265,7 @@ export default function BookingCard({ booking, onStatusChange, onEdit }: Booking
               </button>
             )}
           </div>
-          
+
           <button
             onClick={(e) => {
               e.stopPropagation();

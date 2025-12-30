@@ -18,6 +18,7 @@ interface Tournament {
   tournamentID: string;
   name: string;
   start_day: string;
+  end_day: string;
   description: string | null;
   status: string;
   max_teams: number;
@@ -39,6 +40,7 @@ export default function TournamentsPage() {
   const [form, setForm] = useState({
     name: "",
     start_day: "",
+    end_day: "",
     max_teams: "",
     description: "",
     image: "",
@@ -107,6 +109,7 @@ export default function TournamentsPage() {
       const payload = {
         name: form.name,
         start_day: new Date(form.start_day).toISOString(),
+        end_day: new Date(form.end_day).toISOString(),
         max_teams: parseInt(form.max_teams),
         description: form.description || null,
         status: form.status,
@@ -123,7 +126,7 @@ export default function TournamentsPage() {
       if (response.ok) {
         toast.success("Tạo giải đấu thành công!");
         setIsCreateOpen(false);
-        setForm({ name: "", start_day: "", max_teams: "", description: "", image: "", status: "UPCOMING", user_id: "" });
+        setForm({ name: "", start_day: "", end_day: "", max_teams: "", description: "", image: "", status: "UPCOMING", user_id: "" });
         setCurrentPage(1);
       } else {
         const error = await response.json();
@@ -239,7 +242,7 @@ export default function TournamentsPage() {
                 </h3>
                 <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
                   <Calendar className="w-4 h-4" />
-                  {format(new Date(tournament.start_day), "dd/MM/yyyy")}
+                  {format(new Date(tournament.start_day), "dd/MM/yyyy")} - {format(new Date(tournament.end_day), "dd/MM/yyyy")}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <Users className="w-4 h-4" />
@@ -320,12 +323,22 @@ export default function TournamentsPage() {
             </div>
 
             <div>
-              <Label>Ngày diễn ra *</Label>
+              <Label>Ngày bắt đầu *</Label>
               <Input
                 type="date"
                 value={form.start_day}
                 onChange={(e) => setForm({ ...form, start_day: e.target.value })}
                 min={format(new Date(), "yyyy-MM-dd")}
+              />
+            </div>
+
+            <div>
+              <Label>Ngày kết thúc *</Label>
+              <Input
+                type="date"
+                value={form.end_day}
+                onChange={(e) => setForm({ ...form, end_day: e.target.value })}
+                min={form.start_day || format(new Date(), "yyyy-MM-dd")}
               />
             </div>
 

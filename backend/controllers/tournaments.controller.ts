@@ -115,7 +115,7 @@ export const getUpcomingTournaments = async (req: Request, res: Response) => {
 
 export const createTournament = async (req: Request, res: Response) => {
     try {
-      const { name, start_day, description, status, max_teams, user_id, phone_user, image } = req.body;
+      const { name, start_day, end_day, description, status, max_teams, user_id, phone_user, image } = req.body;
   
       if (!name) {
         return res.status(400).json({ error: "Thiếu tên giải đấu" });
@@ -153,6 +153,7 @@ export const createTournament = async (req: Request, res: Response) => {
         data: {
           name,
           start_day: new Date(start_day),
+          end_day:new Date(end_day),
           description: description || null,
           status,
           max_teams: parseInt(max_teams),
@@ -181,7 +182,7 @@ export const createTournament = async (req: Request, res: Response) => {
 export const updateTournament = async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { name, start_day, description, status, max_teams, image } = req.body;
+      const { name, start_day, end_day, description, status, max_teams, image } = req.body;
 
       const exists = await prisma.tournaments.findUnique({
         where: { tournamentID: id}
@@ -199,6 +200,7 @@ export const updateTournament = async (req: Request, res: Response) => {
       
       if (name !== undefined) dataToUpdate.name = name;
       if (start_day !== undefined) dataToUpdate.start_day = new Date(start_day);
+      if (end_day !== undefined) dataToUpdate.end_day = new Date(end_day);
       if (description !== undefined) dataToUpdate.description = description;
       if (status !== undefined) dataToUpdate.status = status;
       if (max_teams !== undefined) dataToUpdate.max_teams = parseInt(max_teams);

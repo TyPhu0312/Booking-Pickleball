@@ -16,6 +16,7 @@ interface Tournament {
   tournamentID: string;
   name: string;
   start_day: string;
+  end_day: string;
   description?: string;
   status: string;
   max_teams: number;
@@ -72,6 +73,30 @@ export default function TournamentBooking({
 
     fetchUserTournaments();
   }, []);
+
+  useEffect(() => {
+    if (!selectedTournament) {
+      onStartDateChange("");
+      onEndDateChange("");
+      return;
+    }
+
+    const found = tournaments.find(t => t.tournamentID === selectedTournament);
+    if (found) {
+      try {
+        const start = new Date(found.start_day);
+        const end = new Date(found.end_day);
+        if (!isNaN(start.getTime())) {
+          onStartDateChange(format(start, 'yyyy-MM-dd'));
+        }
+        if (!isNaN(end.getTime())) {
+          onEndDateChange(format(end, 'yyyy-MM-dd'));
+        }
+      } catch (e) {
+        console.error('Invalid tournament dates', e);
+      }
+    }
+  }, [selectedTournament, tournaments, onStartDateChange, onEndDateChange]);
 
   return (
     <>
@@ -184,7 +209,7 @@ export default function TournamentBooking({
               </option>
               {tournaments.map((tournament) => (
                 <option key={tournament.tournamentID} value={tournament.tournamentID}>
-                  {tournament.name} - {format(new Date(tournament.start_day), "dd/MM/yyyy")}
+                  {tournament.name} - {format(new Date(tournament.start_day), "dd/MM/yyyy")} - {format(new Date(tournament.end_day), "dd/MM/yyyy")}
                 </option>
               ))}
             </select>
