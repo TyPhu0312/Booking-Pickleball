@@ -4,7 +4,7 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 export const startAutoCancelScheduler = () => {
-  cron.schedule("*/10 * * * *", async () => {
+  cron.schedule("*/1 * * * *", async () => {
     try {
       console.log(" Đang kiểm tra các thanh toán hết hạn...");
 
@@ -24,31 +24,53 @@ export const startAutoCancelScheduler = () => {
           where: { bookingID: payment.booking_id }
         });
 
-        let bookingsToCancel: string[] = [];
-        
+        let bookingIdsToCheck: string[] = [];
+
         if (booking) {
-          bookingsToCancel = [booking.bookingID];
-        } else {
-          const childBookings = await prisma.bookings.findMany({
-            where: { parent_booking_id: payment.booking_id }
-          });
-          
-          if (childBookings.length > 0) {
-            bookingsToCancel = childBookings.map(b => b.bookingID);
+          bookingIdsToCheck.push(booking.bookingID);
+          if (booking.parent_booking_id) {
+            bookingIdsToCheck.push(booking.parent_booking_id);
           } else {
-            continue;
+            const childBookings = await prisma.bookings.findMany({ where: { parent_booking_id: booking.bookingID } });
+            if (childBookings.length > 0) {
+              bookingIdsToCheck.push(...childBookings.map(b => b.bookingID));
+            }
+          }
+        } else {
+          bookingIdsToCheck.push(payment.booking_id);
+          const childBookings = await prisma.bookings.findMany({ where: { parent_booking_id: payment.booking_id } });
+          if (childBookings.length > 0) {
+            bookingIdsToCheck.push(...childBookings.map(b => b.bookingID));
           }
         }
 
-        const allPayments = await prisma.payments.findMany({
-          where: { booking_id: payment.booking_id }
+        const existingPaid = await prisma.payments.findFirst({
+          where: {
+            booking_id: { in: bookingIdsToCheck },
+            status: { in: ["PAID", "PARTIALLY_PAID"] }
+          }
         });
 
-        const hasPaidOrPartiallyPaid = allPayments.some(
-          p => p.status === "PAID" || p.status === "PARTIALLY_PAID"
-        );
+        const hasPaidOrPartiallyPaid = !!existingPaid;
 
         if (hasPaidOrPartiallyPaid) {
+          if (payment.order_code) {
+            try {
+              const PayOS = require("@payos/node");
+              const payOS = new PayOS(
+                process.env.PAYOS_CLIENT_ID!,
+                process.env.PAYOS_API_KEY!,
+                process.env.PAYOS_CHECKSUM_KEY!
+              );
+              await payOS.cancelPaymentLink(payment.order_code);
+              console.log(`Đã hủy payment link ${payment.order_code} trên PayOS`);
+            } catch (error) {
+              console.warn(`Không thể hủy payment link ${payment.order_code}:`, error);
+            }
+          }
+
+          await prisma.payments.update({ where: { paymentID: payment.paymentID }, data: { status: "EXPIRED" } });
+          console.log(`Payment ${payment.paymentID} expired but booking retained because paid amount exists in context.`);
           continue;
         }
 
@@ -87,14 +109,14 @@ export const startAutoCancelScheduler = () => {
       }
 
       if (expiredPayments.length > 0) {
-        console.log(`Đã hủy ${expiredPayments.length} booking hết hạn`);
+        console.log(`Đã xử lý ${expiredPayments.length} payment hết hạn (đã đặt trạng thái EXPIRED). Không tự động hủy booking; cho phép tạo lại QR thanh toán.`);
       }
     } catch (error) {
       console.error("Lỗi trong scheduler tự động hủy:", error);
     }
   });
 
-  console.log("Scheduler tự động hủy đã khởi động (chạy mỗi 10 phút)");
+  console.log("Scheduler tự động hủy đã khởi động (chạy mỗi 3 phút)");
 };
 
 

@@ -126,7 +126,7 @@ export default function RemainingPaymentModal({
       setPolling(false);
       toast.error("Hết thời gian thanh toán. Vui lòng tạo lại thanh toán.");
       onClose();
-    }, 120000);
+    }, 180000);
   };
 
   const formatTime = (seconds: number) => {

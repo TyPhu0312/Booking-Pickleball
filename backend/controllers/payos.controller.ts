@@ -192,7 +192,7 @@ export const createPayOSPayment = async (req: Request, res: Response) => {
         payment_url: paymentLink.checkoutUrl,
         qr_code_url: paymentLink.qrCode,
         payment_link_id: paymentLink.paymentLinkId,
-        payment_deadline: new Date(Date.now() +  3 * 60 * 1000),
+        payment_deadline: new Date(Date.now() + 3 * 60 * 1000),
       }
     });
     
@@ -707,8 +707,14 @@ export const cancelPayOSPayment = async (req: Request, res: Response) => {
     if (payment.order_code) {
       try {
         await cancelPaymentLink(payment.order_code, reason);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Lỗi khi hủy liên kết thanh toán PayOS:", error);
+        const apiCode = error?.code || error?.error?.code || (error?.error && error.error.code);
+        const apiDesc = error?.desc || error?.error?.desc || error?.message;
+        if (apiCode === '221') {
+          return res.status(400).json({ message: `Không thể hủy liên kết thanh toán PayOS: ${apiDesc || 'Đơn không thể hủy'}` });
+        }
+        return res.status(502).json({ message: 'Lỗi khi gọi PayOS để hủy liên kết', detail: apiDesc || String(error) });
       }
     }
 
@@ -717,10 +723,20 @@ export const cancelPayOSPayment = async (req: Request, res: Response) => {
       data: { status: "CANCELLED" },
     });
 
-    await prisma.bookings.update({
-      where: { bookingID: payment.booking_id },
-      data: { status: "CANCELLED" },
-    });
+    const existingBooking = await prisma.bookings.findUnique({ where: { bookingID: payment.booking_id } });
+    if (existingBooking) {
+      await prisma.bookings.update({
+        where: { bookingID: payment.booking_id },
+        data: { status: "CANCELLED" },
+      });
+    } else {
+      const childrenCount = await prisma.bookings.count({ where: { parent_booking_id: payment.booking_id } });
+      if (childrenCount > 0) {
+        await prisma.bookings.updateMany({ where: { parent_booking_id: payment.booking_id }, data: { status: "CANCELLED" } });
+      } else {
+        console.warn(`Booking not found for payment.booking_id=${payment.booking_id}. Skipping booking update.`);
+      }
+    }
 
     res.json({ message: "Hủy thanh toán thành công" });
   } catch (error) {

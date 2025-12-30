@@ -97,6 +97,7 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
     if (!paymentData) return;
 
     const deadline = new Date(paymentData.deadline).getTime();
+    console.log("Payment deadline:", new Date(paymentData.deadline));
     const now = Date.now();
     const diff = Math.floor((deadline - now) / 1000);
     setTimeLeft(diff > 0 ? diff : 0);
@@ -203,7 +204,7 @@ export default function PaymentModal({ bookingId, onClose, onPaymentSuccess }: P
       setPolling(false);
       toast.error("Hết thời gian thanh toán. Vui lòng tạo đặt lại booking.");
       onClose();
-    }, 120000);
+    }, 180000);
   };
 
   const formatTime = (seconds: number) => {
