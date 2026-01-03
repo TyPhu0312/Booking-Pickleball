@@ -93,6 +93,7 @@ model Users {
   bookings   Bookings[]
   feedbacks   Feedbacks[]
   tournaments Tournaments[]
+  blogs Blogs[]
 }
 
 model Courts {
@@ -224,8 +225,19 @@ model Blogs {
   content     String    @db.LongText
   image       String?
   author      String?
+  user_id     String?
+  reviewer_id String?
+  review_note String?
+  review_date DateTime?
+  status      BlogStatus @default(PENDING)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+  user Users? @relation(fields: [user_id], references: [userID])
+}
 
+enum BlogStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
