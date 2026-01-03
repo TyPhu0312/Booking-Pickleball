@@ -123,6 +123,28 @@ export const deleteUser = async (req: Request, res: Response) => {
     }
 };
 
+export const updateRoleUser = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { role_id , userID } = req.body;  
+        const existingUser = await prisma.users.findUnique({ where: { userID: id } });
+        if (!existingUser) {
+            return res.status(404).json({ error: "Không tìm thấy người dùng" });
+        }
+        const allowRole = await prisma.users.findUnique({ where: { userID: userID }, include: { role: true } });
+        if (allowRole?.role.name !== 'superadmin') {
+            return res.status(403).json({ error: "Bạn không có quyền thay đổi vai trò người dùng" });
+        }
+        const updated = await prisma.users.update({
+            where: { userID: id },
+            data: { role_id },
+        });
+        res.json(updated);
+    } catch (error) {
+        res.status(500).json({ error: "Lỗi khi cập nhật vai trò người dùng" });
+    }   
+};
+
 export const changePassword = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;

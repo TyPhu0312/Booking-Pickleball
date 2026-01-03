@@ -13,6 +13,7 @@ interface Blog {
   title: string;
   content: string;
   author: string;
+  user_id?: string;
   image?: string;
   createdAt: string;
   updatedAt: string;
