@@ -116,6 +116,14 @@ export default function Navbar() {
                         </Link>
 
                         <Link
+                            href="/history"
+                            className="relative group px-1 py-1 transition-all duration-300 hover:text-blue-600"
+                        >
+                            Lịch sử
+                            <span className="absolute left-0 -bottom-1 w-0 h-0.5 bg-blue-500 transition-all group-hover:w-full"></span>
+                        </Link>
+
+                        <Link
                             href="/blogs"
                             className="relative group px-1 py-1 transition-all duration-300 hover:text-blue-600"
                         >
@@ -153,8 +161,8 @@ export default function Navbar() {
                                 </DropdownMenuItem>
 
                                 <DropdownMenuItem asChild>
-                                    <Link href="/history" className="cursor-pointer">
-                                        Lịch sử đặt sân
+                                    <Link href="/myblogs" className="cursor-pointer">
+                                        Bài viết của tôi
                                     </Link>
                                 </DropdownMenuItem>
 
@@ -209,6 +217,10 @@ export default function Navbar() {
                     <Link href="/bookings" className="block px-4 py-2 border-b">
                         Đặt sân
                     </Link>
+
+                    <Link href="/history" className="block px-4 py-2 border-b">
+                        Lịch sử
+                    </Link>
                    
                     <Link href="/blogs" className="block px-4 py-2 border-b">
                         Bài viết
@@ -224,8 +236,8 @@ export default function Navbar() {
                             <Link href="/refunds" className="block px-4 py-2 border-b">
                                 Hoàn tiền
                             </Link>
-                             <Link href="/history" className="block px-4 py-2 border-b">
-                                Lịch sử đặt sân
+                             <Link href="/myblogs" className="block px-4 py-2 border-b">
+                                bài viết của tôi
                             </Link>
                             {user.role.name === "admin" && (
                                 <Link href="/admin" className="block px-4 py-2 border-b">
