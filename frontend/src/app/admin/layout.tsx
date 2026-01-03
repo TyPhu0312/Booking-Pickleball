@@ -40,6 +40,18 @@ export default function AdminLayout({
     const checkAuth = () => {
       try {
         const userStr = localStorage.getItem("user");
+        const getCookie = (name: string) => {
+          if (typeof document === "undefined") return null;
+          const match = document.cookie.split("; ").find((row) => row.startsWith(name + "="));
+          return match ? decodeURIComponent(match.split("=").slice(1).join("=")) : null;
+        };
+
+        const token = getCookie("token") || null;
+
+        if (!token) {
+          router.push("/login");
+          return;
+        }
         
         if (!userStr) {
           router.push("/login");
