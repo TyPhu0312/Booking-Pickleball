@@ -68,6 +68,14 @@ export const updateRole = async (req: Request, res: Response) => {
 export const deleteRole = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
+        const existingRole = await prisma.roles.findUnique({ where: { roleID: id } });
+        if (!existingRole) {
+            return res.status(404).json({ error: "Không tìm thấy vai trò" });
+        }
+        const isUserAssigned = await prisma.users.findFirst({ where: { role_id: id } });
+        if (isUserAssigned) {
+            return res.status(400).json({ error: "Không thể xóa vai trò này vì có người dùng đang được gán vai trò này" });
+        }
         await prisma.roles.delete({ where: { roleID: id } });
         res.json({ message: "Đã xóa vai trò thành công" });
     } catch (error) {
