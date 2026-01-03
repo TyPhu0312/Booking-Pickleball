@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Search, Eye } from "lucide-react";
+import { Plus, Search, Eye, Trash2 } from "lucide-react";
 import TextEditor from "@/components/ui/TextEditor";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,8 @@ export default function BlogsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailBlog, setDetailBlog] = useState<Blog | null>(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelBlogId, setCancelBlogId] = useState<string | null>(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectBlogId, setRejectBlogId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -56,6 +58,29 @@ export default function BlogsPage() {
   useEffect(() => {
     fetchBlogs();
   }, []);
+
+  const handleDeleteBlog = async (id: string) => {
+    if (!cancelBlogId) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/blogs/delete/${id}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Lỗi khi xóa blog");
+      }
+
+      toast.success("Xóa blog thành công!");
+      setShowCancelConfirm(false);
+      setCancelBlogId(null);
+      fetchBlogs();
+    } catch (error: unknown) {
+      toast.error((error as Error).message || "Lỗi khi xóa blog");
+    }
+  };
 
   const handleApproveBlog = async (blogId: string) => {
     try {
@@ -282,6 +307,16 @@ export default function BlogsPage() {
                         >Từ chối</button>
                       </>
                     )}
+                    <button
+                      onClick={() => {
+                        setCancelBlogId(blog.blogID);
+                        setShowCancelConfirm(true);
+                      }}
+                      className="p-1 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
+                      title="Xóa bài"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -412,6 +447,33 @@ export default function BlogsPage() {
                   setShowRejectModal(false);
                   setRejectBlogId(null);
                   setRejectReason('');
+                }}
+                className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCancelConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 relative">
+            <h2 className="text-lg font-bold text-gray-800 mb-3">Xác nhận xóa bài viết</h2>
+            <p className="text-gray-600 mb-6">Bạn có chắc chắn muốn xóa bài viết này không?</p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={handleDeleteBlog.bind(null, cancelBlogId!)}
+                className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Xác nhận xóa
+              </button>
+              <button
+                onClick={() => {
+                  setShowCancelConfirm(false);
+                  setCancelBlogId(null);
                 }}
                 className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors font-medium"
               >
