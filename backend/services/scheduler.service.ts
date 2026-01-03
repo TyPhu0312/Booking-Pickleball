@@ -47,7 +47,7 @@ export const startAutoCancelScheduler = () => {
         const existingPaid = await prisma.payments.findFirst({
           where: {
             booking_id: { in: bookingIdsToCheck },
-            status: { in: ["PAID", "PARTIALLY_PAID"] }
+            status: { in: ["PARTIALLY_PAID"] }
           }
         });
 
@@ -116,7 +116,7 @@ export const startAutoCancelScheduler = () => {
     }
   });
 
-  console.log("Scheduler tự động hủy đã khởi động (chạy mỗi 3 phút)");
+  console.log("Scheduler tự động hủy đã khởi động (chạy mỗi 1 phút)");
 };
 
 
