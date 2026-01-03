@@ -16,8 +16,9 @@ import {
   PenLine,
   DollarSign,
   MessageSquare,
+  Shield,
 } from "lucide-react";
-import { useState, createContext, useContext } from "react";
+import { useState, createContext, useContext, useEffect } from "react";
 
 interface SidebarContextType {
   collapsed: boolean;
@@ -47,8 +48,18 @@ export const SidebarProvider = ({ children }: { children: React.ReactNode }) => 
 export default function Sidebar() {
   const pathname = usePathname();
   const { collapsed, setCollapsed } = useSidebar();
+  const [userRole, setUserRole] = useState<string>("");
 
-  const menuItems = [
+  useEffect(() => {
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      const role = typeof user.role === "string" ? user.role : user.role?.name;
+      setUserRole(role || "");
+    }
+  }, []);
+
+  const baseMenuItems = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/courts", label: "Quản Lý Sân", icon: Calendar },
     { href: "/admin/bookings", label: "Quản Lý Đặt Sân", icon: Calendar },
@@ -60,8 +71,11 @@ export default function Sidebar() {
     { href: "/admin/refunds", label: "Hoàn tiền", icon: DollarSign },
     { href: "/admin/feedbacks", label: "Phản hồi", icon: MessageSquare },
     { href: "/admin/stats", label: "Báo cáo", icon: BarChart3 },
-
   ];
+
+  const menuItems = userRole === "superadmin"
+    ? [...baseMenuItems, { href: "/admin/roles", label: "Vai Trò", icon: Shield }]
+    : baseMenuItems;
 
   return (
     <div
