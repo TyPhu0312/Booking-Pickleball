@@ -94,6 +94,8 @@ model Users {
   feedbacks   Feedbacks[]
   tournaments Tournaments[]
   blogs Blogs[]
+  blogComments BlogComments[]
+  blogLikes BlogLikes[] @relation("BlogLikes")
 }
 
 model Courts {
@@ -224,6 +226,7 @@ model Blogs {
   title       String 
   content     String    @db.LongText
   image       String?
+  video_url   String?
   author      String?
   user_id     String?
   reviewer_id String?
@@ -233,6 +236,38 @@ model Blogs {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   user Users? @relation(fields: [user_id], references: [userID])
+  
+  likes    BlogLikes[]
+  comments BlogComments[]
+}
+
+model BlogLikes {
+  likeID    String   @id @default(uuid())
+  blog_id   String   @db.VarChar(36)
+  user_id   String   @db.VarChar(36)
+  createdAt DateTime @default(now())
+
+  blog Blogs @relation(fields: [blog_id], references: [blogID], onDelete: Cascade)
+  user Users @relation("BlogLikes", fields: [user_id], references: [userID], onDelete: Cascade)
+
+  @@unique([blog_id, user_id])
+  @@index([blog_id])
+  @@index([user_id])
+}
+
+model BlogComments {
+  commentID  String   @id @default(uuid())
+  blog_id    String   @db.VarChar(36)
+  user_id    String   @db.VarChar(36)
+  content    String   @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  blog Blogs @relation(fields: [blog_id], references: [blogID], onDelete: Cascade)
+  user Users @relation(fields: [user_id], references: [userID], onDelete: Cascade)
+  
+  @@index([blog_id])
+  @@index([user_id])
 }
 
 enum BlogStatus {

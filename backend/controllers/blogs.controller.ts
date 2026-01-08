@@ -8,6 +8,7 @@ const prisma = new PrismaClient();
 export const getBlogs = async (req: Request, res: Response) => {
     try {
         const isAdmin = req.query.admin === 'true';
+        const includeStats = req.query.includeStats === 'true';
         const where: any = {};
         if (!isAdmin) {
             where.status = 'APPROVED';
@@ -16,6 +17,20 @@ export const getBlogs = async (req: Request, res: Response) => {
         const blogs = await prisma.blogs.findMany({
             where,
             orderBy: { createdAt: "desc" },
+            include: includeStats ? {
+                _count: {
+                    select: {
+                        likes: true,
+                        comments: true
+                    }
+                },
+                likes: {
+                    select: {
+                        likeID: true,
+                        user_id: true
+                    }
+                }
+            } : undefined
         });
         res.json(blogs);
     } catch (error) {
@@ -46,7 +61,7 @@ export const getBlogById = async (req: Request, res: Response) => {
 };
 export const createBlog = async (req: Request, res: Response) => {
     try {
-                const { title, content, user_id, author } = req.body;
+                const { title, content, user_id, author, video_url } = req.body;
                 const imagePath = req.file ? `/uploads/blogs/${req.file.filename}` : null;
 
                 const newBlog = await prisma.blogs.create({
@@ -54,6 +69,7 @@ export const createBlog = async (req: Request, res: Response) => {
                                 title,
                                 content,
                                 image: imagePath,
+                                video_url: video_url || null,
                                 user_id: user_id || null,
                                 author: author || null,
                                 status: 'PENDING'
@@ -113,7 +129,7 @@ export const rejectBlog = async (req: Request, res: Response) => {
 export const updateBlog = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { title, content, author, user_id } = req.body;
+        const { title, content, author, user_id, video_url } = req.body;
         
         const existingBlog = await prisma.blogs.findUnique({ where: { blogID: id } });
         if (!existingBlog) {
@@ -137,6 +153,7 @@ export const updateBlog = async (req: Request, res: Response) => {
                 content,
                 author,
                 image: imagePath,
+                video_url: video_url || null,
                 user_id
             },
         });
@@ -145,6 +162,7 @@ export const updateBlog = async (req: Request, res: Response) => {
         res.status(500).json({ error: "Lỗi khi cập nhật bài viết" });
     }
 };
+
 export const deleteBlog = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
@@ -162,5 +180,145 @@ export const deleteBlog = async (req: Request, res: Response) => {
         res.json({ message: "Xóa bài viết thành công" });
     } catch (error) {
         res.status(500).json({ error: "Lỗi khi xóa bài viết" });
+    }
+};
+
+export const toggleLike = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { user_id } = req.body;
+
+        if (!user_id) {
+            return res.status(400).json({ error: "Thiếu user_id" });
+        }
+
+        const blog = await prisma.blogs.findUnique({ where: { blogID: id } });
+        if (!blog) {
+            return res.status(404).json({ error: "Không tìm thấy bài viết" });
+        }
+
+        const existingLike = await prisma.blogLikes.findUnique({
+            where: {
+                blog_id_user_id: {
+                    blog_id: id,
+                    user_id: user_id
+                }
+            }
+        });
+
+        if (existingLike) {
+            await prisma.blogLikes.delete({ where: { likeID: existingLike.likeID } });
+            res.json({ message: "Đã bỏ thích", liked: false });
+        } else {
+            await prisma.blogLikes.create({
+                data: {
+                    blog_id: id,
+                    user_id: user_id
+                }
+            });
+            res.json({ message: "Đã thích", liked: true });
+        }
+    } catch (error) {
+        res.status(500).json({ error: "Lỗi khi xử lý like" });
+    }
+};
+
+export const getLikes = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        
+        const likes = await prisma.blogLikes.findMany({
+            where: { blog_id: id },
+            include: {
+                user: {
+                    select: {
+                        userID: true,
+                        full_name: true
+                    }
+                }
+            }
+        });
+        
+        res.json({ count: likes.length, likes });
+    } catch (error) {
+        res.status(500).json({ error: "Lỗi khi lấy danh sách like" });
+    }
+};
+
+export const getComments = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        
+        const comments = await prisma.blogComments.findMany({
+            where: { blog_id: id },
+            orderBy: { createdAt: "desc" },
+            include: {
+                user: {
+                    select: {
+                        userID: true,
+                        full_name: true
+                    }
+                }
+            }
+        });
+        
+        res.json(comments);
+    } catch (error) {
+        res.status(500).json({ error: "Lỗi khi lấy danh sách bình luận" });
+    }
+};
+
+export const createComment = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { user_id, content } = req.body;
+
+        if (!user_id || !content) {
+            return res.status(400).json({ error: "Thiếu thông tin bắt buộc" });
+        }
+
+        const blog = await prisma.blogs.findUnique({ where: { blogID: id } });
+        if (!blog) {
+            return res.status(404).json({ error: "Không tìm thấy bài viết" });
+        }
+
+        const comment = await prisma.blogComments.create({
+            data: {
+                blog_id: id,
+                user_id: user_id,
+                content: content
+            },
+            include: {
+                user: {
+                    select: {
+                        userID: true,
+                        full_name: true
+                    }
+                }
+            }
+        });
+
+        res.status(201).json(comment);
+    } catch (error) {
+        res.status(500).json({ error: "Lỗi khi tạo bình luận" });
+    }
+};
+
+export const deleteComment = async (req: Request, res: Response) => {
+    try {
+        const { commentId } = req.params;
+
+        const comment = await prisma.blogComments.findUnique({
+            where: { commentID: commentId }
+        });
+
+        if (!comment) {
+            return res.status(404).json({ error: "Không tìm thấy bình luận" });
+        }
+
+        await prisma.blogComments.delete({ where: { commentID: commentId } });
+        res.json({ message: "Đã xóa bình luận" });
+    } catch (error) {
+        res.status(500).json({ error: "Lỗi khi xóa bình luận" });
     }
 };
