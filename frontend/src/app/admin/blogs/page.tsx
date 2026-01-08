@@ -3,11 +3,8 @@
 
 import { useEffect, useState } from "react";
 import { Plus, Search, Eye, Trash2 } from "lucide-react";
-import TextEditor from "@/components/ui/TextEditor";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { API_URL } from "@/lib/config";
 import { CreateBlogDialog } from "@/components/blog/CreateBlog";
