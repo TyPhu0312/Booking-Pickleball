@@ -8,7 +8,6 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-
 export function CreateBlogDialog({ show, onClose, onCreated }: { show: boolean; onClose: () => void; onCreated: () => void }) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -16,6 +15,7 @@ export function CreateBlogDialog({ show, onClose, onCreated }: { show: boolean; 
   const [userId, setUserId] = useState<string>('');
   const [imageFileLocal, setImageFileLocal] = useState<File | null>(null);
   const [preview, setPreview] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
   const [loadingLocal, setLoadingLocal] = useState(false);
 
   useEffect(() => {
@@ -43,6 +43,24 @@ export function CreateBlogDialog({ show, onClose, onCreated }: { show: boolean; 
     }
   };
 
+  const getEmbedUrl = (url: string) => {
+    if (!url) return '';
+    
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      const videoId = url.includes('youtu.be') 
+        ? url.split('/').pop()?.split('?')[0]
+        : url.split('v=')[1]?.split('&')[0];
+      return videoId ? `https://www.youtube.com/embed/${videoId}` : '';
+    }
+    
+    if (url.includes('vimeo.com')) {
+      const videoId = url.split('/').pop()?.split('?')[0];
+      return videoId ? `https://player.vimeo.com/video/${videoId}` : '';
+    }
+    
+    return url;
+  };
+
   const handleSubmitLocal = async () => {
     try {
       if (!title || !content || !author) {
@@ -56,13 +74,19 @@ export function CreateBlogDialog({ show, onClose, onCreated }: { show: boolean; 
       fd.append('author', author);
       if (userId) fd.append('user_id', userId);
       if (imageFileLocal) fd.append('image', imageFileLocal);
+      if (videoUrl) fd.append('video_url', getEmbedUrl(videoUrl));
 
       const res = await fetch(`${API_URL}/api/blogs/create`, { method: 'POST', body: fd });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Lỗi khi tạo bài viết');
 
       toast.success('Bài viết đã được gửi để duyệt');
-      setTitle(''); setContent(''); setAuthor(''); setImageFileLocal(null); setPreview('');
+      setTitle('');
+      setContent('');
+      setAuthor('');
+      setImageFileLocal(null);
+      setPreview('');
+      setVideoUrl('');
       onCreated();
       onClose();
     } catch (err) {
@@ -91,10 +115,35 @@ export function CreateBlogDialog({ show, onClose, onCreated }: { show: boolean; 
           </div>
           <div>
             <Label htmlFor="content">Nội dung</Label>
-            <div className="min-h-[200px]"><TextEditor value={content} onChange={(v: string) => setContent(v)} /></div>
+            <div className="min-h-[200px]">
+              <TextEditor value={content} onChange={(v: string) => setContent(v)} />
+            </div>
           </div>
           <div>
-            <Label htmlFor="image">Hình ảnh</Label>
+            <Label htmlFor="videoUrl">Video (YouTube/Vimeo URL) - Tùy chọn</Label>
+            <Input 
+              id="videoUrl" 
+              value={videoUrl} 
+              onChange={(e) => setVideoUrl(e.target.value)}
+              placeholder="https://www.youtube.com/watch?v=... hoặc https://vimeo.com/..."
+              className="mb-2"
+            />
+            {videoUrl && getEmbedUrl(videoUrl) && (
+              <div className="mt-2 aspect-video rounded-lg overflow-hidden bg-gray-100">
+                <iframe
+                  src={getEmbedUrl(videoUrl)}
+                  className="w-full h-full"
+                  allowFullScreen
+                  title="Video preview"
+                />
+              </div>
+            )}
+            <p className="text-xs text-gray-500 mt-1">
+              Hỗ trợ: YouTube, Vimeo. Video sẽ được embed từ nền tảng.
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="image">Hình ảnh - Tùy chọn</Label>
             <Input id="image" type="file" accept="image/*" onChange={handleImageChangeLocal} />
             {preview && <img src={preview} alt="preview" className="mt-3 w-full h-48 object-cover rounded-lg" />}
           </div>
@@ -102,7 +151,9 @@ export function CreateBlogDialog({ show, onClose, onCreated }: { show: boolean; 
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Hủy</Button>
-          <Button onClick={handleSubmitLocal} className="bg-blue-600 hover:bg-blue-700">{loadingLocal ? 'Đang gửi...' : 'Gửi để duyệt'}</Button>
+          <Button onClick={handleSubmitLocal} className="bg-blue-600 hover:bg-blue-700">
+            {loadingLocal ? 'Đang gửi...' : 'Gửi để duyệt'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

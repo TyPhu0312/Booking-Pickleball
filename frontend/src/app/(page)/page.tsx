@@ -5,7 +5,6 @@ import Banner from "@/components/home/Banner";
 import PopularSlots from "@/components/home/PopularSlots";
 import Features from "@/components/home/Features";
 import UpcomingTournaments from "@/components/home/UpcomingTournaments";
-import Blogs from "@/components/home/Blogs";
 import Reviews from "@/components/home/Reviews";
 
 export default function HomePage() {
@@ -14,7 +13,6 @@ export default function HomePage() {
       <PopularSlots />
       <Features />
       <UpcomingTournaments />
-      <Blogs />
       <Banner />
       <Reviews />
     </main>

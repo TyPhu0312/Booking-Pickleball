@@ -17,6 +17,7 @@ import payos from "./routes/payos.routes";
 import cash from "./routes/cash.routes";
 import refunds from "./routes/refund.routes";
 import feedbacks from "./routes/feedbacks.routes";
+import chat from "./routes/chat.routes";
 import { startAutoCancelScheduler, startAutoUpdateCourtStatus } from "./services/scheduler.service";
 
 dotenv.config();
@@ -48,6 +49,7 @@ app.use("/api/payos", payos);
 app.use("/api/cash", cash);
 app.use("/api/refunds", refunds);
 app.use("/api/feedbacks", feedbacks);
+app.use("/api/chat", chat);
 
 app.listen(port, async () => {
   console.log(`🚀 Server đang chạy tại cổng ${port}`);

@@ -166,6 +166,12 @@ export default function Navbar() {
                                     </Link>
                                 </DropdownMenuItem>
 
+                                 <DropdownMenuItem asChild>
+                                    <Link href="/liked-blogs" className="cursor-pointer">
+                                        Bài viết đã thích
+                                    </Link>
+                                </DropdownMenuItem>
+
                                 {(user.role.name === "admin" || user.role.name === "superadmin") && (
                                     <DropdownMenuItem asChild>
                                         <Link href="/admin" className="cursor-pointer">
@@ -238,6 +244,9 @@ export default function Navbar() {
                             </Link>
                              <Link href="/myblogs" className="block px-4 py-2 border-b">
                                 bài viết của tôi
+                            </Link>
+                             <Link href="/liked-blogs" className="block px-4 py-2 border-b">
+                                bài viết đã thích
                             </Link>
                             {user.role.name === "admin" && (
                                 <Link href="/admin" className="block px-4 py-2 border-b">

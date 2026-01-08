@@ -2,6 +2,7 @@
 import HeroSection from "@/components/features/HeroSection";
 import Footer from "@/components/features/Footer";
 import Navbar from "@/components/features/NavBar";
+import ChatWidget from "@/components/features/ChatWidget";
 import { Toaster } from "@/components/ui/sonner";
 
 
@@ -18,6 +19,7 @@ export default function RootLayout({
        <Toaster position="bottom-right" richColors />
       {children}
       <Footer />
+      <ChatWidget />
     </main>
   );
 }

@@ -3,7 +3,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Edit, Trash2, Eye, Plus } from "lucide-react";
+import { Edit, Trash2, Eye, Plus, Search, Filter } from "lucide-react";
 import TextEditor from "@/components/ui/TextEditor";
 import { CreateBlogDialog } from '@/components/blog/CreateBlog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -23,6 +23,7 @@ interface Blog {
   reviewer_id?: string;
   review_note?: string;
   image?: string;
+  video_url?: string;
   createdAt: string;
   updatedAt: string;
   status?: string;
@@ -35,12 +36,15 @@ export default function MyBlogsPage() {
   const [editingBlog, setEditingBlog] = useState<Blog | null>(null);
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [editImagePreview, setEditImagePreview] = useState<string>("");
+  const [editVideoUrl, setEditVideoUrl] = useState<string>("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteBlogId, setDeleteBlogId] = useState<string | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailBlog, setDetailBlog] = useState<Blog | null>(null);
   const [userId, setUserId] = useState<string>("");
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
 
   useEffect(() => {
     const userStr = localStorage.getItem('user');
@@ -110,6 +114,10 @@ export default function MyBlogsPage() {
         formDataToSend.append("image", editImageFile);
       }
 
+      if (editVideoUrl) {
+        formDataToSend.append("video_url", getEmbedUrl(editVideoUrl));
+      }
+
       const res = await fetch(`${API_URL}/api/blogs/update/${editingBlog.blogID}`, {
         method: "PUT",
         body: formDataToSend,
@@ -125,6 +133,7 @@ export default function MyBlogsPage() {
       setEditingBlog(null);
       setEditImageFile(null);
       setEditImagePreview("");
+      setEditVideoUrl("");
       fetchMyBlogs();
     } catch (error: unknown) {
       toast.error((error as Error).message || "Lỗi khi cập nhật bài viết");
@@ -183,6 +192,35 @@ export default function MyBlogsPage() {
     return plainText.substring(0, maxLength) + "...";
   };
 
+  const filteredBlogs = blogs.filter((blog) => {
+    const matchesSearch = 
+      blog.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      blog.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      blog.content.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesStatus = statusFilter === "ALL" || blog.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  const getEmbedUrl = (url: string) => {
+    if (!url) return '';
+    
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      const videoId = url.includes('youtu.be') 
+        ? url.split('/').pop()?.split('?')[0]
+        : url.split('v=')[1]?.split('&')[0];
+      return videoId ? `https://www.youtube.com/embed/${videoId}` : '';
+    }
+    
+    if (url.includes('vimeo.com')) {
+      const videoId = url.split('/').pop()?.split('?')[0];
+      return videoId ? `https://player.vimeo.com/video/${videoId}` : '';
+    }
+    
+    return url;
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
@@ -211,7 +249,46 @@ export default function MyBlogsPage() {
           </div>
         </div>
 
-        {blogs.length === 0 ? (
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Tìm kiếm theo tiêu đề, tác giả, nội dung..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+            />
+          </div>
+          <div className="relative">
+            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none appearance-none cursor-pointer transition-all bg-white"
+            >
+              <option value="ALL">Tất cả trạng thái</option>
+              <option value="PENDING">Chờ duyệt</option>
+              <option value="APPROVED">Đã duyệt</option>
+              <option value="REJECTED">Từ chối</option>
+            </select>
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {(searchQuery || statusFilter !== "ALL") && (
+          <div className="mb-4 text-sm text-gray-600">
+            Tìm thấy <span className="font-semibold text-blue-600">{filteredBlogs.length}</span> bài viết
+            {searchQuery && ` với từ khóa "${searchQuery}"`}
+            {statusFilter !== "ALL" && ` ở trạng thái "${statusFilter === "PENDING" ? "Chờ duyệt" : statusFilter === "APPROVED" ? "Đã duyệt" : "Từ chối"}"`}
+          </div>
+        )}
+
+        {filteredBlogs.length === 0 && blogs.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm p-12 text-center">
             <div className="text-gray-400 mb-4">
               <svg className="w-24 h-24 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -221,11 +298,35 @@ export default function MyBlogsPage() {
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Chưa có bài viết nào</h3>
             <p className="text-gray-600">Bạn chưa tạo bài viết nào. Hãy bắt đầu viết bài đầu tiên của bạn bằng cách nhấn nút Tạo bài viết mới ở trên!</p>
           </div>
+        ) : filteredBlogs.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+            <Search className="w-24 h-24 mx-auto text-gray-300 mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Không tìm thấy bài viết</h3>
+            <p className="text-gray-600 mb-4">Không có bài viết nào phù hợp với tìm kiếm hoặc bộ lọc của bạn.</p>
+            <button
+              onClick={() => {
+                setSearchQuery("");
+                setStatusFilter("ALL");
+              }}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Xóa bộ lọc
+            </button>
+          </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {blogs.map((blog) => (
+            {filteredBlogs.map((blog) => (
               <div key={blog.blogID} className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-                {blog.image ? (
+                {blog.video_url ? (
+                  <div className="w-full h-48">
+                    <iframe
+                      src={blog.video_url}
+                      className="w-full h-full"
+                      allowFullScreen
+                      title={blog.title}
+                    />
+                  </div>
+                ) : blog.image ? (
                   <img
                     src={`${API_URL}${blog.image}`}
                     alt={blog.title}
@@ -233,7 +334,7 @@ export default function MyBlogsPage() {
                   />
                 ) : (
                   <div className="w-full h-48 bg-linear-to-br from-blue-100 to-blue-200 flex items-center justify-center">
-                    <span className="text-gray-400 text-sm">Không có ảnh</span>
+                    <span className="text-gray-400 text-sm">Không có ảnh/video</span>
                   </div>
                 )}
                 
@@ -368,6 +469,43 @@ export default function MyBlogsPage() {
                   </div>
                 )}
               </div>
+
+              <div>
+                <Label htmlFor="edit-video">Video (YouTube/Vimeo URL) - Tùy chọn</Label>
+                {editingBlog.video_url && !editVideoUrl && (
+                  <div className="mb-3">
+                    <p className="text-sm text-gray-600 mb-2">Video hiện tại:</p>
+                    <div className="aspect-video rounded-lg overflow-hidden">
+                      <iframe
+                        src={editingBlog.video_url}
+                        className="w-full h-full"
+                        allowFullScreen
+                        title="Current video"
+                      />
+                    </div>
+                  </div>
+                )}
+                <Input
+                  id="edit-video"
+                  value={editVideoUrl}
+                  onChange={(e) => setEditVideoUrl(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=... hoặc https://vimeo.com/..."
+                  className="mb-2"
+                />
+                {editVideoUrl && getEmbedUrl(editVideoUrl) && (
+                  <div className="mt-2 aspect-video rounded-lg overflow-hidden bg-gray-100">
+                    <iframe
+                      src={getEmbedUrl(editVideoUrl)}
+                      className="w-full h-full"
+                      allowFullScreen
+                      title="Video preview"
+                    />
+                  </div>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  Hỗ trợ: YouTube, Vimeo. Video sẽ được embed từ nền tảng, không tốn dung lượng server.
+                </p>
+              </div>
             </div>
           )}
 
@@ -376,6 +514,7 @@ export default function MyBlogsPage() {
               setEditingBlog(null);
               setEditImageFile(null);
               setEditImagePreview("");
+              setEditVideoUrl("");
             }}>
               Hủy
             </Button>
@@ -399,6 +538,17 @@ export default function MyBlogsPage() {
                   {getStatusBadge(detailBlog.status)}
                   <span className="text-sm text-gray-500">{formatDate(detailBlog.createdAt)}</span>
                 </div>
+                
+                {detailBlog.video_url && (
+                  <div className="aspect-video rounded-lg overflow-hidden mb-4">
+                    <iframe
+                      src={detailBlog.video_url}
+                      className="w-full h-full"
+                      allowFullScreen
+                      title={detailBlog.title}
+                    />
+                  </div>
+                )}
                 
                 {detailBlog.image && (
                   <img
