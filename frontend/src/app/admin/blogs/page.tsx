@@ -21,6 +21,7 @@ interface Blog {
   reviewer_id?: string;
   review_note?: string;
   image?: string;
+  video_url?: string;
   createdAt: string;
   updatedAt: string;
   status?: string;
@@ -245,7 +246,7 @@ export default function BlogsPage() {
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Hình Ảnh</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Media</th>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Tiêu Đề</th>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Tác Giả</th>
               <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Trạng Thái</th>
@@ -257,7 +258,13 @@ export default function BlogsPage() {
             {currentBlogs.map((blog) => (
               <tr key={blog.blogID} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
-                  {blog.image ? (
+                  {blog.video_url ? (
+                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-black flex items-center justify-center">
+                      <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
+                      </svg>
+                    </div>
+                  ) : blog.image ? (
                     <img
                       src={`${API_URL}${blog.image}`}
                       alt={blog.title}
@@ -265,7 +272,7 @@ export default function BlogsPage() {
                     />
                   ) : (
                     <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
-                      <span className="text-gray-400 text-xs">No Image</span>
+                      <span className="text-gray-400 text-xs">No Media</span>
                     </div>
                   )}
                 </td>
@@ -386,6 +393,17 @@ export default function BlogsPage() {
                   {getStatusBadge(detailBlog.status)}
                   <span className="text-sm text-gray-500">{formatDate(detailBlog.createdAt)}</span>
                 </div>
+                
+                {detailBlog.video_url && (
+                  <div className="aspect-video rounded-lg overflow-hidden mb-4">
+                    <iframe
+                      src={detailBlog.video_url}
+                      className="w-full h-full"
+                      allowFullScreen
+                      title={detailBlog.title}
+                    />
+                  </div>
+                )}
                 
                 {detailBlog.image && (
                   <img
