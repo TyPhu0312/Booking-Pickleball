@@ -96,6 +96,8 @@ export default function HistoryPage() {
   });
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelBookingId, setCancelBookingId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
 
   useEffect(() => {
@@ -385,6 +387,51 @@ export default function HistoryPage() {
     });
   };
 
+  const groupedBookings = groupBookings();
+  const totalPages = Math.ceil(groupedBookings.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentBookings = groupedBookings.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const renderPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 3; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        pages.push(1);
+        pages.push('...');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+
+    return pages;
+  };
+
 
   if (loading) {
     return <div>Đang tải...</div>;
@@ -406,7 +453,7 @@ export default function HistoryPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {groupBookings().map((group, groupIndex) => {
+            {currentBookings.map((group, groupIndex) => {
               if (group.isGroup && group.parentId) {
                 return (
                   <>
@@ -697,6 +744,51 @@ export default function HistoryPage() {
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-6">
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className={`px-4 py-2 rounded-lg ${
+              currentPage === 1
+                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+            }`}
+          >
+            Trước
+          </button>
+
+          {renderPageNumbers().map((page, index) => (
+            <button
+              key={index}
+              onClick={() => typeof page === 'number' ? handlePageChange(page) : null}
+              disabled={page === '...'}
+              className={`px-4 py-2 rounded-lg ${
+                page === currentPage
+                  ? "bg-blue-600 text-white"
+                  : page === '...'
+                  ? "bg-white text-gray-400 cursor-default"
+                  : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              {page}
+            </button>
+          ))}
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className={`px-4 py-2 rounded-lg ${
+              currentPage === totalPages
+                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+            }`}
+          >
+            Sau
+          </button>
+        </div>
+      )}
 
       {showPaymentModal && paymentBookingId && (
         <PaymentModal
