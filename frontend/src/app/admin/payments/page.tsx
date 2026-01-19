@@ -194,7 +194,8 @@ export default function PaymentsPage() {
     }, 0),
     totalRemaining: filteredBookings.reduce((sum, b) => {
       const info = bookingPayments[b.bookingID];
-      return sum + (info?.remainingAmount || b.total_price);
+      const remaining = b.total_price - (info?.totalPaid || 0);
+      return sum + Math.max(remaining, 0);
     }, 0),
   };
 
@@ -396,7 +397,7 @@ export default function PaymentsPage() {
                       <td className='px-4 py-4 whitespace-nowrap text-sm'>
                         <div className='flex flex-col'>
                           <span className='font-semibold text-orange-600'>
-                            {(paymentInfo?.remainingAmount ?? booking.total_price).toLocaleString()}đ
+                            {Math.max(booking.total_price - (paymentInfo?.totalPaid ?? 0), 0).toLocaleString()}đ
                           </span>
                         </div>
                       </td>
