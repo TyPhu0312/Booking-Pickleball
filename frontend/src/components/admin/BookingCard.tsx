@@ -3,7 +3,7 @@ import { Clock, Phone, User, MapPin, Edit, CheckCircle, XCircle, Calendar, Link2
 import { format, parseISO } from "date-fns";
 import { vi } from "date-fns/locale";
 
-type BookingStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "COMPLETED" | "CANCELLED";
+type BookingStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "COMPLETED" | "CANCELLED" | "CANCEL_REQUESTED";
 type CourtType = "INDOOR" | "OUTDOOR";
 
 interface Booking {
@@ -119,6 +119,7 @@ export default function BookingCard({ booking, onStatusChange, onEdit }: Booking
       CONFIRMED: "bg-blue-100 text-blue-800 border-blue-300",
       CHECKED_IN: "bg-purple-100 text-purple-800 border-purple-300",
       COMPLETED: "bg-green-100 text-green-800 border-green-300",
+      CANCEL_REQUESTED: "bg-orange-100 text-orange-800 border-orange-300",
       CANCELLED: "bg-red-100 text-red-800 border-red-300",
     };
 
@@ -127,6 +128,7 @@ export default function BookingCard({ booking, onStatusChange, onEdit }: Booking
       CONFIRMED: "Đã cọc",
       CHECKED_IN: "Đã check-in",
       COMPLETED: "Hoàn thành",
+      CANCEL_REQUESTED: "Hoàn tiền",
       CANCELLED: "Hủy",
     };
 
@@ -252,7 +254,7 @@ export default function BookingCard({ booking, onStatusChange, onEdit }: Booking
               </button>
             )}
 
-            {!["COMPLETED", "CANCELLED", "CHECKED_IN"].includes(booking.status) && (
+            {!["COMPLETED", "CANCELLED", "CHECKED_IN", "CANCEL_REQUESTED"].includes(booking.status) && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();

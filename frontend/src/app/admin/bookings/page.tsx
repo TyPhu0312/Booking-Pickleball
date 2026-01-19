@@ -10,7 +10,7 @@ import EditBookingModal from "@/components/admin/EditBookingModal";
 import { API_URL } from '@/lib/config';
 import {toast} from "sonner";
 
-type BookingStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "COMPLETED" | "CANCELLED";
+type BookingStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "COMPLETED" | "CANCELLED" | "CANCEL_REQUESTED";
 type CourtType = "INDOOR" | "OUTDOOR";
 
 interface Booking {
@@ -183,7 +183,8 @@ export default function AdminBookingsPage() {
       CONFIRMED: [],
       CHECKED_IN: [],
       COMPLETED: [],
-      CANCELLED: []
+      CANCELLED: [],
+      CANCEL_REQUESTED: []
     };
 
     filtered.forEach(booking => {
@@ -201,6 +202,7 @@ export default function AdminBookingsPage() {
       CONFIRMED: "bg-green-100 text-green-800 border-green-300",
       CHECKED_IN: "bg-blue-100 text-blue-800 border-blue-300",
       COMPLETED: "bg-gray-100 text-gray-800 border-gray-300",
+      CANCEL_REQUESTED: "bg-orange-100 text-orange-800 border-orange-300",
       CANCELLED: "bg-red-100 text-red-800 border-red-300"
     };
     return colors[status];
@@ -212,6 +214,7 @@ export default function AdminBookingsPage() {
       CONFIRMED: "Đã xác nhận",
       CHECKED_IN: "Đã check-in",
       COMPLETED: "Hoàn thành",
+      CANCEL_REQUESTED: "Yêu cầu hủy",
       CANCELLED: "Đã hủy"
     };
     return labels[status];
@@ -446,7 +449,7 @@ export default function AdminBookingsPage() {
                 >
                   Tất cả
                 </button>
-                {(["PENDING", "CONFIRMED", "CHECKED_IN", "COMPLETED", "CANCELLED"] as BookingStatus[]).map((status) => (
+                {(["PENDING", "CONFIRMED", "CHECKED_IN", "COMPLETED", "CANCELLED" , "CANCEL_REQUESTED"] as BookingStatus[]).map((status) => (
                   <button
                     key={status}
                     onClick={() => setStatusFilter(status)}
