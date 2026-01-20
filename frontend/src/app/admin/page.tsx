@@ -6,7 +6,6 @@ import {
   Calendar,
   Users,
   DollarSign,
-  TrendingUp,
   Activity,
   Trophy,
   MapPin,
