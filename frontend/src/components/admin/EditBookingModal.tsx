@@ -4,7 +4,7 @@ import { format, parseISO } from "date-fns";
 import { API_URL } from '@/lib/config';
 import { toast } from "sonner";
 
-type BookingStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "COMPLETED" | "CANCELLED";
+type BookingStatus = "PENDING" | "CONFIRMED" | "CHECKED_IN" | "COMPLETED" | "CANCELLED" | "CANCEL_REQUESTED";
 type CourtType = "INDOOR" | "OUTDOOR";
 
 interface Booking {

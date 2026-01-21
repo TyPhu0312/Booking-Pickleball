@@ -105,17 +105,17 @@ export default function UsersPage() {
     }
   };
 
-  // const handleDelete = async (id: string) => {
-  //   if (!confirm("Bạn có chắc muốn xóa người dùng này không?")) return;
-  //   try {
-  //     const res = await fetch(`${API_URL}/api/users/delete/${id}`, { method: "DELETE" });
-  //     if (!res.ok) throw new Error("Xóa thất bại");
-  //     alert("Xóa người dùng thành công");
-  //     fetchUsers();
-  //   } catch (err: unknown) {
-  //     alert((err as Error).message);
-  //   }
-  // };
+  const handleDelete = async (id: string) => {
+    if (!confirm("Bạn có chắc muốn xóa người dùng này không?")) return;
+    try {
+      const res = await fetch(`${API_URL}/api/users/delete/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Xóa thất bại");
+      alert("Xóa người dùng thành công");
+      fetchUsers();
+    } catch (err: unknown) {
+      alert((err as Error).message);
+    }
+  };
   return (
     <div>
     <h1 className="text-3xl font-bold mb-8">Quản Lý Người Dùng</h1>
@@ -184,27 +184,26 @@ export default function UsersPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap space-x-2">
                     {currentUserRole === "superadmin" && (
-                      <button 
+                      <><button
                         onClick={() => {
                           setSelectedUser(user);
                           setSelectedRoleId(user.role.roleID);
                           setShowRoleDialog(true);
-                        }}
+                        } }
                         className="text-blue-600 hover:text-blue-900"
                         title="Chỉnh sửa vai trò"
                       >
                         <Edit className="w-4 h-4" />
-                      </button>
+                      </button><button
+                        onClick={() => handleDelete(user.userID)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                          <Trash2 className="w-4 h-4" />
+                        </button></>
                     )}
                     <button className="text-blue-600 hover:text-blue-900">
                       <Lock className="w-4 h-4" />
                     </button>
-                    {/* <button
-                      onClick={() => handleDelete(user.userID)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button> */}
                   </td>
                 </tr>
               ))

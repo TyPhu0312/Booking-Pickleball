@@ -6,7 +6,6 @@ import {
   Calendar,
   Users,
   DollarSign,
-  TrendingUp,
   Activity,
   Trophy,
   MapPin,
@@ -111,36 +110,60 @@ export default function AdminDashboard() {
         return bookingDate >= monthStart && bookingDate <= monthEnd;
       });
 
-      const grossMonthRevenue = monthBookings.reduce((sum: number, b: any) => {
-        if (b.status === "COMPLETED" || b.status === "CONFIRMED") {
-          return sum + (b.total_price || 0);
+      let grossMonthRevenue = 0;
+      
+      monthBookings.forEach((booking: any) => {
+        if (booking.status === "CONFIRMED" || booking.status === "COMPLETED" || booking.status === "CHECKED_IN") {
+          grossMonthRevenue += Number(booking.deposit_amount || 0);
         }
-        return sum;
-      }, 0);
+        
+        if (booking.payments && Array.isArray(booking.payments)) {
+          booking.payments.forEach((payment: any) => {
+            const paymentDate = new Date(payment.payment_date || payment.createdAt);
+            const isInMonth = paymentDate >= monthStart && paymentDate <= monthEnd;
+            
+            if ((payment.status === "PAID" || payment.status === "PARTIALLY_PAID") && isInMonth) {
+              const amount = Number(payment.paid_amount) || Number(payment.amount) || 0;
+              grossMonthRevenue += amount;
+            }
+          });
+        }
+      });
 
-      const monthRefundsPaid = refunds.reduce((acc: number, p: any) => {
-        if (!p.booking_id) return acc;
-        if (p.refund_status !== "COMPLETED") return acc;
-        const inMonth = monthBookings.some((mb: any) => mb.bookingID === p.booking_id);
-        if (!inMonth) return acc;
-        return acc + Number(p.refund_amount || 0);
+      const monthRefundsPaid = refunds.reduce((acc: number, r: any) => {
+        if (r.refund_status !== "COMPLETED") return acc;
+        const refundDate = new Date(r.updatedAt);
+        if (refundDate < monthStart || refundDate > monthEnd) return acc;
+        const refundAmount = Number(r.refund_amount || 0);
+        return acc + refundAmount;
       }, 0);
 
       const monthRevenue = grossMonthRevenue - monthRefundsPaid;
-
-      const grossTodayRevenue = todayBookings.reduce((sum: number, b: any) => {
-        if (b.status === "COMPLETED" || b.status === "CONFIRMED") {
-          return sum + (b.total_price || 0);
+      let grossTodayRevenue = 0;
+      
+      todayBookings.forEach((booking: any) => {
+        if (booking.status === "CONFIRMED" || booking.status === "COMPLETED" || booking.status === "CHECKED_IN") {
+          grossTodayRevenue += Number(booking.deposit_amount || 0);
         }
-        return sum;
-      }, 0);
+        
+        if (booking.payments && Array.isArray(booking.payments)) {
+          booking.payments.forEach((payment: any) => {
+            const paymentDate = new Date(payment.payment_date || payment.createdAt);
+            const isToday = paymentDate >= todayStart && paymentDate <= todayEnd;
+            
+            if ((payment.status === "PAID" || payment.status === "PARTIALLY_PAID") && isToday) {
+              const amount = Number(payment.paid_amount) || Number(payment.amount) || 0;
+              grossTodayRevenue += amount;
+            }
+          });
+        }
+      });
 
-      const todayRefundsPaid = refunds.reduce((acc: number, p: any) => {
-        if (!p.booking_id) return acc;
-        if (p.refund_status !== "COMPLETED") return acc;
-        const inToday = todayBookings.some((tb: any) => tb.bookingID === p.booking_id);
-        if (!inToday) return acc;
-        return acc + Number(p.refund_amount || 0);
+      const todayRefundsPaid = refunds.reduce((acc: number, r: any) => {
+        if (r.refund_status !== "COMPLETED") return acc;
+        const refundDate = new Date(r.updatedAt);
+        if (refundDate < todayStart || refundDate > todayEnd) return acc;
+        return acc + Number(r.refund_amount || 0);
       }, 0);
 
       const todayRevenue = grossTodayRevenue - todayRefundsPaid;

@@ -15,11 +15,12 @@ interface Booking {
   status: BookingStatus;
   total_price: number;
   deposit_amount: number;
+  court_type?: CourtType;
   court: {
     courtID: string;
     name: string;
     type: CourtType;
-  };
+  } | null;
   user?: {
     userID: string;
     full_name: string;
@@ -79,10 +80,9 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
   });
   const [bookingType, setBookingType] = useState<BookingType>("CASUAL");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
-  const [availableCourts, setAvailableCourts] = useState<Court[]>([]);
-  const [selectedCourtId, setSelectedCourtId] = useState("");
-  const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [courtMultiplier, setCourtMultiplier] = useState(1);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [hasAvailableCourt, setHasAvailableCourt] = useState(true);
   const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
@@ -104,66 +104,77 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
   }, [formData.court_type]);
 
   useEffect(() => {
-    const checkAvailableCourts = async () => {
+    const checkSlotAvailability = async () => {
       if (!formData.court_type || formData.slot_ids.length === 0 || !formData.booking_date) {
-        setAvailableCourts([]);
-        setSelectedCourtId("");
+        setHasAvailableCourt(true);
         return;
       }
 
       setCheckingAvailability(true);
       try {
         const courtsOfType = courts.filter(c => c.type === formData.court_type);
-
-        const availabilityChecks = await Promise.all(
-          courtsOfType.map(async (court) => {
-            try {
-              const response = await fetch(`${API_URL}/api/bookings`);
-              if (!response.ok) return { court, available: false };
-
-              const allBookings = await response.json();
-
-              const courtBookings = allBookings.filter((b: Booking) =>
-                b.court.courtID === court.courtID &&
-                b.booking_date.startsWith(formData.booking_date) &&
-                b.status !== "CANCELLED"
-              );
-
-              const isAvailable = formData.slot_ids.every(slotId => {
-                return !courtBookings.some((booking: Booking) =>
-                  booking.bookingSlots.some(bs => bs.slot.slotID === slotId)
-                );
-              });
-
-              return { court, available: isAvailable };
-            } catch {
-              return { court, available: false };
-            }
-          })
-        );
-
-        const available = availabilityChecks
-          .filter(result => result.available)
-          .map(result => result.court);
-
-        setAvailableCourts(available);
-
-        if (available.length > 0 && !selectedCourtId) {
-          setSelectedCourtId(available[0].courtID);
-        } else if (available.length === 0) {
-          setSelectedCourtId("");
+        
+        if (courtsOfType.length === 0) {
+          setHasAvailableCourt(false);
+          setCheckingAvailability(false);
+          return;
         }
+
+        const response = await fetch(`${API_URL}/api/bookings`);
+        if (!response.ok) {
+          setHasAvailableCourt(true);
+          setCheckingAvailability(false);
+          return;
+        }
+
+        const allBookings = await response.json();
+
+        const typeBookingsOnDate = allBookings.filter((b: Booking) => {
+          if (b.status === "CANCELLED") {
+            return false;
+          }
+          
+          const bookingCourtType = b.court_type || b.court?.type;
+          
+          if (!bookingCourtType) {
+            return false;
+          }
+
+          if (bookingCourtType !== formData.court_type) return false;
+          
+          const bookingDateStr = format(new Date(b.booking_date), "yyyy-MM-dd");
+          const dateMatch = bookingDateStr === formData.booking_date;
+          
+          return dateMatch;
+        });
+
+        const slotBookingCount: Record<string, number> = {};
+        formData.slot_ids.forEach(slotId => {
+          slotBookingCount[slotId] = typeBookingsOnDate.filter((booking: Booking) => 
+            booking.bookingSlots.some(bs => bs.slot.slotID === slotId)
+          ).length;
+        });
+
+        const foundAvailableCourt = formData.slot_ids.every(slotId => {
+          const count = slotBookingCount[slotId] || 0;
+          const available = count < courtsOfType.length;
+          console.log(`Slot ${slotId}: ${count}/${courtsOfType.length} courts booked - ${available ? 'AVAILABLE' : 'FULL'}`);
+          return available;
+        });
+
+        setHasAvailableCourt(foundAvailableCourt);
       } catch (error) {
-        console.error("Error checking availability:", error);
-        setAvailableCourts([]);
+        console.error("Error checking slot availability:", error);
+        setHasAvailableCourt(true);
       } finally {
         setCheckingAvailability(false);
       }
     };
 
-    checkAvailableCourts();
+    checkSlotAvailability();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.booking_date, formData.court_type, formData.slot_ids.length, courts]);
+
 
   const selectedSlots = slots.filter(s => formData.slot_ids.includes(s.slotID));
   const basePrice = selectedSlots.reduce((sum, slot) => sum + slot.price, 0);
@@ -182,15 +193,9 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedCourtId) {
-      toast("Không có sân trống cho các slot đã chọn");
-      return;
-    }
-
-    const selectedCourt = courts.find(c => c.courtID === selectedCourtId);
     const selectedSlots = slots.filter(s => formData.slot_ids.includes(s.slotID));
 
-    if (!selectedCourt || selectedSlots.length === 0) {
+    if (selectedSlots.length === 0 || !formData.court_type) {
       toast("Vui lòng chọn loại sân và ít nhất 1 slot");
       return;
     }
@@ -245,7 +250,8 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
         total_price: total,
         deposit_amount: deposit,
         booking_type: bookingType,
-        court_id: selectedCourtId,
+        court_type: formData.court_type,
+        court_id: null,
         note: formData.note,
         slots: slotsToCreate
       };
@@ -307,22 +313,7 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
               onSubmit(fullBooking);
             }
           }
-          // else if (paymentMethod === "BANK_TRANSFER") {
-          //   alert("✅ Đã tạo booking thành công!\n🏦 Vui lòng chuyển khoản đến:\nSTK: 0123456789\nNgân hàng: Vietcombank\nNội dung: " + fullBooking.bookingID);
-          //   onSubmit(fullBooking);
-          // } else if (paymentMethod === "MOMO") {
-          //   alert("✅ Đã tạo booking thành công!\n🟣 Vui lòng thanh toán qua MoMo:\nSố điện thoại: 0123456789\nNội dung: " + fullBooking.bookingID);
-          //   onSubmit(fullBooking);
-          // } else if (paymentMethod === "ZALO_PAY") {
-          //   alert("✅ Đã tạo booking thành công!\n💙 Vui lòng thanh toán qua ZaloPay:\nSố điện thoại: 0123456789\nNội dung: " + fullBooking.bookingID);
-          //   onSubmit(fullBooking);
-          // } else if (paymentMethod === "VNPAY") {
-          //   alert("✅ Đã tạo booking thành công!\n🔴 Đang chuyển hướng đến cổng thanh toán VNPay...");
-          //   onSubmit(fullBooking);
-          // } else if (paymentMethod === "CREDIT_CARD") {
-          //   alert("✅ Đã tạo booking thành công!\n💳 Đang chuyển hướng đến trang thanh toán thẻ...");
-          //   onSubmit(fullBooking);
-          // }
+        
         } else {
           console.error('Failed to fetch booking details');
           toast.error("Đã tạo booking nhưng không lấy được chi tiết");
@@ -359,6 +350,7 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
             <input
               type="date"
               required
+              min={format(new Date(), "yyyy-MM-dd")}
               value={formData.booking_date}
               onChange={(e) => setFormData({ ...formData, booking_date: e.target.value })}
               className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500 transition-colors"
@@ -505,52 +497,27 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
 
           {formData.court_type && formData.slot_ids.length > 0 && (
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
-                Sân trống
-              </label>
               {checkingAvailability ? (
-                <div className="p-4 bg-gray-50 rounded-xl text-center">
+                <div className="p-4 bg-gray-50 rounded-xl text-center border-2 border-gray-200">
                   <div className="w-6 h-6 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
                   <p className="text-sm text-gray-600">Đang kiểm tra sân trống...</p>
                 </div>
-              ) : availableCourts.length > 0 ? (
-                <div className="space-y-2">
-                  {availableCourts.map(court => (
-                    <label
-                      key={court.courtID}
-                      className={`flex items-center gap-3 p-4 rounded-xl cursor-pointer transition-all border-2 ${selectedCourtId === court.courtID
-                          ? 'bg-emerald-50 border-emerald-500'
-                          : 'bg-gray-50 border-gray-200 hover:border-emerald-300'
-                        }`}
-                    >
-                      <input
-                        type="radio"
-                        name="court"
-                        checked={selectedCourtId === court.courtID}
-                        onChange={() => setSelectedCourtId(court.courtID)}
-                        className="w-4 h-4 text-emerald-600 border-gray-300 focus:ring-emerald-500"
-                      />
-                      <div className="flex-1">
-                        <span className="font-bold text-gray-800">{court.name}</span>
-                        <span className="text-sm text-gray-600 ml-2">
-                          ({court.type === "INDOOR" ? "Trong nhà" : "Ngoài trời"})
-                        </span>
-                      </div>
-                      {selectedCourtId === court.courtID && (
-                        <span className="text-xs font-semibold text-emerald-600 bg-emerald-100 px-2 py-1 rounded">
-                          Đã chọn
-                        </span>
-                      )}
-                    </label>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4 bg-red-50 rounded-xl border border-red-200">
-                  <p className="text-sm font-semibold text-red-700 text-center">
-                    ⚠️ Không có sân trống cho các slot đã chọn
+              ) : !hasAvailableCourt ? (
+                <div className="p-4 bg-red-50 rounded-xl border-2 border-red-200">
+                  <p className="text-sm font-bold text-red-700 text-center">
+                    Tất cả sân {formData.court_type === "INDOOR" ? "trong nhà" : "ngoài trời"} đã hết cho các slot này!
                   </p>
                   <p className="text-xs text-red-600 text-center mt-1">
-                    Vui lòng chọn slot khác hoặc ngày khác
+                    Vui lòng chọn slot khác, ngày khác, hoặc loại sân khác
+                  </p>
+                </div>
+              ) : (
+                <div className="p-4 bg-emerald-50 rounded-xl border-2 border-emerald-200">
+                  <p className="text-sm font-semibold text-emerald-700 text-center">
+                    Có sân trống cho các slot đã chọn
+                  </p>
+                  <p className="text-xs text-emerald-600 text-center mt-1">
+                    Admin sẽ cấp sân cụ thể khi khách đến
                   </p>
                 </div>
               )}
@@ -618,110 +585,7 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
                 </div>
               </label>
 
-              {/* <label
-                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border-2 ${
-                  paymentMethod === "BANK_TRANSFER"
-                    ? 'bg-purple-50 border-purple-500'
-                    : 'bg-gray-50 border-gray-200 hover:border-purple-300'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="BANK_TRANSFER"
-                  checked={paymentMethod === "BANK_TRANSFER"}
-                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                  className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
-                />
-                <div>
-                  <span className="font-bold text-gray-800">🏦 Chuyển khoản</span>
-                  <p className="text-xs text-gray-600 mt-1">Chuyển khoản ngân hàng</p>
-                </div>
-              </label> */}
-
-              {/* <label
-                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border-2 ${
-                  paymentMethod === "MOMO"
-                    ? 'bg-pink-50 border-pink-500'
-                    : 'bg-gray-50 border-gray-200 hover:border-pink-300'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="MOMO"
-                  checked={paymentMethod === "MOMO"}
-                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                  className="w-4 h-4 text-pink-600 border-gray-300 focus:ring-pink-500"
-                />
-                <div>
-                  <span className="font-bold text-gray-800">🟣 MoMo</span>
-                  <p className="text-xs text-gray-600 mt-1">Ví điện tử MoMo</p>
-                </div>
-              </label> */}
-
-              {/* <label
-                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border-2 ${
-                  paymentMethod === "ZALO_PAY"
-                    ? 'bg-sky-50 border-sky-500'
-                    : 'bg-gray-50 border-gray-200 hover:border-sky-300'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="ZALO_PAY"
-                  checked={paymentMethod === "ZALO_PAY"}
-                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                  className="w-4 h-4 text-sky-600 border-gray-300 focus:ring-sky-500"
-                />
-                <div>
-                  <span className="font-bold text-gray-800">💙 ZaloPay</span>
-                  <p className="text-xs text-gray-600 mt-1">Ví điện tử ZaloPay</p>
-                </div>
-              </label> */}
-
-              {/* <label
-                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border-2 ${
-                  paymentMethod === "VNPAY"
-                    ? 'bg-orange-50 border-orange-500'
-                    : 'bg-gray-50 border-gray-200 hover:border-orange-300'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="VNPAY"
-                  checked={paymentMethod === "VNPAY"}
-                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                  className="w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500"
-                />
-                <div>
-                  <span className="font-bold text-gray-800">🔴 VNPay</span>
-                  <p className="text-xs text-gray-600 mt-1">Cổng thanh toán VNPay</p>
-                </div>
-              </label> */}
-
-              {/* <label
-                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border-2 ${
-                  paymentMethod === "CREDIT_CARD"
-                    ? 'bg-indigo-50 border-indigo-500'
-                    : 'bg-gray-50 border-gray-200 hover:border-indigo-300'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="CREDIT_CARD"
-                  checked={paymentMethod === "CREDIT_CARD"}
-                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                  className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
-                />
-                <div>
-                  <span className="font-bold text-gray-800">💳 Thẻ tín dụng</span>
-                  <p className="text-xs text-gray-600 mt-1">Visa, Mastercard, JCB</p>
-                </div>
-              </label> */}
+             
             </div>
           </div>
 
@@ -795,15 +659,15 @@ export default function CreateBookingModal({ courts, slots, onClose, onSubmit }:
             </button>
             <button
               type="submit"
-              className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors shadow-lg"
+              disabled={checkingAvailability || !hasAvailableCourt}
+              className={`flex-1 px-6 py-3 rounded-xl font-bold transition-colors shadow-lg ${
+                checkingAvailability || !hasAvailableCourt
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-emerald-600 text-white hover:bg-emerald-700'
+              }`}
             >
               {paymentMethod === "CASH" ? "Tạo Booking" :
                 paymentMethod === "PAYOS" ? "Tạo & Thanh toán QR" :
-                  //  paymentMethod === "BANK_TRANSFER" ? "Tạo & Chuyển khoản" :
-                  //  paymentMethod === "MOMO" ? "Tạo & Thanh toán MoMo" :
-                  //  paymentMethod === "ZALO_PAY" ? "Tạo & Thanh toán ZaloPay" :
-                  //  paymentMethod === "VNPAY" ? "Tạo & Thanh toán VNPay" :
-                  //  paymentMethod === "CREDIT_CARD" ? "Tạo & Thanh toán thẻ" :
                   "Tạo Booking"}
             </button>
           </div>

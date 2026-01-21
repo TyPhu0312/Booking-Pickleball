@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -132,18 +132,30 @@ export default function StatsPage() {
           (b) => format(new Date(b.createdAt), "yyyy-MM-dd") === dayStr
         );
 
-        const dayGross = dayBookings.reduce((sum, b) => {
-          if (b.status === "COMPLETED" || b.status === "CONFIRMED") {
-            return sum + Number(b.total_price || 0);
+        let dayGross = 0;
+        dayBookings.forEach((booking: any) => {
+          if (booking.status === "CONFIRMED" || booking.status === "COMPLETED" || booking.status === "CHECKED_IN") {
+            dayGross += Number(booking.deposit_amount || 0);
           }
-          return sum;
-        }, 0);
+          
+          if (booking.payments && Array.isArray(booking.payments)) {
+            booking.payments.forEach((payment: any) => {
+              const paymentDate = new Date(payment.payment_date || payment.createdAt);
+              const isInDay = format(paymentDate, "yyyy-MM-dd") === dayStr;
+              
+              if ((payment.status === "PAID" || payment.status === "PARTIALLY_PAID") && isInDay) {
+                dayGross += Number(payment.paid_amount) || Number(payment.amount) || 0;
+              }
+            });
+          }
+        });
 
         const dayRefundsPaid = refundsData.reduce((acc, p) => {
           if (!p.booking_id) return acc;
           if (p.refund_status !== "COMPLETED") return acc;
-          const inDay = dayBookings.some((db) => db.bookingID === p.booking_id);
-          if (!inDay) return acc;
+          const refundDate = new Date(p.updatedAt);
+          const isInDay = format(refundDate, "yyyy-MM-dd") === dayStr;
+          if (!isInDay) return acc;
           return acc + Number(p.refund_amount || 0);
         }, 0);
 
@@ -164,18 +176,30 @@ export default function StatsPage() {
           return bookingDate >= monthStart && bookingDate <= monthEnd;
         });
 
-        const monthGross = monthBookingsData.reduce((sum, b) => {
-          if (b.status === "COMPLETED" || b.status === "CONFIRMED") {
-            return sum + Number(b.total_price || 0);
+        let monthGross = 0;
+        monthBookingsData.forEach((booking: any) => {
+          if (booking.status === "CONFIRMED" || booking.status === "COMPLETED" || booking.status === "CHECKED_IN") {
+            monthGross += Number(booking.deposit_amount || 0);
           }
-          return sum;
-        }, 0);
+          
+          if (booking.payments && Array.isArray(booking.payments)) {
+            booking.payments.forEach((payment: any) => {
+              const paymentDate = new Date(payment.payment_date || payment.createdAt);
+              const isInMonth = paymentDate >= monthStart && paymentDate <= monthEnd;
+              
+              if ((payment.status === "PAID" || payment.status === "PARTIALLY_PAID") && isInMonth) {
+                monthGross += Number(payment.paid_amount) || Number(payment.amount) || 0;
+              }
+            });
+          }
+        });
 
         const monthRefundsPaid = refundsData.reduce((acc, p) => {
           if (!p.booking_id) return acc;
           if (p.refund_status !== "COMPLETED") return acc;
-          const inMonth = monthBookingsData.some((mb) => mb.bookingID === p.booking_id);
-          if (!inMonth) return acc;
+          const refundDate = new Date(p.updatedAt);
+          const isInMonth = refundDate >= monthStart && refundDate <= monthEnd;
+          if (!isInMonth) return acc;
           return acc + Number(p.refund_amount || 0);
         }, 0);
 
@@ -206,21 +230,31 @@ export default function StatsPage() {
 
       const availableCourts = courts.filter((c) => c.status === "AVAILABLE").length;
 
-      const grossRevenue = monthBookings.reduce((sum, b) => {
-        if (b.status === "COMPLETED" || b.status === "CONFIRMED") {
-          return sum + Number(b.total_price || 0);
+      let grossRevenue = 0;
+      monthBookings.forEach((booking: any) => {
+        if (booking.status === "CONFIRMED" || booking.status === "COMPLETED" || booking.status === "CHECKED_IN") {
+          grossRevenue += Number(booking.deposit_amount || 0);
         }
-        return sum;
-      }, 0);
+        
+        if (booking.payments && Array.isArray(booking.payments)) {
+          booking.payments.forEach((payment: any) => {
+            const paymentDate = new Date(payment.payment_date || payment.createdAt);
+            const isInMonth = paymentDate >= currentMonthStart && paymentDate <= currentMonthEnd;
+            
+            if ((payment.status === "PAID" || payment.status === "PARTIALLY_PAID") && isInMonth) {
+              grossRevenue += Number(payment.paid_amount) || Number(payment.amount) || 0;
+            }
+          });
+        }
+      });
 
       const refundsPaid = refundsData.reduce((acc, p) => {
         if (!p.booking_id) return acc;
-        const inMonth = monthBookings.some((mb) => mb.bookingID === p.booking_id);
-        if (!inMonth) return acc;
-        if (p.refund_status === "COMPLETED") {
-          return acc + Number(p.refund_amount || 0);
-        }
-        return acc;
+        if (p.refund_status !== "COMPLETED") return acc;
+        const refundDate = new Date(p.updatedAt);
+        const isInMonth = refundDate >= currentMonthStart && refundDate <= currentMonthEnd;
+        if (!isInMonth) return acc;
+        return acc + Number(p.refund_amount || 0);
       }, 0);
 
       const totalRevenue = grossRevenue - refundsPaid;
